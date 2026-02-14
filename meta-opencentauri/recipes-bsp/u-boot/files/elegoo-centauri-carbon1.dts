@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// Copyright (C) 2022 Arm Ltd.
+
+#include "sun8i-t113s.dtsi"
+
+/ {
+        model = "Elegoo Centauri Carbon 1";
+        compatible = "widora,mangopi-mq-r-t113", "allwinner,sun8i-t113s";
+
+/*      aliases {
+                serial0 = &uart0;
+        };
+
+        chosen {
+                stdout-path = "serial0:115200n8";
+        }; */
+};
+
+&uart0 {
+       status = "okay";
+};
+
+&dcxo {
+        clock-frequency = <24000000>;
+};
+
+&ehci1 {
+        status = "okay";
+};
+
+&ohci1 {
+        status = "okay";
+};
+

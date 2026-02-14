@@ -1,0 +1,23 @@
+From c716c7aacf5ca4e857178711713bbae2e47d0010 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Wed, 11 Feb 2026 20:20:16 +0100
+Subject: [PATCH] Add elegoo centauri carbon dts
+
+---
+ arch/arm/boot/dts/allwinner/Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
+index 296be33ec..e26967072 100644
+--- a/arch/arm/boot/dts/allwinner/Makefile
++++ b/arch/arm/boot/dts/allwinner/Makefile
+@@ -258,7 +258,8 @@ dtb-$(CONFIG_MACH_SUN8I) += \
+ 	sun8i-v3-sl631-imx179.dtb \
+ 	sun8i-v3s-licheepi-zero.dtb \
+ 	sun8i-v3s-licheepi-zero-dock.dtb \
+-	sun8i-v40-bananapi-m2-berry.dtb
++	sun8i-v40-bananapi-m2-berry.dtb \
++	elegoo-centauri-carbon1.dtb
+ dtb-$(CONFIG_MACH_SUN9I) += \
+ 	sun9i-a80-optimus.dtb \
+ 	sun9i-a80-cubieboard4.dtb
