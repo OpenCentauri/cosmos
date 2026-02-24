@@ -15,7 +15,7 @@ SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
 S = "${WORKDIR}/git"
 
-inherit python3-dir useradd update-rc.d
+inherit python3-dir update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -40,20 +40,10 @@ RDEPENDS:${PN} = " \
     python3-ldap3 \
     python3-periphery \
     python3-importlib-metadata \
+    python3-zipp \
+    python3-smart-open \
     nginx \
     klipper \
-"
-
-USERADD_PACKAGES = "${PN}"
-GROUPADD_PARAM:${PN} = "-r moonraker"
-USERADD_PARAM:${PN} = " \
-    --system \
-    --home-dir /var/lib/moonraker \
-    --no-create-home \
-    --shell /bin/false \
-    --gid moonraker \
-    --groups dialout,tty \
-    moonraker \
 "
 
 INITSCRIPT_NAME = "moonraker"

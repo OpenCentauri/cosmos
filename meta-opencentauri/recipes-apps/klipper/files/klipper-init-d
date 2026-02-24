@@ -9,20 +9,18 @@
 ### END INIT INFO
 
 KLIPPY_EXEC="/usr/bin/python3"
-KLIPPY_ARGS="/usr/share/klipper/klippy/klippy.py /etc/klipper/printer.cfg -l /var/log/klipper/klippy.log -a /tmp/klippy_uds"
-KLIPPY_USER="klipper"
+KLIPPY_ARGS="/usr/share/klipper/klippy/klippy.py /etc/klipper/printer.cfg -l /var/log/klippy.log -a /tmp/klippy_uds"
 PIDFILE="/var/run/klipper.pid"
 
 case "$1" in
     start)
         echo "Starting klipper..."
-        start-stop-daemon --start --background --make-pidfile \
-            --pidfile $PIDFILE --chuid $KLIPPY_USER \
-            --exec $KLIPPY_EXEC -- $KLIPPY_ARGS
+        start-stop-daemon -S -b -m -p $PIDFILE \
+            -x $KLIPPY_EXEC -- $KLIPPY_ARGS
         ;;
     stop)
         echo "Stopping klipper..."
-        start-stop-daemon --stop --pidfile $PIDFILE --retry 10
+        start-stop-daemon -K -p $PIDFILE -R 10
         rm -f $PIDFILE
         ;;
     restart|force-reload)

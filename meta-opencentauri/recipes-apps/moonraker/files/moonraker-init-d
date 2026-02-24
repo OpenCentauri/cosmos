@@ -10,7 +10,6 @@
 
 MOONRAKER_EXEC="/usr/bin/python3"
 MOONRAKER_ARGS="-m moonraker.moonraker -c /etc/moonraker/moonraker.conf"
-MOONRAKER_USER="moonraker"
 PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
@@ -18,15 +17,12 @@ export PYTHONPATH="/usr/share/moonraker"
 case "$1" in
     start)
         echo "Starting moonraker..."
-        mkdir -p /var/log/moonraker
-        chown moonraker:moonraker /var/log/moonraker
-        start-stop-daemon --start --background --make-pidfile \
-            --pidfile $PIDFILE --chuid $MOONRAKER_USER \
-            --exec $MOONRAKER_EXEC -- $MOONRAKER_ARGS
+        start-stop-daemon -S -b -m -p $PIDFILE \
+            -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;
     stop)
         echo "Stopping moonraker..."
-        start-stop-daemon --stop --pidfile $PIDFILE --retry 10
+        start-stop-daemon -K -p $PIDFILE -R 10
         rm -f $PIDFILE
         ;;
     restart|force-reload)

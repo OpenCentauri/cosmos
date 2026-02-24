@@ -13,6 +13,8 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial4 = &uart4;
+		i2c2 = &i2c2;
 	};
 
 	chosen {
@@ -191,10 +193,6 @@
 	clock-frequency = <24000000>;
 };
 
-&ehci1 {
-	status = "okay";
-};
-
 &mmc0 {
 	pinctrl-0 = <&mmc0_pins>;
 	pinctrl-names = "default";
@@ -205,6 +203,18 @@
 	cap-mmc-highspeed;
 	non-removable;
 	bus-width = <4>;
+	status = "okay";
+};
+
+&ehci0 {
+	status = "okay";
+};
+
+&ohci0 {
+	status = "okay";
+};
+
+&ehci1 {
 	status = "okay";
 };
 
@@ -224,6 +234,11 @@
 		function = "uart0";
 	};
 
+	uart4_pe_pins: uart4-pe-pins {
+		pins = "PE4", "PE5";
+		function = "uart4";
+	};
+
 	lcd_rgb24_pins: lcd-rgb24-pins {
 		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
 				"PD6", "PD7", "PD8", "PD9", "PD10", "PD11",
@@ -238,11 +253,22 @@
 	// 	pins = "PD22";
 	// 	function = "pwm7";
 	// };
+
+	i2c2_pins: i2c2-pins {
+		pins = "PB0", "PB1";
+		function = "i2c2";
+	};
 };
 
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_pe_pins>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pe_pins>;
 	status = "okay";
 };
 
@@ -288,4 +314,19 @@
 &syscon {
 	compatible = "allwinner,sun20i-d1-system-control",
 		"syscon";
+};
+
+&i2c2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pins>;
+
+	goodix: touchscreen@5d {
+		compatible = "goodix,gt911";
+		reg = <0x5d>;
+		interrupt-parent = <&pio>;
+		interrupts = <4 1 IRQ_TYPE_EDGE_FALLING>; /* EINT21 (PE1) */
+		irq-gpios = <&pio 4 1 GPIO_ACTIVE_HIGH>; /* INT (PE1) */
+		reset-gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; /* RST (PE0) */
+	};
 };

@@ -1,14 +1,15 @@
-SUMMARY = "Klipper 3D Printer Firmware"
-DESCRIPTION = "Klipper is a 3D printer firmware that combines the power of a general purpose computer with one or more micro-controllers."
-HOMEPAGE = "https://www.klipper3d.org/"
+SUMMARY = "Kalico 3D Printer Firmware"
+DESCRIPTION = "Klipper, but Limitless"
+HOMEPAGE = "https://kalico.gg/"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://COPYING;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI = "git://github.com/Klipper3d/klipper.git;protocol=https;branch=master \
-    file://klipper-init-d"
-SRCREV = "61c0c8d2ef40340781835dd53fb04cc7a454e37a"
+SRC_URI = "git://github.com/KalicoCrew/kalico.git;protocol=https;branch=main \
+    file://klipper-init-d \
+    file://printer.cfg"
+SRCREV = "c70d21abd88757a6653f5081a125ea26be13c2be"
 
 S = "${WORKDIR}/git"
 
@@ -29,8 +30,6 @@ RDEPENDS:${PN} = " \
     python3-can \
     python3-msgspec \
 "
-
-RPROVIDES:${PN} += "klipper"
 
 INITSCRIPT_NAME = "klipper"
 INITSCRIPT_PARAMS = "defaults 95 5"
@@ -76,10 +75,11 @@ do_install() {
 
     # Config directory
     install -d ${D}${sysconfdir}/klipper
+    cp ${WORKDIR}/printer.cfg ${D}${sysconfdir}/klipper
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp -r ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+    cp ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
     chmod 0755 ${D}${sysconfdir}/init.d/klipper
 }
 

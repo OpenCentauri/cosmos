@@ -21,6 +21,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     wpa-supplicant \
     iw \
     klipper \
-    moonraker \
-    mainsail \
+    htop \
+    i2c-tools \
+    nano \
 "
+
+#    moonraker
+#    mainsail
