@@ -30,8 +30,6 @@ RDEPENDS:${PN} = " \
     python3-msgspec \
 "
 
-RPROVIDES:${PN} += "klipper"
-
 INITSCRIPT_NAME = "klipper"
 INITSCRIPT_PARAMS = "defaults 95 5"
 

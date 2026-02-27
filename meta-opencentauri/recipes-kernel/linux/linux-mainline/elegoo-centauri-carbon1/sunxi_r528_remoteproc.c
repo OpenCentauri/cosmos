@@ -135,7 +135,7 @@ static int sunxi_r528_rproc_mem_alloc(struct rproc *rproc,
 	void *va;
 
 	dev_dbg(dev, "map memory: %pa+%zx\n", &mem->dma, mem->len);
-	va = ioremap_wc(mem->dma, mem->len);
+	va = ioremap(mem->dma, mem->len);
 	if (!va) {
 		dev_err(dev, "Unable to map memory region: %pa+%zx\n",
 			&mem->dma, mem->len);
@@ -177,6 +177,32 @@ static int sunxi_r528_rproc_prepare(struct rproc *rproc)
 	 */
 	sunxi_r528_rproc_sram_remap(dsp, true);
 
+	/*
+	 * Zero the vring and vdev buffer regions in DDR to prevent
+	 * the DSP from processing stale descriptors on restart.
+	 */
+	{
+		struct device_node *np_mem = dev->of_node;
+		struct of_phandle_iterator it_z;
+
+		of_phandle_iterator_init(&it_z, np_mem, "memory-region",
+					 NULL, 0);
+		while (of_phandle_iterator_next(&it_z) == 0) {
+			struct reserved_mem *rm =
+				of_reserved_mem_lookup(it_z.node);
+			if (!rm)
+				continue;
+			if (rm->size <= (256 * 1024)) {
+				void __iomem *va = ioremap(rm->base,
+							   rm->size);
+				if (va) {
+					memset_io(va, 0, rm->size);
+					iounmap(va);
+				}
+			}
+		}
+	}
+
 	dev_dbg(dev, "prepare: registering DSP SRAM and DDR carveouts\n");
 
 	/* DSP IRAM: 64 KB at 0x00400000 (internal bus) */
@@ -211,6 +237,35 @@ static int sunxi_r528_rproc_prepare(struct rproc *rproc)
 	if (!mem)
 		return -ENOMEM;
 	rproc_add_carveout(rproc, mem);
+
+	// /* SRAM A1: RPMsg shared memory at 0x00020000
+	//  * Used for vdev0buffer + vrings. Both ARM and DSP see
+	//  * the same address, no translation needed. Uncached SRAM
+	//  * eliminates cache coherency issues.
+	//  *
+	//  * Pre-map immediately (not lazily) because rproc_handle_vdev()
+	//  * searches for a carveout matching the vring DA *before* the
+	//  * alloc callbacks run. If va is NULL at that point, the vring
+	//  * allocation falls through to DMA and gets a DDR address.
+	//  */
+	// {
+	// 	void __iomem *sram_va = ioremap(0x00020000, 0x8000);
+
+	// 	if (!sram_va)
+	// 		return -ENOMEM;
+
+	// 	mem = rproc_mem_entry_init(dev, (void *)sram_va,
+	// 				   (dma_addr_t)0x00020000, 0x8000,
+	// 				   0x00020000,
+	// 				   NULL,
+	// 				   sunxi_r528_rproc_mem_release,
+	// 				   "sram-a1-rpmsg");
+	// 	if (!mem) {
+	// 		iounmap(sram_va);
+	// 		return -ENOMEM;
+	// 	}
+	// 	rproc_add_carveout(rproc, mem);
+	// }
 
 	/*
 	 * Register each reserved memory region (DDR carveouts) so the
@@ -305,6 +360,13 @@ static int sunxi_r528_rproc_start(struct rproc *rproc)
 
 	/* Switch SRAM remap so DSP has native access. */
 	sunxi_r528_rproc_sram_remap(dsp, false);
+
+	ret = clk_set_rate(dsp->clk_dsp, 600000000);
+	dev_info(dev, "setting dsp clock to: %d\n", 600000000);
+	if (ret) {
+		dev_err(dev, "failed to set DSP clock rate: %d\n", ret);
+		goto err_disable_cfg_clk;
+	}
 
 	/* Release the DSP from stall — it starts executing. */
 	sunxi_r528_rproc_set_runstall(dsp, false);

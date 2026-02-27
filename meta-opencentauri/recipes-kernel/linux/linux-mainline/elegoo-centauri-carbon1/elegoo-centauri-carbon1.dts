@@ -174,7 +174,7 @@
 			 * Can be overridden at runtime via:
 			 *   echo my_fw.elf > /sys/class/remoteproc/remoteproc0/firmware
 			 */
-			firmware-name = "hifi4-dsp.elf";
+			firmware-name = "dsp0.elf";
 
 			status = "okay";
 		};

@@ -3,6 +3,7 @@
 
 /dts-v1/;
 
+#include <dt-bindings/gpio/gpio.h>
 #include "sun8i-t113s.dtsi"
 
 / {
@@ -42,6 +43,39 @@
 		regulator-min-microvolt = <880000>;
 		regulator-max-microvolt = <880000>;
 		vin-supply = <&reg_vcc5v>;
+	};
+
+	// backlight: backlight {
+	// 	compatible = "pwm-backlight";
+	// 	pwms = <&pwm 7 20000 0>;
+	// 	brightness-levels = <0 4 8 16 32 64 128 255>;
+	// 	default-brightness-level = <7>;
+	// 	enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
+	// };
+
+	panel {
+		compatible = "panel-dpi";
+		// backlight = <&backlight>;
+		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
+		power-supply = <&reg_3v3>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&tcon_lcd0_out_panel>;
+			};
+		};
+
+		panel-timing {
+			clock-frequency = <9000000>;
+			hactive = <480>;
+			vactive = <272>;
+			hback-porch = <43>;
+			hfront-porch = <4>;
+			hsync-len = <4>;
+			vback-porch = <12>;
+			vfront-porch = <4>;
+			vsync-len = <4>;
+		};
 	};
 };
 
@@ -89,6 +123,21 @@
 		pins = "PE2", "PE3";
 		function = "uart0";
 	};
+
+	lcd_rgb24_pins: lcd-rgb24-pins {
+		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
+				"PD6", "PD7", "PD8", "PD9", "PD10", "PD11",
+				"PD12", "PD13", "PD14", "PD15", "PD16", "PD17",
+				"PD18", "PD19", "PD20", "PD21",
+				"PB2", "PB3", "PB4", "PB5", "PB6", "PB7";
+		function = "lcd0";
+		drive-strength = <30>;
+	};
+
+	// pwm7_pd22_pin: pwm7-pd22-pin {
+	// 	pins = "PD22";
+	// 	function = "pwm7";
+	// };
 };
 
 &uart0 {
@@ -106,4 +155,30 @@
 &usbphy {
 	usb1_vbus-supply = <&reg_vcc5v>;
 	status = "okay";
+};
+
+// &pwm {
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&pwm7_pd22_pin>;
+// 	status = "okay";
+// };
+
+&de {
+	status = "okay";
+};
+
+&mixer0 {
+	status = "okay";
+};
+
+&tcon_lcd0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd_rgb24_pins>;
+	status = "okay";
+
+	port {
+		tcon_lcd0_out_panel: endpoint {
+			remote-endpoint = <&panel_in>;
+		};
+	};
 };

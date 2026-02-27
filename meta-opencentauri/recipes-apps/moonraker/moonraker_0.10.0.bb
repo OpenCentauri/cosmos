@@ -43,7 +43,7 @@ RDEPENDS:${PN} = " \
     python3-zipp \
     python3-smart-open \
     nginx \
-    klipper \
+    kalico \
 "
 
 INITSCRIPT_NAME = "moonraker"

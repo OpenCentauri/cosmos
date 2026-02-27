@@ -20,11 +20,11 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     linux-firmware-rtl8821 \
     wpa-supplicant \
     iw \
-    klipper \
+    kalico \
+    moonraker \
+    mainsail \
     htop \
     i2c-tools \
     nano \
+    devmem2 \
 "
-
-#    moonraker
-#    mainsail
