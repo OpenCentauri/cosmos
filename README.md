@@ -12,7 +12,7 @@ sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
      chrpath socat cpio python3 python3-pip python3-pexpect xz-utils debianutils \
      iputils-ping python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev \
      pylint xterm python3-subunit mesa-common-dev zstd liblz4-tool file locales \
-     bmap-tools
+     bmap-tools sunxi-tools
 ```
 
 ## How to Build
@@ -53,9 +53,7 @@ Note that the current install requires having a serial UART connected to the CC1
 3. **Boot the new Yocto firmware image via USB from FEL mode.**
    Run the following commands on your host machine to load the mainline u-boot:
    ```bash
-   xfel ddr r528-s3 # try t113-s3 if your version of allwinner-xfel doesn't recognize r528-s3
-   xfel write 0x42e00000 u-boot.bin
-   xfel exec 0x42e00000
+   sunxi-fel uboot tmp/deploy/images/elegoo-centauri-carbon1/u-boot-sunxi-with-spl.bin
    ```
 
    The mainline u-boot followed by the mainline Linux kernel should now boot! This will start up Klipper, Moonraker, Mainsail daemons, and a dropbear SSH server.
