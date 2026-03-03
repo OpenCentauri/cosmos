@@ -330,3 +330,7 @@
 		reset-gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; /* RST (PE0) */
 	};
 };
+
+&wdt {
+	status = "okay";
+};
