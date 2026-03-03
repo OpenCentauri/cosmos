@@ -14,3 +14,7 @@
 	path = meta-arm
 	url = https://git.yoctoproject.org/meta-arm
 	branch = scarthgap
+[submodule "meta-swupdate"]
+	path = meta-swupdate
+	url = https://github.com/sbabic/meta-swupdate.git
+	branch = scarthgap
