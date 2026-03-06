@@ -33,16 +33,15 @@ fi
 # Create directory structure on first boot
 mkdir -p /mnt/udisk/overlay/upper
 mkdir -p /mnt/udisk/overlay/work
-mkdir -p /mnt/udisk/root
+mkdir -p /mnt/udisk/printer_data
 
-# Seed UDISK/root from squashfs on first boot - the bind-mount of
-# UDISK/root over /root hides the squashfs contents, so we must copy
-# klipper, moonraker, mainsail, printer_data etc. into UDISK/root once.
-# On subsequent boots this directory is already populated and the check
-# is a fast no-op.
-if [ -z "$(ls -A /mnt/udisk/root 2>/dev/null)" ]; then
-    echo "First boot: seeding /root from squashfs..."
-    cp -a /mnt/rom/root/. /mnt/udisk/root/
+# Seed printer_data from squashfs on first boot.
+# Only printer_data is bind-mounted from UDISK (user configs, gcodes, logs).
+# App source trees (klipper, moonraker, mainsail) stay on squashfs with
+# overlayfs handling any runtime writes (e.g. moonraker update_manager).
+if [ -z "$(ls -A /mnt/udisk/printer_data 2>/dev/null)" ]; then
+    echo "First boot: seeding printer_data from squashfs..."
+    cp -a /mnt/rom/root/printer_data/. /mnt/udisk/printer_data/
 fi
 
 # --- Mount overlayfs ---
@@ -62,10 +61,12 @@ mount --move /mnt/udisk /mnt/root/mnt/UDISK
 mkdir -p /mnt/root/mnt/rom
 mount --move /mnt/rom /mnt/root/mnt/rom
 
-# --- Bind-mount /root from UDISK ---
-# live here and are writable/updatable across reflashes
-mkdir -p /mnt/root/root
-mount --bind /mnt/root/mnt/UDISK/root /mnt/root/root
+# --- Bind-mount printer_data from UDISK ---
+# User data (configs, gcodes, logs) persists across OTA reflashes.
+# App source trees (klipper, moonraker, mainsail) stay on squashfs;
+# overlayfs handles any runtime writes to those.
+mkdir -p /mnt/root/root/printer_data
+mount --bind /mnt/root/mnt/UDISK/printer_data /mnt/root/root/printer_data
 
 # --- Move virtual filesystems and switch root ---
 mount --move /proc /mnt/root/proc

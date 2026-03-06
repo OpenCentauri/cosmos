@@ -61,10 +61,6 @@ do_install() {
     install -d ${D}/root/moonraker
     cp -r ${S}/moonraker ${D}/root/moonraker/
 
-    # Preserve .git so moonraker update_manager can report version and pull updates
-    cp -r ${S}/.git ${D}/root/moonraker/.git
-    rm -f ${D}/root/moonraker/.git/hooks/*.sample
-
     # Printer data directories
     install -d ${D}/root/printer_data
     install -d ${D}/root/printer_data/config

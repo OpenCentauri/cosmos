@@ -66,10 +66,6 @@ do_install() {
     install -d ${D}/root/klipper
     cp -r ${S}/klippy ${D}/root/klipper/
 
-    # Preserve .git so moonraker update_manager can report version and pull updates
-    cp -r ${S}/.git ${D}/root/klipper/.git
-    rm -f ${D}/root/klipper/.git/hooks/*.sample
-
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
     find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
