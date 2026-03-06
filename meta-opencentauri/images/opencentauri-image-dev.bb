@@ -1,4 +1,4 @@
-DESCRIPTION = "OpenCentauri Image"
+DESCRIPTION = "OpenCentauri Development Image"
 LICENSE = "GPL-3.0-only"
 
 IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
@@ -6,9 +6,6 @@ IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
 IMAGE_LINGUAS = " "
 
 inherit core-image
-
-# SquashFS output -- must fit in ~128 MB rootfsA/B partition
-IMAGE_FSTYPES = "squashfs"
 
 IMAGE_FEATURES += "\
     ssh-server-dropbear \
@@ -35,6 +32,5 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     nano \
     devmem2 \
     mjpg-streamer \
+    opencentauri-firmware \
 "
-
-WKS_FILE = "opencentauri-usb-image.wks"
