@@ -1,0 +1,74 @@
+#!/bin/sh
+# OpenCentauri initramfs-framework module
+#
+# Runs after 90-rootfs (squashfs mounted at ROOTFS_DIR=/rootfs) and
+# before 99-finish (switch_root to ROOTFS_DIR).
+#
+# This module:
+#   1. Mounts UDISK (/dev/mmcblk0p13) as the read-write backing store
+#   2. Creates overlayfs (lower=squashfs, upper=UDISK/overlay)
+#   3. Seeds printer_data on first boot from squashfs
+#   4. Moves UDISK and squashfs mounts inside the overlay
+#   5. Bind-mounts printer_data from UDISK
+#   6. Sets ROOTFS_DIR to the overlay mount so 99-finish switch_roots there
+
+UDISK_DEV="/dev/mmcblk0p13"
+
+opencentauri_enabled() {
+    # Always run — this is the core boot logic
+    return 0
+}
+
+opencentauri_run() {
+    # At this point 90-rootfs has mounted squashfs at ROOTFS_DIR (/rootfs)
+    SQUASHFS_DIR="$ROOTFS_DIR"
+
+    if ! mountpoint -q "$SQUASHFS_DIR"; then
+        fatal "opencentauri: squashfs not mounted at $SQUASHFS_DIR"
+    fi
+
+    # --- Mount UDISK (read-write, holds overlay upper + printer_data) ---
+    mkdir -p /mnt/udisk
+    if ! mount -t ext4 "$UDISK_DEV" /mnt/udisk -o rw; then
+        msg "opencentauri: WARNING: Cannot mount UDISK, falling back to tmpfs overlay"
+        mount -t tmpfs tmpfs /mnt/udisk
+    fi
+
+    # Create directory structure on first boot
+    mkdir -p /mnt/udisk/overlay/upper
+    mkdir -p /mnt/udisk/overlay/work
+    mkdir -p /mnt/udisk/printer_data
+
+    # Seed printer_data from squashfs on first boot.
+    if [ -z "$(ls -A /mnt/udisk/printer_data 2>/dev/null)" ]; then
+        msg "opencentauri: First boot — seeding printer_data from squashfs..."
+        cp -a "${SQUASHFS_DIR}/root/printer_data/." /mnt/udisk/printer_data/
+    fi
+
+    # --- Mount overlayfs ---
+    mkdir -p /mnt/overlay
+    if ! mount -t overlay overlay \
+        -o "lowerdir=${SQUASHFS_DIR},upperdir=/mnt/udisk/overlay/upper,workdir=/mnt/udisk/overlay/work" \
+        /mnt/overlay; then
+        fatal "opencentauri: Cannot mount overlayfs"
+    fi
+
+    # --- Move UDISK inside the overlay ---
+    mkdir -p /mnt/overlay/mnt/UDISK
+    mount --move /mnt/udisk /mnt/overlay/mnt/UDISK
+
+    # --- Make squashfs lower layer accessible for debugging/recovery ---
+    mkdir -p /mnt/overlay/mnt/rom
+    mount --move "$SQUASHFS_DIR" /mnt/overlay/mnt/rom
+
+    # --- Bind-mount printer_data from UDISK ---
+    # User data (configs, gcodes, logs) persists across OTA reflashes.
+    # App source trees stay on squashfs; overlayfs handles runtime writes.
+    mkdir -p /mnt/overlay/root/printer_data
+    mount --bind /mnt/overlay/mnt/UDISK/printer_data /mnt/overlay/root/printer_data
+
+    # --- Tell 99-finish to switch_root into the overlay ---
+    ROOTFS_DIR="/mnt/overlay"
+
+    debug "opencentauri: overlay ready at $ROOTFS_DIR"
+}
