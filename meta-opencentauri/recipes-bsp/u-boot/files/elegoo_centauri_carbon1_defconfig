@@ -24,11 +24,14 @@ CONFIG_CONS_INDEX=1
 CONFIG_USB_EHCI_HCD=y
 CONFIG_USB_OHCI_HCD=y
 CONFIG_CMD_USB=y
+CONFIG_MMC=y
+CONFIG_MMC_SUNXI=y
+CONFIG_CMD_MMC=y
 CONFIG_BOOTDELAY=3
 CONFIG_USE_BOOTARGS=y
-CONFIG_BOOTARGS="console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=/dev/sda2 rootwait"
+CONFIG_BOOTARGS="console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=/dev/mmcblk0p5 rootwait"
 CONFIG_USE_BOOTCOMMAND=y
-CONFIG_BOOTCOMMAND="fatload usb 0:1 43000000 zImage; fatload usb 0:1 43800000 elegoo-centauri-carbon1.dtb; bootz 43000000 - 43800000"
+CONFIG_BOOTCOMMAND="mmc dev 0; fatload mmc 0:4 0x43000000 zImage; fatload mmc 0:4 0x43800000 elegoo-centauri-carbon1.dtb; fatload mmc 0:4 0x46000000 initramfs.cpio.gz; bootz 0x43000000 0x46000000:${filesize} 0x43800000"
 
 CONFIG_SPL_LOG=y
 CONFIG_SPL_LOG_MAX_LEVEL=7
