@@ -1,0 +1,26 @@
+name: Build OpenCentauri Image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Build image
+        run: |
+          source poky/oe-init-build-env build
+          bitbake opencentauri-image
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: elegoo-centauri-carbon1-images
+          path: build/tmp/deploy/images/elegoo-centauri-carbon1/
