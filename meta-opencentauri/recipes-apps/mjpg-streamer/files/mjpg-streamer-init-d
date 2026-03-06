@@ -1,11 +1,11 @@
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          mjpg-streamer
-# Required-Start:    $local_fs $remote_fs $network opencentauri-firmware
+# Required-Start:    $local_fs $remote_fs $network
 # Required-Stop:     $local_fs $remote_fs $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Klipper 3D Printer Firmware
+# Short-Description: MJPG webcam streamer
 ### END INIT INFO
 
 MJPEG_EXEC="/usr/bin/mjpg_streamer"

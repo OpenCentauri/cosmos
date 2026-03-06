@@ -28,8 +28,8 @@ do_compile() {
 
 do_install() {
     # Install static web files
-    install -d ${D}/var/www/mainsail
-    cp -r ${S}/* ${D}/var/www/mainsail/
+    install -d ${D}/root/mainsail
+    cp -r ${S}/* ${D}/root/mainsail/
 
     # Install nginx site config
     install -d ${D}${sysconfdir}/nginx/sites-available
@@ -38,12 +38,12 @@ do_install() {
     cp ${WORKDIR}/mainsail-nginx ${D}${sysconfdir}/nginx/sites-available/mainsail
 
     # Symlink to sites-enabled
-    ln -sf ${sysconfdir}/nginx/sites-available/mainsail \
+    ln -sf ../sites-available/mainsail \
         ${D}${sysconfdir}/nginx/sites-enabled/mainsail
 }
 
 FILES:${PN} = " \
-    /var/www/mainsail \
+    /root/mainsail \
     ${sysconfdir}/nginx/sites-available/mainsail \
     ${sysconfdir}/nginx/sites-enabled/mainsail \
 "

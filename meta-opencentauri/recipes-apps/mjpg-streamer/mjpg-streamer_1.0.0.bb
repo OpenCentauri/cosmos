@@ -23,11 +23,14 @@ INITSCRIPT_PARAMS = "defaults 97 5"
 do_install() {
     oe_runmake install DESTDIR=${D}
 
+    # Remove bundled web UI -- we use Mainsail instead
+    rm -rf ${D}${datadir}
+
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     cp ${WORKDIR}/mjpg-streamer-init-d ${D}${sysconfdir}/init.d/mjpg-streamer
     chmod 0755 ${D}${sysconfdir}/init.d/mjpg-streamer
 }
 
-FILES_${PN} += "${libdir}/*.so"
-FILES_${PN} += "${sysconfdir}/init.d/mjpg-streamer"
+FILES:${PN} += "${libdir}/mjpg-streamer/*.so"
+FILES:${PN} += "${sysconfdir}/init.d/mjpg-streamer"

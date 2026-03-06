@@ -42,7 +42,6 @@ RDEPENDS:${PN} = " \
     python3-importlib-metadata \
     python3-zipp \
     python3-smart-open \
-    nginx \
     kalico \
 "
 
@@ -59,19 +58,21 @@ do_compile() {
 
 do_install() {
     # Install moonraker python package
-    install -d ${D}${datadir}/moonraker
-    cp -r ${S}/moonraker ${D}${datadir}/moonraker/
+    install -d ${D}/root/moonraker
+    cp -r ${S}/moonraker ${D}/root/moonraker/
+
+    # Preserve .git so moonraker update_manager can report version and pull updates
+    cp -r ${S}/.git ${D}/root/moonraker/.git
+    rm -f ${D}/root/moonraker/.git/hooks/*.sample
 
     # Printer data directories
-    install -d ${D}/var/lib/moonraker
-    install -d ${D}/var/lib/moonraker/printer_data
-    install -d ${D}/var/lib/moonraker/printer_data/config
-    install -d ${D}/var/lib/moonraker/printer_data/gcodes
-    install -d ${D}/var/lib/moonraker/printer_data/comms
+    install -d ${D}/root/printer_data
+    install -d ${D}/root/printer_data/config
+    install -d ${D}/root/printer_data/gcodes
+    install -d ${D}/root/printer_data/comms
 
     # Install default moonraker config
-    install -d ${D}${sysconfdir}/moonraker
-    cp ${WORKDIR}/moonraker.conf ${D}${sysconfdir}/moonraker
+    cp ${WORKDIR}/moonraker.conf ${D}/root/printer_data/config/moonraker.conf
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -80,10 +81,11 @@ do_install() {
 }
 
 FILES:${PN} = " \
-    ${datadir}/moonraker \
+    /root/moonraker \
     ${sysconfdir}/init.d/moonraker \
-    ${sysconfdir}/moonraker \
-    /var/lib/moonraker \
+    /root/printer_data/config/moonraker.conf \
+    /root/printer_data/gcodes \
+    /root/printer_data/comms \
 "
 
-CONFFILES:${PN} = "${sysconfdir}/moonraker/moonraker.conf"
+CONFFILES:${PN} = "/root/printer_data/config/moonraker.conf"

@@ -8,8 +8,9 @@ iface lo inet loopback
 iface wlan0 inet dhcp
 	wireless_mode managed
 	wireless_essid any
-	wpa-driver wext
+	wpa-driver nl80211
 	wpa-conf /etc/wpa_supplicant.conf
+	post-up iw dev wlan0 set power_save off
 
 
 # Wired or wireless interfaces

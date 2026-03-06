@@ -63,17 +63,22 @@ do_compile() {
 
 do_install() {
     # Install klipper python package
-    install -d ${D}${datadir}/klipper
-    cp -r ${S}/klippy ${D}${datadir}/klipper/
+    install -d ${D}/root/klipper
+    cp -r ${S}/klippy ${D}/root/klipper/
+
+    # Preserve .git so moonraker update_manager can report version and pull updates
+    cp -r ${S}/.git ${D}/root/klipper/.git
+    rm -f ${D}/root/klipper/.git/hooks/*.sample
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
     find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
     # Config directory
-    install -d ${D}/printer_data
-    install -d ${D}/printer_data/config
-    cp ${WORKDIR}/printer.cfg ${D}/printer_data/config
+    install -d ${D}/root/printer_data
+    install -d ${D}/root/printer_data/config
+    install -d ${D}/root/printer_data/logs
+    cp ${WORKDIR}/printer.cfg ${D}/root/printer_data/config/printer.cfg
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -82,9 +87,9 @@ do_install() {
 }
 
 FILES:${PN} = " \
-    ${datadir}/klipper \
+    /root/klipper \
     ${sysconfdir}/init.d/klipper \
-    /printer_data/config/printer.cfg \
+    /root/printer_data \
 "
 
-CONFFILES:${PN} = "/printer_data/config/printer.cfg"
+CONFFILES:${PN} = "/root/printer_data/config/printer.cfg"
