@@ -1,0 +1,7 @@
+# /etc/udev/rules.d/99-usb-automount.rules
+# Auto-mount USB block devices with recognised filesystems
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]", \
+    ENV{ID_FS_TYPE}=="vfat|ext4|ext3|ext2", \
+    RUN+="/usr/local/bin/usb-mount.sh add %k"
+ACTION=="remove", SUBSYSTEM=="block", KERNEL=="sd[a-z][0-9]", \
+    RUN+="/usr/local/bin/usb-mount.sh remove %k"

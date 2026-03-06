@@ -1,0 +1,54 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          zram-swap
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Configure zram compressed swap + eMMC swapfile
+### END INIT INFO
+
+SWAP_FILE="/mnt/UDISK/swapfile"
+
+case "$1" in
+    start)
+        # Arch wiki recommended sysctl tuning for zram
+        sysctl -w vm.swappiness=100
+        sysctl -w vm.watermark_boost_factor=0
+        sysctl -w vm.watermark_scale_factor=125
+        sysctl -w vm.page-cluster=0
+
+        # zram: use half of total RAM as compressed in-memory swap (priority 100)
+        totalmem=$(awk '/^MemTotal/ {print $2}' /proc/meminfo)
+        zram_size=$((totalmem * 1024 / 2))
+
+        modprobe zram
+        echo "$zram_size" > /sys/block/zram0/disksize
+        mkswap /dev/zram0
+        swapon -p 100 /dev/zram0
+
+        # eMMC swapfile on UDISK: 2x RAM, lower priority fallback
+        swap_mb=$((totalmem / 1024 * 2))
+        if [ -d /mnt/UDISK ]; then
+            if [ ! -f "$SWAP_FILE" ]; then
+                dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$swap_mb"
+                mkswap "$SWAP_FILE"
+            fi
+            swapon -p 10 "$SWAP_FILE" 2>/dev/null
+        fi
+        ;;
+    stop)
+        swapoff /dev/zram0 2>/dev/null
+        swapoff "$SWAP_FILE" 2>/dev/null
+        rmmod zram 2>/dev/null
+        ;;
+    status)
+        swapon -s
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
