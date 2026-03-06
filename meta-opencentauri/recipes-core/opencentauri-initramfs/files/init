@@ -1,0 +1,75 @@
+#!/bin/sh
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+
+# --- Determine root device from kernel cmdline ---
+# U-Boot sets root=/dev/mmcblk0p5 (slot A) or root=/dev/mmcblk0p8 (slot B)
+ROOT_DEV=""
+for arg in $(cat /proc/cmdline); do
+    case "$arg" in
+        root=*) ROOT_DEV="${arg#root=}" ;;
+    esac
+done
+[ -z "$ROOT_DEV" ] && ROOT_DEV="/dev/mmcblk0p5"
+
+UDISK_DEV="/dev/mmcblk0p13"
+
+# --- Mount squashfs rootfs (read-only lower layer) ---
+mkdir -p /mnt/rom
+if ! mount -t squashfs "$ROOT_DEV" /mnt/rom -o ro; then
+    echo "FATAL: Cannot mount squashfs from $ROOT_DEV"
+    exec /bin/sh
+fi
+
+# --- Mount UDISK (read-write, holds overlay upper + /root data) ---
+mkdir -p /mnt/udisk
+if ! mount -t ext4 "$UDISK_DEV" /mnt/udisk -o rw; then
+    echo "WARNING: Cannot mount UDISK, falling back to tmpfs overlay"
+    mount -t tmpfs tmpfs /mnt/udisk
+fi
+
+# Create directory structure on first boot
+mkdir -p /mnt/udisk/overlay/upper
+mkdir -p /mnt/udisk/overlay/work
+mkdir -p /mnt/udisk/root
+
+# Seed UDISK/root from squashfs on first boot - the bind-mount of
+# UDISK/root over /root hides the squashfs contents, so we must copy
+# klipper, moonraker, mainsail, printer_data etc. into UDISK/root once.
+# On subsequent boots this directory is already populated and the check
+# is a fast no-op.
+if [ -z "$(ls -A /mnt/udisk/root 2>/dev/null)" ]; then
+    echo "First boot: seeding /root from squashfs..."
+    cp -a /mnt/rom/root/. /mnt/udisk/root/
+fi
+
+# --- Mount overlayfs ---
+mkdir -p /mnt/root
+if ! mount -t overlay overlay \
+    -o lowerdir=/mnt/rom,upperdir=/mnt/udisk/overlay/upper,workdir=/mnt/udisk/overlay/work \
+    /mnt/root; then
+    echo "FATAL: Cannot mount overlayfs"
+    exec /bin/sh
+fi
+
+# --- Set up UDISK inside the overlay ---
+mkdir -p /mnt/root/mnt/UDISK
+mount --move /mnt/udisk /mnt/root/mnt/UDISK
+
+# --- Make squashfs lower layer accessible for debugging/recovery ---
+mkdir -p /mnt/root/mnt/rom
+mount --move /mnt/rom /mnt/root/mnt/rom
+
+# --- Bind-mount /root from UDISK ---
+# live here and are writable/updatable across reflashes
+mkdir -p /mnt/root/root
+mount --bind /mnt/root/mnt/UDISK/root /mnt/root/root
+
+# --- Move virtual filesystems and switch root ---
+mount --move /proc /mnt/root/proc
+mount --move /sys  /mnt/root/sys
+mount --move /dev  /mnt/root/dev
+
+exec switch_root /mnt/root /sbin/init
