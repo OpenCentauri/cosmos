@@ -1,0 +1,37 @@
+From 04490ee38aa1ba7118122f6aa1a19eb97c0c0d06 Mon Sep 17 00:00:00 2001
+From: Timo V <timiv@users.noreply.github.com>
+Date: Fri, 6 Mar 2026 01:06:48 +0100
+Subject: [PATCH] Disable LED support (no physical LED on RTL8821CU module)
+
+The RTL8821CU USB WiFi adapter on the Elegoo Centauri Carbon 1 has no
+physical LED. Disable CONFIG_RTW88_LEDS to avoid a build dependency on
+CONFIG_LEDS_CLASS which is not enabled in our kernel.
+
+The led.h header provides empty inline stubs when CONFIG_RTW88_LEDS is
+not defined, so the rest of the driver compiles cleanly.
+---
+ Makefile | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 2a26a06..4fec4bc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -37,14 +37,12 @@ NO_SKIP_SIGN := y
+ endif
+ 
+ ccflags-y += -O2 -std=gnu11 -Wno-declaration-after-statement
+-ccflags-y += -DCONFIG_RTW88_LEDS=1
+ ccflags-y += -DCONFIG_RTW88_DEBUG=1
+ ccflags-y += -DCONFIG_RTW88_DEBUGFS=1
+ ccflags-y += -D__CHECK_ENDIAN__
+ 
+ obj-m		+= rtw_core.o
+ rtw_core-objs	+= main.o \
+-		   led.o \
+ 		   mac80211.o \
+ 		   util.o \
+ 		   debug.o \
+-- 
+2.48.1
+
