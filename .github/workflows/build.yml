@@ -12,6 +12,10 @@ on:
         type: boolean
         default: true
 
+env:
+  # Sims server cache dir
+  CACHE_DIR: /data/cache
+
 jobs:
   build:
     runs-on: self-hosted
@@ -27,7 +31,7 @@ jobs:
         if: ${{ inputs.use_cache }}
         run: |
           mkdir -p ./build
-          cp -ar /data/cache/* ./build
+          cp -ar ${{ env.CACHE_DIR }}/* ./build
 
       - name: Build image
         run: |
@@ -43,9 +47,9 @@ jobs:
       - name: Write back cache
         if: ${{ inputs.write_back_cache }}
         run: |
-          rm -rf /data/cache/*
-          cp -ar ./build/downloads /data/cache
-          cp -ar ./build/sstate-cache /data/cache
+          rm -rf ${{ env.CACHE_DIR }}/*
+          cp -ar ./build/downloads ${{ env.CACHE_DIR }}
+          cp -ar ./build/sstate-cache ${{ env.CACHE_DIR }}
 
       - name: Clean workspace
         if: always()
