@@ -4,7 +4,7 @@ LICENSE = "GPL-3.0-only"
 # initramfs-framework-base : /init (module loader) + 99-finish (switch_root)
 # initramfs-module-rootfs  : 90-rootfs (mounts squashfs via root= cmdline)
 # opencentauri-initramfs-module : 91-opencentauri (UDISK, overlay, printer_data)
-PACKAGE_INSTALL = "initramfs-framework-base initramfs-module-rootfs opencentauri-initramfs-module"
+PACKAGE_INSTALL = "initramfs-framework-base initramfs-module-rootfs opencentauri-initramfs-module busybox"
 
 IMAGE_FSTYPES = "cpio.gz"
 IMAGE_FEATURES = ""
