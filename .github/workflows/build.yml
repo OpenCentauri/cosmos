@@ -1,6 +1,9 @@
 name: Build OpenCentauri Image
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       use_cache:
@@ -28,7 +31,7 @@ jobs:
           submodules: recursive
 
       - name: Restore cache
-        if: ${{ inputs.use_cache }}
+        if: ${{ github.event_name == 'push' || inputs.use_cache }}
         run: |
           mkdir -p ./build
           cp -ar ${{ env.CACHE_DIR }}/* ./build
@@ -45,7 +48,7 @@ jobs:
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/
 
       - name: Write back cache
-        if: ${{ inputs.write_back_cache }}
+        if: ${{ github.event_name == 'push' || inputs.write_back_cache }}
         run: |
           rm -rf ${{ env.CACHE_DIR }}/*
           cp -ar ./build/downloads ${{ env.CACHE_DIR }}
