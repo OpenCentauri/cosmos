@@ -2,6 +2,15 @@ name: Build OpenCentauri Image
 
 on:
   workflow_dispatch:
+    inputs:
+      use_cache:
+        description: 'Use cache'
+        type: boolean
+        default: true
+      write_back_cache:
+        description: 'Write back cache'
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -14,6 +23,12 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Restore cache
+        if: ${{ inputs.use_cache }}
+        run: |
+          mkdir -p ./build
+          cp -ar /data/cache/* ./build
+
       - name: Build image
         run: |
           source poky/oe-init-build-env build
@@ -24,3 +39,14 @@ jobs:
         with:
           name: elegoo-centauri-carbon1-images
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/
+
+      - name: Write back cache
+        if: ${{ inputs.write_back_cache }}
+        run: |
+          rm -rf /data/cache/*
+          cp -ar ./build/downloads /data/cache
+          cp -ar ./build/sstate-cache /data/cache
+
+      - name: Clean workspace
+        if: always()
+        run: git clean -ffdx
