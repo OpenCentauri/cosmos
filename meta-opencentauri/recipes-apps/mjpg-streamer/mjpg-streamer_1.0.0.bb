@@ -14,7 +14,6 @@ S = "${WORKDIR}/git/mjpg-streamer-experimental"
 inherit cmake update-rc.d
 
 OECMAKE_GENERATOR="Unix Makefiles"
-EXTRA_OECMAKE = "-DENABLE_HTTP_MANAGEMENT=ON"
 TARGET_CFLAGS += "-fcommon"
 
 INITSCRIPT_NAME = "mjpg-streamer"
