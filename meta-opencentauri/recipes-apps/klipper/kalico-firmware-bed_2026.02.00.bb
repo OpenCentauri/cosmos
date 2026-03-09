@@ -1,19 +1,34 @@
 require kalico_${PV}.inc
+inherit update-rc.d
 
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
 
-SRC_URI += " file://config.bed"
+SRC_URI += " \
+    file://config.bed \
+    file://klipper-firmware-bed-init-d \
+"
 
-DEPENDS += " gcc-arm-none-eabi-native"
-
+DEPENDS += "gcc-arm-none-eabi-native"
+RDEPENDS:${PN} += "mcu-flasher"
 RPROVIDES:${PN} += "klipper-firmware-bed"
 
-EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.bed"
+EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.bed"
+
+INITSCRIPT_NAME = "klipper-firmware-bed"
+INITSCRIPT_PARAMS = "defaults 94 4"
 
 do_install() {
     install -d ${D}/lib/firmware
-    cp -r ${S}/out/klipper.elf ${D}/lib/firmware/klipper-bed.elf
+    cp -r ${S}/out/klipper.bin ${D}/lib/firmware/klipper-bed.bin
+
+    # Install SysVinit script
+    install -d ${D}${sysconfdir}/init.d
+    cp ${WORKDIR}/klipper-firmware-bed-init-d ${D}${sysconfdir}/init.d/klipper-firmware-bed
+    chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-bed
 }
 
-FILES:${PN} = "/lib/firmware/klipper-bed.elf"
+FILES:${PN} = " \
+    /lib/firmware/klipper-bed.bin \
+    ${sysconfdir}/init.d/klipper-firmware-bed \
+"

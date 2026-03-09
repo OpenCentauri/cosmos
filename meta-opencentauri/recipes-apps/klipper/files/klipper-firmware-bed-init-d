@@ -1,0 +1,53 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          klipper-firmware-bed
+# Required-Start:    $local_fs $remote_fs $network
+# Required-Stop:     $local_fs $remote_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start OpenCentauri firmware
+### END INIT INFO
+
+FIRMWARE="/lib/firmware/klipper-bed.bin"
+SERIALPORT="/dev/ttyS4"
+GPIO="201"
+
+case "$1" in
+    start)
+        echo "Starting klipper-firmware-bed..."
+        echo $GPIO > /sys/class/gpio/export
+        echo out > /sys/class/gpio/gpio$GPIO/direction
+        echo 1 > /sys/class/gpio/gpio$GPIO/value
+        echo $GPIO > /sys/class/gpio/unexport
+        sleep 1
+        mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT \
+            --firmware-version 6.3.9
+        ;;
+    stop)
+        echo "Stopping klipper-firmware-bed..."
+        echo "Starting klipper-firmware-bed..."
+        echo $GPIO > /sys/class/gpio/export
+        echo out > /sys/class/gpio/gpio$GPIO/direction
+        echo 0 > /sys/class/gpio/gpio$GPIO/value
+        echo $GPIO > /sys/class/gpio/unexport
+        ;;
+    restart|force-reload)
+        $0 stop
+        sleep 2
+        $0 start
+        ;;
+    status)
+        gpio_value=$(cat /sys/class/gpio/gpio140/value)
+        if [ "$gpio_value" = "1" ]; then
+            echo "klipper-firmware-bed is running"
+        else
+            echo "klipper-firmware-bed is not running"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0

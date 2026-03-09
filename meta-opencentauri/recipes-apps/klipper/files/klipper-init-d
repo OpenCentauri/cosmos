@@ -1,7 +1,7 @@
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          klipper
-# Required-Start:    $local_fs $remote_fs $network klipper-firmware-dsp
+# Required-Start:    $local_fs $remote_fs $network klipper-firmware-dsp klipper-firmware-toolhead klipper-firmware-bed
 # Required-Stop:     $local_fs $remote_fs $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6

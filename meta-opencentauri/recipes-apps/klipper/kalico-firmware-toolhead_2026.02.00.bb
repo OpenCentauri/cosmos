@@ -1,35 +1,34 @@
 require kalico_${PV}.inc
+inherit update-rc.d
 
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
 
-SRC_URI += " file://config.toolhead"
+SRC_URI += " \
+    file://config.toolhead \
+    file://klipper-firmware-toolhead-init-d \
+"
 
-
-DEPENDS += " gcc-arm-none-eabi-native"
-
+DEPENDS += "gcc-arm-none-eabi-native"
+RDEPENDS:${PN} += "mcu-flasher"
 RPROVIDES:${PN} += "klipper-firmware-toolhead"
 
-# INHIBIT_DEFAULT_DEPS = "1"
-# INHIBIT_SYSROOT_STRIP = "1"
-# INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
+EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.toolhead"
 
-# COMPATIBLE_MACHINE = ".*"
-
-# TOOLCHAIN = ""
-# FW_TARGET_PREFIX = "arm-none-eabi-"
-
-# PREFERRED_PROVIDER_virtual/arm-none-eabi-binutils = ""
-# PREFERRED_PROVIDER_virtual/arm-none-eabi-gcc = ""
-
-# TOOLCHAIN_PATH = "${RECIPE_SYSROOT_NATIVE}/usr/bin/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin"
-
-EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.toolhead"
-# EXTRA_OEMAKE += " CROSS_PREFIX=${TOOLCHAIN_PATH}/${TARGET_PREFIX}"
+INITSCRIPT_NAME = "klipper-firmware-toolhead"
+INITSCRIPT_PARAMS = "defaults 94 4"
 
 do_install() {
     install -d ${D}/lib/firmware
-    cp -r ${S}/out/klipper.elf ${D}/lib/firmware/klipper-toolhead.elf
+    cp -r ${S}/out/klipper.bin ${D}/lib/firmware/klipper-toolhead.bin
+
+    # Install SysVinit script
+    install -d ${D}${sysconfdir}/init.d
+    cp ${WORKDIR}/klipper-firmware-toolhead-init-d ${D}${sysconfdir}/init.d/klipper-firmware-toolhead
+    chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-toolhead
 }
 
-FILES:${PN} = "/lib/firmware/klipper-toolhead.elf"
+FILES:${PN} = " \
+    /lib/firmware/klipper-toolhead.bin \
+    ${sysconfdir}/init.d/klipper-firmware-toolhead \
+"
