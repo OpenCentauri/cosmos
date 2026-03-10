@@ -1,0 +1,80 @@
+From e5add7b457551a548baab863aebcc58ce476dce9 Mon Sep 17 00:00:00 2001
+From: Timo V <timiv@users.noreply.github.com>
+Date: Tue, 10 Mar 2026 19:29:57 +0100
+Subject: [PATCH] drm: add RB channel swap support for panels with swapped R/B
+ lines
+
+Two changes are needed to support panels whose physical Red and Blue
+data lines are swapped relative to the SoC TCON output:
+
+1. panel-simple: parse the 'bus-format' DT property in panel_dpi_probe()
+   so that DT-only panels can declare their media bus format (e.g.
+   MEDIA_BUS_FMT_BGR888_1X24 = 0x1013) and have it propagated through
+   drm_display_info.
+
+2. sun4i-tcon: check the connector's bus_format in
+   sun4i_tcon0_mode_set_rgb(). When the panel reports BGR888, set the
+   TCON0 hardware RB swap bit (bit 23 of TCON0_CTL register) to swap
+   the R and B channels without software colour conversion.
+
+This matches the Allwinner vendor BSP 'lcd_rb_swap' functionality.
+
+Upstream-Status: Pending [Not submitted to upstream yet]
+Signed-off-by: Timo V <timiv@users.noreply.github.com>
+---
+ drivers/gpu/drm/panel/panel-simple.c |  3 +++
+ drivers/gpu/drm/sun4i/sun4i_tcon.c   | 14 ++++++++++++++
+ drivers/gpu/drm/sun4i/sun4i_tcon.h   |  1 +
+ 3 files changed, 18 insertions(+)
+
+diff --git a/drivers/gpu/drm/panel/panel-simple.c b/drivers/gpu/drm/panel/panel-simple.c
+index 37fe54c34..897e369b5 100644
+--- a/drivers/gpu/drm/panel/panel-simple.c
++++ b/drivers/gpu/drm/panel/panel-simple.c
+@@ -488,6 +488,9 @@ static int panel_dpi_probe(struct device *dev,
+ 	of_property_read_u32(np, "width-mm", &desc->size.width);
+ 	of_property_read_u32(np, "height-mm", &desc->size.height);
+ 
++	/* Allow DT to declare the media bus format (e.g. BGR888 for RB swap) */
++	of_property_read_u32(np, "bus-format", &desc->bus_format);
++
+ 	/* Extract bus_flags from display_timing */
+ 	bus_flags = 0;
+ 	vm.flags = timing->flags;
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.c b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+index a1a2c845a..f450ef1df 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.c
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.c
+@@ -586,6 +586,20 @@ static void sun4i_tcon0_mode_set_rgb(struct sun4i_tcon *tcon,
+ 			   SUN4I_TCON0_IO_POL_DE_NEGATIVE,
+ 			   val);
+ 
++	/*
++	 * If the panel reports BGR bus format, enable the TCON0 hardware
++	 * RB swap (bit 23 of TCON0_CTL) to compensate for the swapped
++	 * Red and Blue data lines on the panel's physical connector.
++	 */
++	if (info->num_bus_formats == 1 &&
++	    info->bus_formats[0] == MEDIA_BUS_FMT_BGR888_1X24)
++		regmap_update_bits(tcon->regs, SUN4I_TCON0_CTL_REG,
++				   SUN4I_TCON0_CTL_RB_SWAP,
++				   SUN4I_TCON0_CTL_RB_SWAP);
++	else
++		regmap_update_bits(tcon->regs, SUN4I_TCON0_CTL_REG,
++				   SUN4I_TCON0_CTL_RB_SWAP, 0);
++
+ 	/* Map output pins to channel 0 */
+ 	regmap_update_bits(tcon->regs, SUN4I_TCON_GCTL_REG,
+ 			   SUN4I_TCON_GCTL_IOMAP_MASK,
+diff --git a/drivers/gpu/drm/sun4i/sun4i_tcon.h b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+index fa23aa23f..0db5b5ef2 100644
+--- a/drivers/gpu/drm/sun4i/sun4i_tcon.h
++++ b/drivers/gpu/drm/sun4i/sun4i_tcon.h
+@@ -54,6 +54,7 @@
+ #define SUN4I_TCON0_CTL_TCON_ENABLE			BIT(31)
+ #define SUN4I_TCON0_CTL_IF_MASK				GENMASK(25, 24)
+ #define SUN4I_TCON0_CTL_IF_8080				(1 << 24)
++#define SUN4I_TCON0_CTL_RB_SWAP				BIT(23)
+ #define SUN4I_TCON0_CTL_CLK_DELAY_MASK			GENMASK(8, 4)
+ #define SUN4I_TCON0_CTL_CLK_DELAY(delay)		((delay << 4) & SUN4I_TCON0_CTL_CLK_DELAY_MASK)
+ #define SUN4I_TCON0_CTL_SRC_SEL_MASK			GENMASK(2, 0)

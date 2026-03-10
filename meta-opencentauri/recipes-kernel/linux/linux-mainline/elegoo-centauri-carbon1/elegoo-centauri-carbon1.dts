@@ -58,6 +58,7 @@
 
 	panel {
 		compatible = "panel-dpi";
+		bus-format = <0x1013>;
 		power-supply = <&reg_3v3>;
 		// backlight = <&backlight>;
 		// enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
@@ -73,16 +74,16 @@
 			clock-frequency = <9000000>;
 			hactive = <480>;
 			vactive = <272>;
-			hback-porch = <43>;
-			hfront-porch = <4>;
+			hback-porch = <39>;
+			hfront-porch = <8>;
 			hsync-len = <4>;
-			vback-porch = <12>;
-			vfront-porch = <4>;
+			vback-porch = <8>;
+			vfront-porch = <8>;
 			vsync-len = <4>;
 			de-active = <1>;
 			hsync-active = <0>;
 			vsync-active = <0>;
-			pixelclk-active = <0>;
+			pixelclk-active = <1>;
 		};
 	};
 
