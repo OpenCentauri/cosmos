@@ -1,0 +1,538 @@
+From 29046b9b99c1d3aa38c5252c75a2ee41a7b457cc Mon Sep 17 00:00:00 2001
+From: Timo V <timiv@users.noreply.github.com>
+Date: Tue, 10 Mar 2026 20:15:20 +0100
+Subject: [PATCH] sunxi: r528: add display support with RB channel swap
+
+Add display pipeline support for the Allwinner R528/T113s SoC:
+- PLL_VIDEO0 clock functions (clock_sun50i_h6.h/c)
+- DE2 base addresses for NCAT2 (cpu_sunxi_ncat2.h)
+- Kconfig: enable SUNXI_DE2 for R528, fix VIDEO_DW_HDMI dependencies
+- LCDC PLL configuration for NCAT2 (lcdc.c)
+- DE2 composer initialization for NCAT2 (sunxi_de2.c)
+- LCD pinmux, bus gate and reset for R528 (sunxi_lcd.c)
+- Makefile fix for conditional HDMI compilation
+- RB channel swap support via TCON0_CTL bit 23 (lcdc.h, sunxi_lcd.c)
+  controlled by sunxi,rb-swap DT property
+
+Upstream-Status: Pending [Not submitted to upstream yet]
+---
+ .../include/asm/arch-sunxi/clock_sun50i_h6.h  | 45 +++++++++-
+ .../include/asm/arch-sunxi/cpu_sunxi_ncat2.h  |  3 +
+ arch/arm/include/asm/arch-sunxi/lcdc.h        |  1 +
+ arch/arm/mach-sunxi/Kconfig                   |  3 +-
+ arch/arm/mach-sunxi/clock_sun50i_h6.c         | 90 +++++++++++++++++++
+ drivers/video/Kconfig                         |  1 +
+ drivers/video/sunxi/Makefile                  |  3 +-
+ drivers/video/sunxi/lcdc.c                    | 72 +++++++++++++++
+ drivers/video/sunxi/sunxi_de2.c               | 37 ++++++++
+ drivers/video/sunxi/sunxi_lcd.c               | 44 +++++++--
+ 10 files changed, 290 insertions(+), 9 deletions(-)
+
+diff --git a/arch/arm/include/asm/arch-sunxi/clock_sun50i_h6.h b/arch/arm/include/asm/arch-sunxi/clock_sun50i_h6.h
+index a84a57e5b41..0845fd6f848 100644
+--- a/arch/arm/include/asm/arch-sunxi/clock_sun50i_h6.h
++++ b/arch/arm/include/asm/arch-sunxi/clock_sun50i_h6.h
+@@ -344,6 +344,49 @@ struct sunxi_ccm_reg {
+ #ifndef __ASSEMBLY__
+ void clock_set_pll1(unsigned int hz);
+ unsigned int clock_get_pll6(void);
+-#endif
++
++#ifdef CONFIG_VIDEO_DE2
++/*
++ * PLL_VIDEO0 bit fields -- struct field pll3_cfg, CCM offset 0x040.
++ * Named PLL_VIDEO0 in the R528/T113 datasheet; the struct field retains
++ * the legacy "pll3" name shared with H6/H616.
++ *
++ * freq_4x = 24MHz * N / (D1+1), freq_1x = freq_4x / 4
++ */
++#define CCM_PLL_VIDEO0_CTRL_EN		BIT(31)
++#define CCM_PLL_VIDEO0_LDO_EN		BIT(30)
++#define CCM_PLL_VIDEO0_LOCK_EN		BIT(29)
++#define CCM_PLL_VIDEO0_LOCK		BIT(28)
++#define CCM_PLL_VIDEO0_OUT_EN		BIT(27)
++#define CCM_PLL_VIDEO0_CTRL_N_SHIFT	8
++#define CCM_PLL_VIDEO0_CTRL_N_MASK	(0xff << CCM_PLL_VIDEO0_CTRL_N_SHIFT)
++#define CCM_PLL_VIDEO0_CTRL_N(n)	(((n) - 1) << CCM_PLL_VIDEO0_CTRL_N_SHIFT)
++#define CCM_PLL_VIDEO0_CTRL_D1_SHIFT	1
++#define CCM_PLL_VIDEO0_CTRL_D1(d)	(((d) & 1) << CCM_PLL_VIDEO0_CTRL_D1_SHIFT)
++
++/* Bus gate/reset bits (shared layout: BIT(16)=reset, BIT(0)=gate) */
++#define CCM_BUS_GATE			BIT(GATE_SHIFT)
++#define CCM_BUS_RESET			BIT(RESET_SHIFT)
++
++/* DE clock config -- offset 0x600 */
++#define CCM_DE2_CTRL_PLL_MASK		(7 << 24)
++#define CCM_DE2_CTRL_PLL_VIDEO0_4X	(1 << 24)
++#define CCM_DE2_CTRL_GATE		BIT(31)
++#define CCM_DE2_CTRL_M(n)		(((n) - 1) & 0x1f)
++#define CCM_DE2_CTRL_M_MASK		0x1f
++
++/* TCON_LCD0 clock config -- offset 0xb60 */
++#define CCM_LCD_CH0_CTRL_GATE		BIT(31)
++#define CCM_LCD_CH0_CTRL_RST		0	/* no reset bit in NCAT2 tcon_lcd0_clk_cfg */
++#define CCM_LCD_CH0_CTRL_PLL3		(0x0 << 24)	/* mux 0: pll-video0 (1x) */
++#define CCM_LCD_CH0_CTRL_PLL3_2X	(0x1 << 24)	/* mux 1: pll-video0-4x */
++#define CCM_LCD_CH0_CTRL_MIPI_PLL	0		/* No MIPI PLL on NCAT2 */
++#define CCM_LCD_CH0_CTRL_M(m)		(((m) - 1) & 0xf)
++
++void clock_set_pll3(unsigned int hz);
++unsigned int clock_get_pll3(void);
++#endif /* CONFIG_VIDEO_DE2 */
++
++#endif /* __ASSEMBLY__ */
+ 
+ #endif /* _SUNXI_CLOCK_SUN50I_H6_H */
+diff --git a/arch/arm/include/asm/arch-sunxi/cpu_sunxi_ncat2.h b/arch/arm/include/asm/arch-sunxi/cpu_sunxi_ncat2.h
+index 908a582ae0f..4ae93b5095e 100644
+--- a/arch/arm/include/asm/arch-sunxi/cpu_sunxi_ncat2.h
++++ b/arch/arm/include/asm/arch-sunxi/cpu_sunxi_ncat2.h
+@@ -25,6 +25,9 @@
+ #define SUNXI_MMC1_BASE			0x04021000
+ #define SUNXI_MMC2_BASE			0x04022000
+ 
++#define SUNXI_DE2_BASE			0x05000000
++#define SUNXI_LCD0_BASE			0x05461000
++
+ #define SUNXI_R_CPUCFG_BASE		0x07000400
+ #define SUNXI_PRCM_BASE			0x07010000
+ 
+diff --git a/arch/arm/include/asm/arch-sunxi/lcdc.h b/arch/arm/include/asm/arch-sunxi/lcdc.h
+index 90216bcfd51..05dc7f44e7a 100644
+--- a/arch/arm/include/asm/arch-sunxi/lcdc.h
++++ b/arch/arm/include/asm/arch-sunxi/lcdc.h
+@@ -77,6 +77,7 @@ struct sunxi_lcdc_reg {
+ #define SUNXI_LCDC_TCON0_FRM_TAB3		0x7f7f7777
+ #define SUNXI_LCDC_TCON0_CTRL_CLK_DELAY(n)	(((n) & 0x1f) << 4)
+ #define SUNXI_LCDC_TCON0_CTRL_ENABLE		(1 << 31)
++#define SUNXI_LCDC_TCON0_CTRL_RB_SWAP		(1 << 23)
+ #define SUNXI_LCDC_TCON0_DCLK_DIV(n)		((n) << 0)
+ #define SUNXI_LCDC_TCON0_DCLK_ENABLE		(0xf << 28)
+ #define SUNXI_LCDC_TCON0_TIMING_H_BP(n)		(((n) - 1) << 0)
+diff --git a/arch/arm/mach-sunxi/Kconfig b/arch/arm/mach-sunxi/Kconfig
+index a4a8d8e9445..ab0629548fc 100644
+--- a/arch/arm/mach-sunxi/Kconfig
++++ b/arch/arm/mach-sunxi/Kconfig
+@@ -362,6 +362,7 @@ config MACH_SUN8I_R528
+ 	select SUNXI_GEN_NCAT2
+ 	select SUNXI_NEW_PINCTRL
+ 	select MMC_SUNXI_HAS_NEW_MODE
++	select SUNXI_DE2
+ 	select SUPPORT_SPL
+ 	select DRAM_SUN20I_D1
+ 
+@@ -986,7 +987,7 @@ config VIDEO_DE2
+ 	depends on SUNXI_DE2
+ 	select VIDEO
+ 	select DISPLAY
+-	select VIDEO_DW_HDMI
++	imply VIDEO_DW_HDMI
+ 	imply VIDEO_DT_SIMPLEFB
+ 	default y
+ 	---help---
+diff --git a/arch/arm/mach-sunxi/clock_sun50i_h6.c b/arch/arm/mach-sunxi/clock_sun50i_h6.c
+index bea91c78bc5..204d259715e 100644
+--- a/arch/arm/mach-sunxi/clock_sun50i_h6.c
++++ b/arch/arm/mach-sunxi/clock_sun50i_h6.c
+@@ -161,3 +161,93 @@ int clock_twi_onoff(int port, int state)
+ 
+ 	return 0;
+ }
++
++#ifdef CONFIG_VIDEO_DE2
++/*
++ * Display clock functions for R528/T113-S3 (SUNXI_GEN_NCAT2).
++ *
++ * PLL3 (VIDEO0, CCM offset 0x040) drives the display pipeline.
++ * The DE clock is sourced from PLL_VIDEO0_4X via the DE_CLK_REG mux.
++ * The TCON_LCD0 clock is sourced from PLL_VIDEO0 (1x) or PLL_VIDEO0_4X.
++ *
++ * PLL layout (same for all R528 PLLs):
++ *   EN(31), LDO_EN(30), LOCK_EN(29), LOCK(28), OUT_EN(27)
++ *   freq_4x = 24MHz * N / (D1+1), freq_1x = freq_4x / 4
++ */
++
++#define PLL_LOCK_TIMEOUT_US 1000
++
++void clock_set_pll3(unsigned int clk)
++{
++	struct sunxi_ccm_reg *const ccm =
++		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
++	int i;
++
++	if (clk == 0) {
++		clrbits_le32(&ccm->pll3_cfg, CCM_PLL_VIDEO0_CTRL_EN);
++		return;
++	}
++
++	/*
++	 * PLL_VIDEO0 on R528/T113 has: freq_4x = 24MHz * N / (D1+1)
++	 * where N is in bits[15:8] (stored as N-1) and D1 is in bit[1].
++	 *
++	 * The 1x output (pll-video0) is freq_4x / 4.
++	 *
++	 * For simplicity: if the requested clock is divisible by 24MHz,
++	 * use D1=0 (divide-by-1). Otherwise try D1=1 (divide-by-2) so
++	 * that the effective multiplier can be a half-integer of 24MHz.
++	 *
++	 * clk is the desired 1x output frequency in Hz.
++	 */
++	int n;
++	int d1 = 0;
++
++	/* Try D1=0 first: freq_1x = 24*N/4, so N = freq_1x*4/24 */
++	n = (int)((unsigned long)clk * 4 / 24000000);
++	if (n < 1)
++		n = 1;
++	if (n > 255)
++		n = 255;
++
++	/* Check if D1=1 gives a better match: freq_1x = 24*N/2/4 = 24*N/8 */
++	{
++		int n2 = (int)((unsigned long)clk * 8 / 24000000);
++		unsigned int err0 = abs((int)(24000000UL * n / 4 - clk));
++		unsigned int err1 = (n2 >= 1 && n2 <= 255) ?
++			abs((int)(24000000UL * n2 / 8 - clk)) : 0xFFFFFFFF;
++		if (err1 < err0) {
++			n = n2;
++			d1 = 1;
++		}
++	}
++
++	/* Enable PLL with lock detection, but without output yet */
++	writel(CCM_PLL_VIDEO0_CTRL_EN | CCM_PLL_VIDEO0_LDO_EN |
++	       CCM_PLL_VIDEO0_LOCK_EN |
++	       CCM_PLL_VIDEO0_CTRL_N(n) | CCM_PLL_VIDEO0_CTRL_D1(d1),
++	       &ccm->pll3_cfg);
++
++	/* Wait for PLL to lock */
++	for (i = 0; i < PLL_LOCK_TIMEOUT_US; i++) {
++		if (readl(&ccm->pll3_cfg) & CCM_PLL_VIDEO0_LOCK)
++			break;
++		udelay(1);
++	}
++
++	/* Enable PLL output */
++	setbits_le32(&ccm->pll3_cfg, CCM_PLL_VIDEO0_OUT_EN);
++}
++
++unsigned int clock_get_pll3(void)
++{
++	struct sunxi_ccm_reg *const ccm =
++		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
++	uint32_t rval = readl(&ccm->pll3_cfg);
++	int n = ((rval & CCM_PLL_VIDEO0_CTRL_N_MASK) >> CCM_PLL_VIDEO0_CTRL_N_SHIFT) + 1;
++	int d1 = ((rval >> CCM_PLL_VIDEO0_CTRL_D1_SHIFT) & 1) + 1;
++
++	/* Returns the 1x output: 24MHz * N / D1 / 4 */
++	return 24000000U * n / d1 / 4;
++}
++#endif /* CONFIG_VIDEO_DE2 */
+diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
+index ab927641bb7..3a9ccfaaf42 100644
+--- a/drivers/video/Kconfig
++++ b/drivers/video/Kconfig
+@@ -792,6 +792,7 @@ config CONSOLE_SCROLL_LINES
+ 
+ config VIDEO_DW_HDMI
+ 	bool
++	depends on !SUNXI_GEN_NCAT2
+ 	help
+ 	  Enables the common driver code for the Designware HDMI TX
+ 	  block found in SoCs from various vendors.
+diff --git a/drivers/video/sunxi/Makefile b/drivers/video/sunxi/Makefile
+index 4321673312b..0adae6eb2dd 100644
+--- a/drivers/video/sunxi/Makefile
++++ b/drivers/video/sunxi/Makefile
+@@ -4,4 +4,5 @@
+ # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+ 
+ obj-$(CONFIG_VIDEO_SUNXI) += sunxi_display.o simplefb_common.o lcdc.o tve_common.o ../videomodes.o
+-obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o simplefb_common.o lcdc.o sunxi_lcd.o
++obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o simplefb_common.o lcdc.o sunxi_lcd.o
++obj-$(CONFIG_VIDEO_DW_HDMI) += sunxi_dw_hdmi.o
+\ No newline at end of file
+diff --git a/drivers/video/sunxi/lcdc.c b/drivers/video/sunxi/lcdc.c
+index 73033c3b858..5aeab4cd251 100644
+--- a/drivers/video/sunxi/lcdc.c
++++ b/drivers/video/sunxi/lcdc.c
+@@ -213,6 +213,77 @@ void lcdc_tcon1_mode_set(struct sunxi_lcdc_reg * const lcdc,
+ void lcdc_pll_set(struct sunxi_ccm_reg *ccm, int tcon, int dotclock,
+ 		  int *clk_div, int *clk_double, bool is_composite)
+ {
++#ifdef CONFIG_SUNXI_GEN_NCAT2
++	/*
++	 * R528/T113 clock tree for LCD:
++	 *
++	 *   PLL_VIDEO0: freq_4x = 24MHz * N / (D1+1)
++	 *   pll-video0 (1x) = freq_4x / 4
++	 *
++	 *   TCON_LCD0 CCU mux:
++	 *     mux=0 → pll-video0 (1x)    divided by M (1..16)
++	 *     mux=1 → pll-video0-4x (4x) divided by M (1..16)
++	 *
++	 *   TCON internal dclk divider: always 1 on NCAT2
++	 *
++	 * Strategy: search for (N, D1, mux_4x, M) that gives best match.
++	 * Return clk_div=1 so lcdc_tcon0_mode_set() uses TCON dclk div=1.
++	 */
++	{
++		const unsigned long pll1x = 63000UL;
++		const unsigned long pll4x = pll1x * 4;
++		int m;
++		int best_diff = 0x7fffffff;
++		int best_m = 7;
++		int best_mux4x = 0;
++
++		for (m = 1; m <= 16; m++) {
++			int val = pll1x / m;
++			int diff = abs(dotclock - val);
++			if (diff < best_diff) {
++				best_diff = diff;
++				best_m = m;
++				best_mux4x = 0;
++			}
++
++			val = pll4x / m;
++			diff = abs(dotclock - val);
++			if (diff < best_diff) {
++				best_diff = diff;
++				best_m = m;
++				best_mux4x = 1;
++			}
++		}
++
++		/*
++		 * PLL_VIDEO0 is already programmed by sunxi_de2_composer_init()
++		 * via clock_set_pll3(). Do not reprogram it here - just set up
++		 * the TCON_LCD0 CCU mux and M divider.
++		 */
++
++		/* Program TCON_LCD0 CCU clock: gate + mux + M divider */
++		if (tcon == 0) {
++			u32 mux = best_mux4x ? CCM_LCD_CH0_CTRL_PLL3_2X :
++						CCM_LCD_CH0_CTRL_PLL3;
++			writel(CCM_LCD_CH0_CTRL_GATE | mux |
++			       CCM_LCD_CH0_CTRL_M(best_m),
++			       &ccm->tcon_lcd0_clk_cfg);
++		}
++
++		debug("dotclock: %dkHz = %dkHz: PLL_VIDEO0 fixed 1x=%lukHz "
++		      "(4x=%lukHz) mux=%s CCU_M=%d\n",
++		      dotclock,
++		      best_mux4x ? (int)(pll4x / best_m) : (int)(pll1x / best_m),
++		      pll1x, pll4x,
++		      best_mux4x ? "4x" : "1x", best_m);
++
++		/* Return clk_div=1 for TCON internal dclk (all division in CCU) */
++		*clk_div = 1;
++		*clk_double = best_mux4x;
++		return;
++	}
++#else
++
+ 	int value, n, m, min_m, max_m, diff, step;
+ 	int best_n = 0, best_m = 0, best_diff = 0x0FFFFFFF;
+ 	int best_double = 0;
+@@ -333,4 +404,5 @@ void lcdc_pll_set(struct sunxi_ccm_reg *ccm, int tcon, int dotclock,
+ 
+ 	*clk_div = best_m;
+ 	*clk_double = best_double;
++#endif
+ }
+diff --git a/drivers/video/sunxi/sunxi_de2.c b/drivers/video/sunxi/sunxi_de2.c
+index e02d359cd25..cca57a5b9d8 100644
+--- a/drivers/video/sunxi/sunxi_de2.c
++++ b/drivers/video/sunxi/sunxi_de2.c
+@@ -36,6 +36,38 @@ static void sunxi_de2_composer_init(void)
+ 	struct sunxi_ccm_reg * const ccm =
+ 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+ 
++#ifdef CONFIG_SUNXI_GEN_NCAT2
++	/*
++	 * R528/T113-S3 (NCAT2) display clock init.
++	 *
++	 * PLL_VIDEO0 must be running before we can use it as DE clock
++	 * source.  Program it now for the 1x output = 63 MHz (matching
++	 * Linux: pll-video0-4x = 252 MHz, pll-video0 = 63 MHz).
++	 *
++	 * lcdc_pll_set() will later verify/adjust the PLL if needed for
++	 * the target pixel clock, but the PLL parameters for 9 MHz panel
++	 * (N=21, D1=1) won't change.
++	 *
++	 * DE clock: pll-video0-4x (252 MHz) / 4 = 63 MHz (mux=1, M=4).
++	 * Matches Linux register 0x81000003.
++	 */
++	clock_set_pll3(63000000);
++
++	/* DE bus: deassert reset, enable gate (offset 0x60c) */
++	setbits_le32(&ccm->de_gate_reset, CCM_BUS_RESET);
++	setbits_le32(&ccm->de_gate_reset, CCM_BUS_GATE);
++
++	/* DPSS_TOP bus: deassert reset, enable gate (offset 0xabc) */
++	setbits_le32(&ccm->pcie_gate_reset, CCM_BUS_RESET);
++	setbits_le32(&ccm->pcie_gate_reset, CCM_BUS_GATE);
++
++	/* DE clock: pll_video0_4x / 4 = 63 MHz */
++	clrsetbits_le32(&ccm->de_clk_cfg,
++			CCM_DE2_CTRL_PLL_MASK | CCM_DE2_CTRL_M_MASK,
++			CCM_DE2_CTRL_PLL_VIDEO0_4X | CCM_DE2_CTRL_M(4));
++	setbits_le32(&ccm->de_clk_cfg, CCM_DE2_CTRL_GATE);
++#else /* !CONFIG_SUNXI_GEN_NCAT2 */
++
+ #ifdef CONFIG_MACH_SUN50I
+ 	u32 reg_value;
+ 
+@@ -57,6 +89,7 @@ static void sunxi_de2_composer_init(void)
+ 
+ 	/* Clock on */
+ 	setbits_le32(&ccm->de_clk_cfg, CCM_DE2_CTRL_GATE);
++#endif /* CONFIG_SUNXI_GEN_NCAT2 */
+ }
+ 
+ static void sunxi_de2_mode_set(int mux, const struct display_timing *mode,
+@@ -253,6 +286,7 @@ static int sunxi_de2_probe(struct udevice *dev)
+ 
+ 	debug("%s: lcd display not found (ret=%d)\n", __func__, ret);
+ 
++#if IS_ENABLED(CONFIG_VIDEO_DW_HDMI)
+ 	ret = uclass_get_device_by_driver(UCLASS_DISPLAY,
+ 					  DM_DRIVER_GET(sunxi_dw_hdmi), &disp);
+ 	if (!ret) {
+@@ -271,6 +305,7 @@ static int sunxi_de2_probe(struct udevice *dev)
+ 	}
+ 
+ 	debug("%s: hdmi display not found (ret=%d)\n", __func__, ret);
++#endif /* CONFIG_VIDEO_DW_HDMI */
+ 
+ 	return -ENODEV;
+ }
+@@ -333,6 +368,7 @@ int sunxi_simplefb_setup(void *blob)
+ 		return 0;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_VIDEO_DW_HDMI)
+ 	ret = uclass_get_device_by_driver(UCLASS_DISPLAY,
+ 					  DM_DRIVER_GET(sunxi_dw_hdmi), &hdmi);
+ 	if (ret) {
+@@ -345,6 +381,7 @@ int sunxi_simplefb_setup(void *blob)
+ 	} else {
+ 		debug("HDMI present but not probed\n");
+ 	}
++#endif /* CONFIG_VIDEO_DW_HDMI */
+ 
+ 	ret = uclass_get_device_by_driver(UCLASS_DISPLAY,
+ 					  DM_DRIVER_GET(sunxi_lcd), &lcd);
+diff --git a/drivers/video/sunxi/sunxi_lcd.c b/drivers/video/sunxi/sunxi_lcd.c
+index 7a01cc343ca..c3938658c10 100644
+--- a/drivers/video/sunxi/sunxi_lcd.c
++++ b/drivers/video/sunxi/sunxi_lcd.c
+@@ -8,8 +8,8 @@
+ #include <common.h>
+ #include <display.h>
+ #include <log.h>
++#include <panel.h>
+ #include <video_bridge.h>
+-#include <backlight.h>
+ #include <dm.h>
+ #include <edid.h>
+ #include <asm/io.h>
+@@ -22,17 +22,30 @@
+ struct sunxi_lcd_priv {
+ 	struct display_timing timing;
+ 	int panel_bpp;
++	bool rb_swap;
+ };
+ 
+ static void sunxi_lcdc_config_pinmux(void)
+ {
+-#ifdef CONFIG_MACH_SUN50I
++#if defined(CONFIG_MACH_SUN50I)
+ 	int pin;
+ 
+ 	for (pin = SUNXI_GPD(0); pin <= SUNXI_GPD(21); pin++) {
+ 		sunxi_gpio_set_cfgpin(pin, SUNXI_GPD_LCD0);
+ 		sunxi_gpio_set_drv(pin, 3);
+ 	}
++
++#elif defined(CONFIG_MACH_SUN8I_R528)
++	int pin;
++
++	for (pin = SUNXI_GPD(0); pin <= SUNXI_GPD(21); pin++) {
++		sunxi_gpio_set_cfgpin(pin, SUNXI_GPD_LCD0);
++		sunxi_gpio_set_drv(pin, 3);
++	}
++	for (pin = SUNXI_GPB(2); pin <= SUNXI_GPB(7); pin++) {
++		sunxi_gpio_set_cfgpin(pin, 2);
++		sunxi_gpio_set_drv(pin, 3);
++	}
+ #endif
+ }
+ 
+@@ -44,13 +57,24 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
+ 	struct sunxi_lcdc_reg * const lcdc =
+ 	       (struct sunxi_lcdc_reg *)SUNXI_LCD0_BASE;
+ 	struct sunxi_lcd_priv *priv = dev_get_priv(dev);
+-	struct udevice *backlight;
++	struct udevice *panel;
+ 	int clk_div, clk_double, ret;
+ 
++	/*
++	 * LCD bus gate and reset.  On NCAT2 (R528/T113-S3) the gate/reset
++	 * registers follow the H6-era CCM layout (tcon_lcd_gate_reset at
++	 * offset 0xb7c).  On older SoCs the sun6i-era ahb_reset1_cfg /
++	 * ahb_gate1 fields are used instead.
++	 */
++#ifdef CONFIG_SUNXI_GEN_NCAT2
++	setbits_le32(&ccm->tcon_lcd_gate_reset, CCM_BUS_RESET);
++	setbits_le32(&ccm->tcon_lcd_gate_reset, CCM_BUS_GATE);
++#else
+ 	/* Reset off */
+ 	setbits_le32(&ccm->ahb_reset1_cfg, 1 << AHB_RESET_OFFSET_LCD0);
+ 	/* Clock on */
+ 	setbits_le32(&ccm->ahb_gate1, 1 << AHB_GATE_OFFSET_LCD0);
++#endif
+ 
+ 	lcdc_init(lcdc);
+ 	sunxi_lcdc_config_pinmux();
+@@ -58,11 +82,17 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
+ 		     &clk_div, &clk_double, false);
+ 	lcdc_tcon0_mode_set(lcdc, edid, clk_div, false,
+ 			    priv->panel_bpp, CONFIG_VIDEO_LCD_DCLK_PHASE);
++	if (priv->rb_swap)
++		setbits_le32(&lcdc->tcon0_ctrl,
++			     SUNXI_LCDC_TCON0_CTRL_RB_SWAP);
++	else
++		clrbits_le32(&lcdc->tcon0_ctrl,
++			     SUNXI_LCDC_TCON0_CTRL_RB_SWAP);
+ 	lcdc_enable(lcdc, priv->panel_bpp);
+ 
+-	ret = uclass_get_device(UCLASS_PANEL_BACKLIGHT, 0, &backlight);
++	ret = uclass_get_device(UCLASS_PANEL, 0, &panel);
+ 	if (!ret)
+-		backlight_enable(backlight);
++		panel_enable_backlight(panel);
+ 
+ 	return 0;
+ }
+@@ -130,6 +160,8 @@ static int sunxi_lcd_probe(struct udevice *dev)
+ 	else
+ 		priv->panel_bpp = 18;
+ 
++	priv->rb_swap = fdtdec_get_bool(gd->fdt_blob, node, "rb-swap");
++
+ 	return 0;
+ }
+ 
+@@ -146,7 +178,7 @@ U_BOOT_DRIVER(sunxi_lcd) = {
+ 	.priv_auto	= sizeof(struct sunxi_lcd_priv),
+ };
+ 
+-#ifdef CONFIG_MACH_SUN50I
++#if defined(CONFIG_MACH_SUN50I) || defined(CONFIG_MACH_SUN8I_R528)
+ U_BOOT_DRVINFO(sunxi_lcd) = {
+ 	.name = "sunxi_lcd"
+ };
+-- 
+2.48.1
+
