@@ -9,14 +9,17 @@
 ### END INIT INFO
 
 MJPEG_EXEC="/usr/bin/mjpg_streamer"
-MJPEG_ARGS="-i \"input_uvc.so -d /dev/video0 -r 1280x720 -f 30\" -o \"output_http.so -p 8080\""
+MJPEG_INPUT_ARGS="input_uvc.so -d /dev/video0 -r 1280x720 -f 30"
+MJPEG_OUTPUT_ARGS="output_http.so -p 8080"
+MJPEG_EXTRA_ARGS=""
 PIDFILE="/var/run/mjpg-streamer.pid"
 
 case "$1" in
     start)
         echo "Starting mjpg-streamer..."
         start-stop-daemon -S -b -m -p $PIDFILE \
-            -x $MJPEG_EXEC -- $MJPEG_ARGS
+            -x $MJPEG_EXEC -- -i "$MJPEG_INPUT_ARGS" -o "$MJPEG_OUTPUT_ARGS" \
+            $MJPEG_EXTRA_ARGS
         ;;
     stop)
         echo "Stopping mjpg-streamer..."
