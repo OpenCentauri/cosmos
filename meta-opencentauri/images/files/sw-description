@@ -30,15 +30,6 @@ software =
                     sha256 = "$swupdate_get_sha256(u-boot-sunxi-with-spl.bin)"
                 }
             );
-            files: (
-                {
-                    filename = "lines1.bmp";
-                    path = "/bootlogo.bmp";
-                    device = "/dev/mmcblk0p1";
-                    filesystem = "vfat";
-                    sha256 = "$swupdate_get_sha256(lines1.bmp)";
-                }
-            );
             bootenv: (
                 {
                     name = "boot_part";
@@ -65,7 +56,7 @@ software =
                     value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
-                    name = "bootcmd_stock";
+                    name = "bootcmd_";
                     value = "run setargs_mmc boot_dsp0 boot_normal";
                 },
                 {
@@ -74,7 +65,7 @@ software =
                 },
                 {
                     name = "bootcmd";
-                    value = "if test x${swu_mode} = xmainline; then run bootcmd_mainline; else run bootcmd_stock; fi";
+                    value = "run bootcmd_${swu_mode}";
                 },
                 {
                     name = "preboot";
@@ -118,15 +109,6 @@ software =
                     sha256 = "$swupdate_get_sha256(u-boot-sunxi-with-spl.bin)"
                 }
             );
-            files: (
-                {
-                    filename = "lines1.bmp";
-                    path = "/bootlogo.bmp";
-                    device = "/dev/mmcblk0p1";
-                    filesystem = "vfat";
-                    sha256 = "$swupdate_get_sha256(lines1.bmp)";
-                }
-            );
             bootenv: (
                 {
                     name = "boot_part";
@@ -153,7 +135,7 @@ software =
                     value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
-                    name = "bootcmd_stock";
+                    name = "bootcmd_";
                     value = "run setargs_mmc boot_dsp0 boot_normal";
                 },
                 {
@@ -162,7 +144,7 @@ software =
                 },
                 {
                     name = "bootcmd";
-                    value = "if test x${swu_mode} = xmainline; then run bootcmd_mainline; else run bootcmd_stock; fi";
+                    value = "run bootcmd_${swu_mode}";
                 },
                 {
                     name = "preboot";
