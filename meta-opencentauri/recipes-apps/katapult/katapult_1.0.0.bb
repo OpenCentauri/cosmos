@@ -1,3 +1,5 @@
+require katapult_${PV}.inc
+
 SUMMARY = "Katapult Bootloader and Flashing Tools"
 
 RDEPENDS:${PN} = " \
