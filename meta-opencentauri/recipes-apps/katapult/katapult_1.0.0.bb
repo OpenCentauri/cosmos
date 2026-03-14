@@ -8,4 +8,7 @@ RDEPENDS:${PN} = " \
     bed-bootloader-upgrade \
 "
 
+do_configure[noexec] = "1"
+do_compile[noexec] = "1"
+
 ALLOW_EMPTY:${PN} = "1"
