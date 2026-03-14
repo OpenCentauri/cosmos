@@ -8,6 +8,9 @@ RDEPENDS:${PN} = " \
     python3-pyserial \
 "
 
+do_configure[noexec] = "1"
+do_compile[noexec] = "1"
+
 do_install() {
     install -d ${D}${base_sbindir}
     install -m 0755 ${S}/scripts/flashtool.py ${D}${base_sbindir}/flashtool
