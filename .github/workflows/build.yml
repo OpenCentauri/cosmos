@@ -47,6 +47,12 @@ jobs:
           name: elegoo-centauri-carbon1-images
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/
 
+      - name: Upload build artifacts (SWU only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CC1 Firmware
+          path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
+
       - name: Write back cache
         if: ${{ github.event_name == 'push' || inputs.write_back_cache }}
         run: |
