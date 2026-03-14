@@ -1,4 +1,4 @@
-require katapult.inc
+require katapult_${PV}.inc
 
 SUMMARY = "Katapult Flash Tool"
 DESCRIPTION = "Flash tool script from the Katapult bootloader project for flashing MCU firmware."

@@ -1,4 +1,4 @@
-require katapult.inc
+require katapult_${PV}.inc
 
 SUMMARY = "Katapult Bed Bootloader Deployer"
 DESCRIPTION = "Builds the Katapult deployer binary for upgrading the bed bootloader."
