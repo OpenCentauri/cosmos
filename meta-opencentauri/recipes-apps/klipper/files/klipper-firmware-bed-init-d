@@ -9,6 +9,9 @@
 ### END INIT INFO
 
 FIRMWARE="/lib/firmware/klipper-bed.bin"
+FIRMWARE_VERSION="/lib/firmware/klipper-bed.bin.ver"
+KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-bed.bin"
+INSTALLED_VERSION="/mnt/writable/bed.ver"
 SERIALPORT="/dev/ttyS4"
 GPIO="201"
 
@@ -20,11 +23,26 @@ case "$1" in
         echo 1 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
         sleep 1
-        mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --firmware-version 6.3.9
+
+        echo "Attempting bootloader upgrade..."
+        if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
+            echo "Bootloader deployer flashed successfully, clearing installed version."
+            rm -f $INSTALLED_VERSION
+        else
+            echo "Bootloader already up to date."
+        fi
+
+        if [ ! -f "$INSTALLED_VERSION" ] || [ "$(cat $INSTALLED_VERSION)" != "$(cat $FIRMWARE_VERSION)" ]; then
+            echo "Firmware version mismatch or not installed, flashing firmware..."
+            flashtool -d $SERIALPORT -f $FIRMWARE
+            cp $FIRMWARE_VERSION $INSTALLED_VERSION
+            echo "Firmware flashed and version recorded."
+        else
+            echo "Firmware is already up to date."
+        fi
         ;;
     stop)
         echo "Stopping klipper-firmware-bed..."
-        echo "Starting klipper-firmware-bed..."
         echo $GPIO > /sys/class/gpio/export
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 0 > /sys/class/gpio/gpio$GPIO/value
@@ -36,7 +54,7 @@ case "$1" in
         $0 start
         ;;
     status)
-        gpio_value=$(cat /sys/class/gpio/gpio140/value)
+        gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
         if [ "$gpio_value" = "1" ]; then
             echo "klipper-firmware-bed is running"
         else

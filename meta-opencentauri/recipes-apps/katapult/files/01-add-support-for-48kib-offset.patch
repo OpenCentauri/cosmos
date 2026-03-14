@@ -1,0 +1,30 @@
+diff --git a/src/stm32/Kconfig b/src/stm32/Kconfig
+index e0be225..901b2a6 100644
+--- a/src/stm32/Kconfig
++++ b/src/stm32/Kconfig
+@@ -247,7 +247,7 @@ choice
+     config STM32_FLASH_START_20200
+         bool "128KiB bootloader with 512 byte offset (Prusa Buddy)" if MACH_STM32F4x5
+     config STM32_FLASH_START_C000
+-        bool "48KiB bootloader (MKS Robin Nano V3)" if MACH_STM32F4x5
++        bool "48KiB bootloader (MKS Robin Nano V3)" if MACH_STM32F4
+     config STM32_FLASH_START_10000
+         bool "64KiB bootloader" if MACH_STM32F103 || MACH_STM32F446 || MACH_STM32F401
+ 
+@@ -496,6 +496,8 @@ choice
+     prompt "Application start offset"
+     config STM32_APP_START_20000
+         bool "128KiB offset" if MACH_STM32H7
++    config STM32_APP_START_C000
++        bool "48KiB offset" if MACH_STM32F4
+     config STM32_APP_START_8000
+         bool "32KiB offset" if MACH_STM32F2 || MACH_STM32F4
+     config STM32_APP_START_4000
+@@ -509,6 +511,7 @@ endchoice
+ config LAUNCH_APP_ADDRESS
+     hex
+     default 0x8020000 if STM32_APP_START_20000
++    default 0x800C000 if STM32_APP_START_C000
+     default 0x8008000 if STM32_APP_START_8000
+     default 0x8004000 if STM32_APP_START_4000
+     default 0x8002000 if STM32_APP_START_2000

@@ -21,6 +21,7 @@ INITSCRIPT_PARAMS = "defaults 94 4"
 do_install() {
     install -d ${D}/lib/firmware
     cp -r ${S}/out/klipper.bin ${D}/lib/firmware/klipper-bed.bin
+    echo ${SRCREV} > ${D}/lib/firmware/klipper-bed.bin.ver
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -30,5 +31,6 @@ do_install() {
 
 FILES:${PN} = " \
     /lib/firmware/klipper-bed.bin \
+    /lib/firmware/klipper-bed.bin.ver \
     ${sysconfdir}/init.d/klipper-firmware-bed \
 "
