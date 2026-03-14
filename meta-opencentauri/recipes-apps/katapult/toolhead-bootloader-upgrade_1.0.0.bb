@@ -1,4 +1,4 @@
-require katapult.inc
+require katapult_${PV}.inc
 
 SUMMARY = "Katapult Toolhead Bootloader Deployer"
 DESCRIPTION = "Builds the Katapult deployer binary for upgrading the toolhead bootloader."

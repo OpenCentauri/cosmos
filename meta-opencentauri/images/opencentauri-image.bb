@@ -39,6 +39,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     usb-automount \
     psplash \
     opencentauri-bootlogos \
+    katapult \
 "
 
 WKS_FILES = "opencentauri-usb-image.wks.in"
