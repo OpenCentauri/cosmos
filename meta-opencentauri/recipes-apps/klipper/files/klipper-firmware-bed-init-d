@@ -34,9 +34,12 @@ case "$1" in
 
         if [ ! -f "$INSTALLED_VERSION" ] || [ "$(cat $INSTALLED_VERSION)" != "$(cat $FIRMWARE_VERSION)" ]; then
             echo "Firmware version mismatch or not installed, flashing firmware..."
-            flashtool -d $SERIALPORT -f $FIRMWARE
-            cp $FIRMWARE_VERSION $INSTALLED_VERSION
-            echo "Firmware flashed and version recorded."
+            if flashtool -d $SERIALPORT -f $FIRMWARE; then
+                cp $FIRMWARE_VERSION $INSTALLED_VERSION
+                echo "Firmware flashed and version recorded."
+            else
+                echo "Firmware flash failed, version not updated."
+            fi
         else
             echo "Firmware is already up to date."
         fi
@@ -54,7 +57,9 @@ case "$1" in
         $0 start
         ;;
     status)
+        echo $GPIO > /sys/class/gpio/export
         gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
+        echo $GPIO > /sys/class/gpio/unexport
         if [ "$gpio_value" = "1" ]; then
             echo "klipper-firmware-bed is running"
         else
