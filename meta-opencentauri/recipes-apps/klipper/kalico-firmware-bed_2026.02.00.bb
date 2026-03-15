@@ -10,7 +10,12 @@ SRC_URI += " \
 "
 
 DEPENDS += "gcc-arm-none-eabi-native"
-RDEPENDS:${PN} += "mcu-flasher"
+RDEPENDS:${PN} = " \
+    flashtool \
+    bed-bootloader-upgrade \
+    mcu-flasher \
+"
+
 RPROVIDES:${PN} += "klipper-firmware-bed"
 
 EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.bed"

@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://../LICENSE;md5=0a18a528575a965515cdd877f88b3c4c"
 SRC_URI += " \
     git://github.com/OpenCentauri/OpenCentauri.git;protocol=https;nobranch=1;branch=main \
 "
-SRCREV = "9f677486d4bc20b5ab6972b25c15692c72242e1b"
+SRCREV = "fb829bd0a469e1c54cb9d2aa1bd98e14afd9f351"
 PR = "r1"
 
 S = "${WORKDIR}/git/mcu-flasher"

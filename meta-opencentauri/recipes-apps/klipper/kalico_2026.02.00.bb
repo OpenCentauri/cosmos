@@ -27,7 +27,6 @@ RDEPENDS:${PN} = " \
     kalico-firmware-toolhead \
     kalico-firmware-bed \
     klipper-config \
-    katapult \
 "
 
 RPROVIDES:${PN} += "klipper"
