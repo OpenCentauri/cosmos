@@ -14,7 +14,7 @@ SRC_URI = "git://github.com/OpenCentauri/OpenCentauri.git;protocol=https;branch=
     crate://crates.io/nix/0.31.2 \
     file://camera-led-bridge.init \
 "
-SRCREV = "04e11e2ab6e2b00a11473f11b71dd620fa254ce9"
+SRCREV = "28296f0f9107e8f0723b22176a0ae8bc66390336"
 
 SRC_URI[bitflags-2.11.0.sha256sum] = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 SRC_URI[cfg-if-1.0.4.sha256sum] = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
@@ -29,5 +29,5 @@ INITSCRIPT_PARAMS = "defaults 96 4"
 
 do_install:append() {
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${UNPACKDIR}/camera-led-bridge.init ${D}${sysconfdir}/init.d/camera-led-bridge
+    install -m 0755 ${WORKDIR}/camera-led-bridge.init ${D}${sysconfdir}/init.d/camera-led-bridge
 }
