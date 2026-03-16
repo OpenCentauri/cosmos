@@ -27,6 +27,8 @@ S = "${WORKDIR}/git/camera-led-bridge"
 INITSCRIPT_NAME = "camera-led-bridge"
 INITSCRIPT_PARAMS = "defaults 96 4"
 
+INSANE_SKIP:${PN} += "already-stripped"
+
 do_install:append() {
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/camera-led-bridge.init ${D}${sysconfdir}/init.d/camera-led-bridge
