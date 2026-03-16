@@ -38,6 +38,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     psplash \
     opencentauri-bootlogos \
     swu-flasher \
+    camera-led-bridge \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
