@@ -28,6 +28,7 @@ case "$1" in
         if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
             echo "Bootloader deployer flashed successfully, clearing installed version."
             rm -f $INSTALLED_VERSION
+            sleep 3 # Wait for the device to reset after bootloader flash
         else
             echo "Bootloader already up to date."
         fi
