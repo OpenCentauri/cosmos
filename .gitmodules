@@ -22,3 +22,7 @@
 	path = meta-lts-mixins
 	url = https://git.yoctoproject.org/meta-lts-mixins
 	branch = scarthgap/rust
+[submodule "meta-clang"]
+	path = meta-clang
+	url = https://github.com/kraj/meta-clang.git
+	branch = scarthgap
