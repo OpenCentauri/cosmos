@@ -14,6 +14,10 @@ on:
         description: 'Write back cache'
         type: boolean
         default: false
+      upload_all_artifacts:
+        description: 'Upload all artifacts'
+        type: boolean
+        default: false
 
 env:
   # Sims server cache dir
@@ -41,17 +45,18 @@ jobs:
           source poky/oe-init-build-env build
           bitbake opencentauri-upgrade
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: elegoo-centauri-carbon1-images
-          path: build/tmp/deploy/images/elegoo-centauri-carbon1/
-
       - name: Upload build artifacts (SWU only)
         uses: actions/upload-artifact@v4
         with:
           name: CC1 Firmware
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
+
+      - name: Upload build artifacts
+        if: ${{ github.event_name == 'push' || inputs.upload_all_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: elegoo-centauri-carbon1-images
+          path: build/tmp/deploy/images/elegoo-centauri-carbon1/
 
       - name: Write back cache
         if: ${{ github.event_name == 'push' || inputs.write_back_cache }}
