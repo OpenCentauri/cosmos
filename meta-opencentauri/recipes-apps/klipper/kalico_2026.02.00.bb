@@ -9,6 +9,10 @@ SRC_URI += " \
     file://klipper-init-d \
     file://printer.cfg \
     file://macros.cfg \
+    file://bed.cfg \
+    file://mainboard.cfg \
+    file://toolhead.cfg \
+    file://misc.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -75,8 +79,10 @@ do_install() {
     # Install default kalico config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/printer.cfg ${D}${sysconfdir}/klipper/config/
-    install -m 0644 ${WORKDIR}/macros.cfg ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${WORKDIR}/printer.cfg ${WORKDIR}/macros.cfg \
+        ${WORKDIR}/bed.cfg ${WORKDIR}/mainboard.cfg \
+        ${WORKDIR}/toolhead.cfg ${WORKDIR}/misc.cfg \
+        ${D}${sysconfdir}/klipper/config/
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -92,4 +98,8 @@ FILES:${PN} = " \
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
     ${sysconfdir}/klipper/config/macros.cfg \
+    ${sysconfdir}/klipper/config/bed.cfg \
+    ${sysconfdir}/klipper/config/mainboard.cfg \
+    ${sysconfdir}/klipper/config/toolhead.cfg \
+    ${sysconfdir}/klipper/config/misc.cfg \
 "
