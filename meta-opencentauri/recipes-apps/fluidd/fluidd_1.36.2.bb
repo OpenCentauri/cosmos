@@ -37,14 +37,15 @@ do_install() {
     # Install default fluidd config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/
+    install -d ${D}${sysconfdir}/klipper/config/readonly
+    install -m 0644 ${WORKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/readonly/
 }
 
 FILES:${PN} = " \
     /var/www/fluidd \
-    ${sysconfdir}/klipper/config/fluidd.cfg \
+    ${sysconfdir}/klipper/config/readonly/fluidd.cfg \
 "
 
 CONFFILES:${PN} = " \
-    ${sysconfdir}/klipper/config/fluidd.cfg \
+    ${sysconfdir}/klipper/config/readonly/fluidd.cfg \
 "
