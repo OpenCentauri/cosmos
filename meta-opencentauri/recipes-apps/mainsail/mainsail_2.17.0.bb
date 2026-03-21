@@ -36,15 +36,15 @@ do_install() {
     # Install default mainsail config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -d ${D}${sysconfdir}/klipper/config/readonly
-    install -m 0644 ${WORKDIR}/mainsail.cfg ${D}${sysconfdir}/klipper/config/readonly/
+    install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${WORKDIR}/mainsail.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
 }
 
 FILES:${PN} = " \
     /var/www/mainsail \
-    ${sysconfdir}/klipper/config/readonly/mainsail.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/mainsail.cfg \
 "
 
 CONFFILES:${PN} = " \
-    ${sysconfdir}/klipper/config/readonly/mainsail.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/mainsail.cfg \
 "
