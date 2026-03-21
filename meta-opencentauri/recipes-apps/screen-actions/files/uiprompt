@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+    echo "Usage: uiprompt <title> <message>"
+    exit 1
+fi
+
+TITLE="$1"
+MESSAGE="$2"
+
+curl -s -X POST http://localhost/printer/gcode/script \
+    -H "Content-Type: application/json" \
+    -d "{\"script\": \"SHOW_PROMPT TITLE=\\\"${TITLE}\\\" MESSAGE=\\\"${MESSAGE}\\\"\"}"
