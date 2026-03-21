@@ -5,11 +5,11 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
-curr=$(fw_printenv boot_partition | awk -F= '{ print $2 }' | tr -d '[:space:]')
+curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
-if [ "$curr" = "bootA" ]; then
+if [[ "$curr" == "A" ]]; then
     boot_partition="now_A_next_B"
-elif [ "$curr" = "bootB" ]; then
+elif [[ "$curr" == "B" ]]; then
     boot_partition="now_B_next_A"
 else
     exit 1
@@ -19,7 +19,6 @@ echo "$boot_partition"
 
 set -e
 
-sync
-swupdate -i "$1" -e "stable,${boot_partition}"
+swupdate -v -i "$1" -e stable,${boot_partition}
 sync
 echo "Update finished, run 'reboot' to finalize"
