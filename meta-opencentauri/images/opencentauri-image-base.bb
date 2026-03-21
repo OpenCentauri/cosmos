@@ -37,6 +37,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     dev-by-id \
     psplash \
     opencentauri-bootlogos \
+    swu-flasher \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
