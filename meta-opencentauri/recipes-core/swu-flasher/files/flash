@@ -5,14 +5,6 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
-case "$1" in
-    *.swu) ;;
-    *)
-        echo "Error: file must be an .swu file"
-        exit 1
-        ;;
-esac
-
 curr=$(fw_printenv boot_partition | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
 if [ "$curr" = "bootA" ]; then
