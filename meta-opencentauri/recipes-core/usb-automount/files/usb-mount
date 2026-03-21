@@ -2,11 +2,46 @@
 # /usr/local/bin/usb-mount
 # Called by udev to mount/unmount USB storage partitions
 
+copy_wpa_config() {
+    SRC_DIR="$1"
+    WPA_FILE="$SRC_DIR/wpa_supplicant.conf"
+
+    if [ -f "$WPA_FILE" ]; then
+        cp "$WPA_FILE" /etc/wpa_supplicant.conf || return 1
+        rm "$WPA_FILE" || return 1
+    fi
+}
+
+copy_gcode_files() {
+    SRC_DIR="$1"
+
+    GCODE_FILES=$(find "$SRC_DIR" -maxdepth 1 -name '*.gcode' -type f)
+    if [ -z "$GCODE_FILES" ]; then
+        return 0
+    fi
+
+    uiprompt "Please wait" "Files from the USB are being copied to internal storage, please wait..."
+
+    mkdir -p /user-resource
+
+    echo "$GCODE_FILES" | while IFS= read -r file; do
+        cp "$file" /user-resource/ || { uiclear; return 1; }
+        rm "$file" || { uiclear; return 1; }
+    done || return 1
+
+    uiclear
+}
+
 case "$1" in
     add)
         MOUNT_POINT="/tmp/usb/$2"
         mkdir -p "$MOUNT_POINT"
         mount "/dev/$2" "$MOUNT_POINT" -o rw,noexec,nosuid,nodev
+
+        if mountpoint -q "$MOUNT_POINT"; then
+            copy_wpa_config "$MOUNT_POINT"
+            copy_gcode_files "$MOUNT_POINT"
+        fi
         ;;
     remove)
         MOUNT_POINT="/tmp/usb/$2"

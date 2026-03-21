@@ -7,7 +7,7 @@ SRC_URI = "\
     file://usb-mount \
 "
 
-RDEPENDS:${PN} = "udev"
+RDEPENDS:${PN} = "udev screen-actions"
 
 do_install() {
     install -d ${D}${sysconfdir}/udev/rules.d
