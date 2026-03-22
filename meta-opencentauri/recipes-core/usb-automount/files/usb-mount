@@ -15,21 +15,40 @@ copy_wpa_config() {
 copy_gcode_files() {
     SRC_DIR="$1"
 
-    GCODE_FILES=$(find "$SRC_DIR" -maxdepth 1 -name '*.gcode' -type f)
-    if [ -z "$GCODE_FILES" ]; then
+    mkdir -p /user-resource
+
+    COPIED=0
+    for file in "$SRC_DIR"/*.gcode; do
+        [ -f "$file" ] || continue
+        BASENAME=$(basename "$file")
+        [ -f "/user-resource/$BASENAME" ] && continue
+
+        if [ "$COPIED" -eq 0 ]; then
+            uiprompt "Please wait" "Files from the USB are being copied to internal storage, please wait..."
+            COPIED=1
+        fi
+
+        cp "$file" /user-resource/ || { uiclear; return 1; }
+    done
+
+    [ "$COPIED" -eq 1 ] && uiclear
+}
+
+install_firmware_update() {
+    SRC_DIR="$1"
+    SWU_FILE="$SRC_DIR/emergency.swu"
+
+    if [ ! -f "$SWU_FILE" ]; then
         return 0
     fi
 
-    uiprompt "Please wait" "Files from the USB are being copied to internal storage, please wait..."
+    mv "$SWU_FILE" "$SRC_DIR/emergency.swu.installed" || return 1
 
-    mkdir -p /user-resource
+    uiprompt "Installing firmware" "A firmware update is being installed, please wait..."
 
-    echo "$GCODE_FILES" | while IFS= read -r file; do
-        cp "$file" /user-resource/ || { uiclear; return 1; }
-        rm "$file" || { uiclear; return 1; }
-    done || return 1
+    flash "$SRC_DIR/emergency.swu.installed"
 
-    uiclear
+    uiprompt "Firmware update complete" "Please reboot the printer to finalize the update."
 }
 
 case "$1" in
@@ -41,6 +60,7 @@ case "$1" in
         if mountpoint -q "$MOUNT_POINT"; then
             copy_wpa_config "$MOUNT_POINT"
             copy_gcode_files "$MOUNT_POINT"
+            install_firmware_update "$MOUNT_POINT"
         fi
         ;;
     remove)
