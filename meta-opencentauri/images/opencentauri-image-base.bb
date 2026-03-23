@@ -39,6 +39,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     opencentauri-bootlogos \
     swu-flasher \
     camera-led-bridge \
+    chrony \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
