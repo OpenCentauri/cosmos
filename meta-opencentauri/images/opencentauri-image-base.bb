@@ -38,6 +38,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     psplash \
     opencentauri-bootlogos \
     swu-flasher \
+    update-scripts \
     camera-led-bridge \
 "
 

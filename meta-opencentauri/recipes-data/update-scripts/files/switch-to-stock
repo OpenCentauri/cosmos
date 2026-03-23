@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Flash stock bootloader
+# Download firmware
+# Decrypt firmware
+# Install firmware
+
+exit 1
