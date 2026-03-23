@@ -1,0 +1,13 @@
+name: Build OpenCentauri Image (on push main)
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      use_cache: true
+      write_back_cache: true
+      upload_all_artifacts: true

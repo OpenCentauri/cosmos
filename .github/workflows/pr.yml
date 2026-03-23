@@ -1,0 +1,12 @@
+name: Build OpenCentauri Image (on PR)
+on:
+  pull_request:
+
+jobs:
+  build:
+    environment: approval-needed
+    uses: ./.github/workflows/build.yml
+    with:
+      use_cache: true
+      write_back_cache: false
+      upload_all_artifacts: false
