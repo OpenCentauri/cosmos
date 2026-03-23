@@ -8,6 +8,8 @@ SRC_URI = " \
     file://switch-to-stock \
 "
 
+RDEPENDS:${PN} = "curl swu-flasher"
+
 do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/factory-reset ${D}${bindir}/

@@ -1,6 +1,14 @@
 #!/bin/sh
 
-# Download firmware
-# Install firmware
+set -e
 
-exit 1
+# Download firmware
+curl -k -o /user-resource/update.swu -L https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu
+
+# Install firmware
+flash /user-resource/update.swu
+
+# Clean up firmware file
+rm /user-resource/update.swu
+
+reboot
