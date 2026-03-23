@@ -41,6 +41,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     update-scripts \
     camera-led-bridge \
     chrony \
+    logrotate \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
