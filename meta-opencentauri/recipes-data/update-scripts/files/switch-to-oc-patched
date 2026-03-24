@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -e
+
+FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
+SWUFILE="/user-resource/update.swu"
+
+SERIALPORT_BED="/dev/ttyS4"
+STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
+
+SERIALPORT_TOOLHEAD="/dev/ttyACM0"
+STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
+
+# Download firmware
+curl -k -o "$SWUFILE" -L "$FW_URL"
+
+# Install firmware
+flash "$SWUFILE"
+
+# Flash stock bootloader
+service klipper stop
+flashtool -d $SERIALPORT_BED -b 115200 -r
+flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
+flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
+
+# Clean up firmware file
+rm "$SWUFILE"
+
+sleep 3
+
+reboot
