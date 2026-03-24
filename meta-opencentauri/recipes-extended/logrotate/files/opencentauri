@@ -1,4 +1,13 @@
-/var/log/*.log /var/log/nginx/*.log {
+/board-resource/klippy.log /board-resource/moonraker.log {
+    size 100k
+    rotate 0
+    missingok
+    notifempty
+    copytruncate
+    nocompress
+}
+
+/var/log/nginx/error.log {
     size 5k
     rotate 0
     missingok
