@@ -44,6 +44,12 @@ case "$1" in
                 exit 0
             else
                 echo "Attempting bootloader upgrade..."
+                echo $GPIO > /sys/class/gpio/export
+                echo out > /sys/class/gpio/gpio$GPIO/direction
+                echo 0 > /sys/class/gpio/gpio$GPIO/value
+                sleep 1
+                echo 1 > /sys/class/gpio/gpio$GPIO/value
+                sleep 1
                 if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
                     sleep 3
                     echo "Bootloader deployer flashed successfully, clearing installed version."
