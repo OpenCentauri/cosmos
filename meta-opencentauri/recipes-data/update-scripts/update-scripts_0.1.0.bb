@@ -6,19 +6,28 @@ SRC_URI = " \
     file://factory-reset \
     file://update-cosmos \
     file://switch-to-stock \
+    file://swu-decrypt.py \
 "
 
-RDEPENDS:${PN} = "curl swu-flasher"
+RDEPENDS:${PN} = " \
+    curl \
+    swu-flasher \
+    flashtool \
+    toolhead-bootloader-stock \
+    bed-bootloader-stock \
+"
 
 do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${WORKDIR}/factory-reset ${D}${bindir}/
     install -m 0755 ${WORKDIR}/update-cosmos ${D}${bindir}/
     install -m 0755 ${WORKDIR}/switch-to-stock ${D}${bindir}/
+    install -m 0755 ${WORKDIR}/swu-decrypt.py ${D}${bindir}/
 }
 
 FILES_${PN} += " \
     ${bindir}/factory-reset \
     ${bindir}/update-cosmos \
     ${bindir}/switch-to-stock \
+    ${bindir}/swu-decrypt.py \
 "

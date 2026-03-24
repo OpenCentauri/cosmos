@@ -2,13 +2,16 @@
 
 set -e
 
+FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
+SWUFILE="/user-resource/update.swu"
+
 # Download firmware
-curl -k -o /user-resource/update.swu -L https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu
+curl -k -o "$SWUFILE" -L "$FW_URL"
 
 # Install firmware
-flash /user-resource/update.swu
+flash "$SWUFILE"
 
 # Clean up firmware file
-rm /user-resource/update.swu
+rm "$SWUFILE"
 
 reboot
