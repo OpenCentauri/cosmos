@@ -9,7 +9,7 @@
 ### END INIT INFO
 
 MOONRAKER_EXEC="/usr/bin/python3"
-MOONRAKER_ARGS="-m moonraker.moonraker -d /etc/klipper -l /var/log/moonraker.log -u /run/moonraker.sock"
+MOONRAKER_ARGS="-m moonraker.moonraker -d /etc/klipper -l /board-resource/moonraker.log -u /run/moonraker.sock"
 PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
