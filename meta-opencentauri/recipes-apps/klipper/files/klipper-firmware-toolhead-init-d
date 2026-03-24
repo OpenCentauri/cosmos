@@ -12,7 +12,7 @@ FIRMWARE="/lib/firmware/klipper-toolhead.bin"
 FIRMWARE_VERSION="/lib/firmware/klipper-toolhead.bin.ver"
 KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-toolhead.bin"
 INSTALLED_VERSION="/etc/toolhead.ver"
-SERIALPORT="/dev/ttyACM0"
+SERIALPORT="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
 GPIO="140"
 
 update(){
