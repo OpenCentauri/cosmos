@@ -4,23 +4,24 @@ set -e
 
 # ver 1.1.46
 FW_URL="https://download.chitubox.com/chitusystems/chitusystems/public/printer/firmware/release/1/ca8e1d9a20974a5896f8f744e780a8a7/1/01.01.46/2025-10-22/f9bd2b9b1926408ca238de8e7eac69b6.bin"
-DECRYPT="/usr/bin/swu-decrypt.py"
 KEY="78B6A614B6B6E361DC84D705B7FDDA33C967DDF2970A689F8156F78EFE0B1FCE"
 IV="54E37626B9A699403064111F77858049"
 BINFILE="/user-resource/update.bin"
-SWUFILE="/user-resource/update.swu"
+ZIPFILE="/user-resource/update.zip"
+SWUFILE="/user-resource/update/update.swu"
 
 SERIALPORT_BED="/dev/ttyS4"
 STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
 
-SERIALPORT_TOOLHEAD="/dev/ttyAMA0"
+SERIALPORT_TOOLHEAD="/dev/ttyACM0"
 STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
 
 # Download firmware
 curl -k -o "$BINFILE" -L "$FW_URL"
 
 # Decrypt firmware
-exec "$DECRYPT" "$BINFILE" "$KEY" "$IV" "$SWUFILE"
+swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
+unzip "$ZIPFILE" -d /user-resource
 
 # Install firmware
 flash "$SWUFILE"
@@ -32,6 +33,8 @@ flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
 flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
 
 # Clean up firmware files
-rm "$BINFILE" "$SWUFILE"
+rm -r "$BINFILE" "$ZIPFILE" /user-resource/update
+
+sleep 3
 
 reboot
