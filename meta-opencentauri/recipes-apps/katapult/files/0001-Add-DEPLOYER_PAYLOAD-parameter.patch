@@ -1,0 +1,31 @@
+From 5fad4414aa81e8774c0226c202d96dca47ea680d Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Tue, 24 Mar 2026 22:37:06 +0100
+Subject: [PATCH] Add DEPLOYER_PAYLOAD parameter
+
+---
+ Makefile | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 22ccc97..6ffd4ae 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,6 +7,8 @@
+ # Output directory
+ OUT=out/
+ 
++DEPLOYER_PAYLOAD=$(OUT)katapult.work
++
+ # Kconfig includes
+ export KCONFIG_CONFIG     := $(CURDIR)/.config
+ -include $(KCONFIG_CONFIG)
+@@ -82,7 +84,7 @@ $(OUT)katapult.elf: $(OBJS_katapult.elf)
+ $(OUT)katapult.bin: $(OUT)katapult.elf ./scripts/buildbinary.py
+ 	@echo "  Creating bin file $@"
+ 	$(Q)$(OBJCOPY) -O binary $< $(OUT)katapult.work
+-	$(Q)$(PYTHON) ./scripts/buildbinary.py -b $(CONFIG_FLASH_START) -s $(CONFIG_LAUNCH_APP_ADDRESS) $(BUILDBINARY_FLAGS) $(OUT)katapult.work -c $(OUT)katapult_payload.c $@
++	$(Q)$(PYTHON) ./scripts/buildbinary.py -b $(CONFIG_FLASH_START) -s $(CONFIG_LAUNCH_APP_ADDRESS) $(BUILDBINARY_FLAGS) $(DEPLOYER_PAYLOAD) -c $(OUT)katapult_payload.c $@
+ 	@echo "  Creating legacy binary $(OUT)canboot.bin"
+ 	$(Q)cp $@ $(OUT)canboot.bin
+ 
