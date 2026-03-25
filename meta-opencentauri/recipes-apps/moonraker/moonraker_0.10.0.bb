@@ -72,8 +72,8 @@ do_install() {
     install -m 0644 ${WORKDIR}/moonraker.conf ${D}${sysconfdir}/klipper/config/
     # Symlink gcodes to /user-resource
     ln -sf /user-resource ${D}${sysconfdir}/klipper/gcodes
-    # Symlink logs to /var/log
-    ln -sf /var/log ${D}${sysconfdir}/klipper/logs
+    # Symlink logs to /board-resource
+    ln -sf /board-resource ${D}${sysconfdir}/klipper/logs
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
