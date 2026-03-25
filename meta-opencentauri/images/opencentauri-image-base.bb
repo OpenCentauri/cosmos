@@ -40,7 +40,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     swu-flasher \
     update-scripts \
     camera-led-bridge \
-    chrony \
     logrotate \
 "
 
