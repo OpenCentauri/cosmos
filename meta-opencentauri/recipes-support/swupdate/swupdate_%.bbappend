@@ -15,4 +15,13 @@ do_install:append() {
     install -m 0644 ${WORKDIR}/swupdate.cfg ${D}${sysconfdir}/swupdate.cfg
     install -m 0644 ${WORKDIR}/hwrevision ${D}${sysconfdir}/hwrevision
     install -m 0644 ${WORKDIR}/swupdate_public.pem ${D}${sysconfdir}/swupdate_public.pem
+
+    rm -rf ${D}${sysconfdir}/init.d
 }
+
+pkg_postinst:${PN} () {
+    exit 0
+}
+
+INITSCRIPT_NAME = ""
+INITSCRIPT_PARAMS = ""
