@@ -17,6 +17,8 @@ export PYTHONPATH="/usr/share/moonraker"
 case "$1" in
     start)
         echo "Starting moonraker..."
+        # Clean up OpenCentauri so moonraker doesn't index everything here
+        rm -rf /user-resource/OpenCentauri
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;
