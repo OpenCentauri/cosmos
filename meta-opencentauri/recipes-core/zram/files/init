@@ -1,0 +1,63 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: zram
+# Required-Start:
+# Required-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Increased Performance In Linux With zRam (Virtual Swap Compressed in RAM)
+# Description: Adapted from zram init script in meta-openembedded
+### END INIT INFO
+set -e
+
+start() {
+    #default Factor % = 200 change this value here or create /etc/default/zram
+    FACTOR=200
+    #& put the above single line in /etc/default/zram with the value you want
+    [ -f /etc/default/zram ] && . /etc/default/zram || true
+    factor=$FACTOR # percentage
+
+    # get the amount of memory in the machine
+    memtotal=$(grep MemTotal /proc/meminfo | awk ' { print $2 } ')
+    disksize=$(($memtotal*$factor/100*1024))
+
+    # load dependency modules
+    modprobe zram num_devices=1
+    echo "zram devices probed successfully"
+
+    echo lz4 > /sys/block/zram0/comp_algorithm
+    echo 1 > /sys/block/zram0/reset
+    echo $disksize > /sys/block/zram0/disksize
+    # Creating swap filesystems
+    mkswap /dev/zram0
+    # Switch the swaps on
+    swapon -p 100 /dev/zram0
+}
+
+stop() {
+    # Switching off swap
+    if [ "$(grep /dev/zram0 /proc/swaps)" != "" ]; then
+        swapoff /dev/zram0
+        sleep 1
+    fi
+    sleep 1
+    rmmod zram
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        sleep 3
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        RETVAL=1
+esac
+exit $RETVAL
