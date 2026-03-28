@@ -36,6 +36,8 @@ EXTRA_OEMAKE = " \
     OBJCOPY='${OBJCOPY}' \
 "
 
+do_compile[vardeps] += "DISTRO DISTRO_VERSION"
+
 do_compile() {
     cd ${S}
     oe_runmake libhv.a
@@ -46,7 +48,9 @@ do_compile() {
             -L${S}/wpa_supplicant/wpa_supplicant/ -l:libwpa_client.a \
             -lstdc++fs \
             ${LDFLAGS}" \
-            GUPPY_SMALL_SCREEN="y" GUPPYSCREEN_VERSION="${PV}"
+            GUPPY_SMALL_SCREEN="y" \
+            GUPPYSCREEN_BRANCH="${DISTRO}" \
+            GUPPYSCREEN_VERSION="${DISTRO_VERSION}"
 }
 
 do_install() {
