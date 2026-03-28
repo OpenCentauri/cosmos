@@ -32,22 +32,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Get the build job duration
-            const jobs = await github.rest.actions.listJobsForWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-            });
-
-            const buildJob = jobs.data.jobs.find(j => j.name === 'build');
-            let duration = 'unknown';
-            if (buildJob && buildJob.started_at && buildJob.completed_at) {
-              const durationMs = new Date(buildJob.completed_at) - new Date(buildJob.started_at);
-              const minutes = Math.floor(durationMs / 60000);
-              const seconds = Math.floor((durationMs % 60000) / 1000);
-              duration = `${minutes}m ${seconds}s`;
-            }
-
             const headSha = context.payload.pull_request.head.sha.substring(0, 7);
             const branch = context.payload.pull_request.head.ref;
 
@@ -72,8 +56,7 @@ jobs:
 
             const body = `## ✅ Build Artifacts\n\n` +
               `**Branch:** \`${branch}\`\n` +
-              `**Build:** \`${headSha}\` (merge into \`${context.payload.pull_request.base.ref}\`)\n` +
-              `**Duration:** ${duration}\n\n` +
+              `**Build:** \`${headSha}\` (merge into \`${context.payload.pull_request.base.ref}\`)\n\n` +
               `| Artifact | Size |\n` +
               `| --- | --- |\n` +
               artifactRows + `\n` +
