@@ -1,7 +1,7 @@
 From 50447591f5f73e649410b9de49ebdd0893c6b028 Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
 Date: Thu, 30 Apr 2026 14:12:09 +0200
-Subject: [PATCH] Add elegoo-centauri-carbon1.dts
+Subject: [PATCH] Add elegoo-centauri-carbon.dts
 
 Signed-off-by: James Turton <james.turton@gmx.com>
 Upstream-Status: Pending [Not submitted to upstream yet]
@@ -17,7 +17,7 @@ index e54213f9599..d0ceb213c12 100644
  dtb-$(CONFIG_TARGET_SC598_SOM_EZKIT) += sc598-som-ezkit.dtb
  dtb-$(CONFIG_TARGET_SC598_SOM_EZLITE) += sc598-som-ezlite.dtb
  
-+dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon1.dtb
++dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon.dtb
 +
  ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
  dtb-y += imx8mp-rsb3720-a1.dtb
