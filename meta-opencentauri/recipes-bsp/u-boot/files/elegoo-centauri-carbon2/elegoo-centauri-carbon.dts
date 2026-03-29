@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+// Copyright (C) 2026 James Turton.
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include "sun8i-t113s.dtsi"
+
+/ {
+	model = "Elegoo Centauri Carbon 2";
+	compatible = "widora,mangopi-mq-r-t113", "allwinner,sun8i-t113s";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* board wide 5V supply directly from the USB-C socket */
+	reg_vcc5v: regulator-5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	/* SY8008 DC/DC regulator on the board */
+	reg_3v3: regulator-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		vin-supply = <&reg_vcc5v>;
+	};
+
+	/* SY8008 DC/DC regulator on the board, also supplying VDD-SYS */
+	reg_vcc_core: regulator-core {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-core";
+		regulator-min-microvolt = <880000>;
+		regulator-max-microvolt = <880000>;
+		vin-supply = <&reg_vcc5v>;
+	};
+
+	backlight: backlight {
+		compatible = "gpio-backlight";
+		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 - backlight on/off */
+		default-on;
+	};
+
+	panel {
+		compatible = "simple-panel";
+		backlight = <&backlight>;
+		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 - panel enable */
+		power-supply = <&reg_3v3>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&tcon_lcd0_out_panel>;
+			};
+		};
+
+		display-timings {
+			timing0: timing0 {
+				clock-frequency = <9000000>;
+				hactive = <480>;
+				vactive = <272>;
+				hback-porch = <39>;
+				hfront-porch = <8>;
+				hsync-len = <4>;
+				vback-porch = <8>;
+				vfront-porch = <8>;
+				vsync-len = <4>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				rb-swap;
+			};
+		};
+	};
+};
+
+&cpu0 {
+	cpu-supply = <&reg_vcc_core>;
+};
+
+&cpu1 {
+	cpu-supply = <&reg_vcc_core>;
+};
+
+&dcxo {
+	clock-frequency = <24000000>;
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&mmc0 {
+	pinctrl-0 = <&mmc0_pins>;
+	pinctrl-names = "default";
+	vmmc-supply = <&reg_3v3>;
+	/delete-property/ cap-sd-highspeed;
+	/delete-property/ no-mmc;
+	mmc-ddr-3_3v;
+	cap-mmc-highspeed;
+	non-removable;
+	bus-width = <4>;
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
+};
+
+&pio {
+	vcc-pb-supply = <&reg_3v3>;
+	vcc-pd-supply = <&reg_3v3>;
+	vcc-pe-supply = <&reg_3v3>;
+	vcc-pf-supply = <&reg_3v3>;
+	vcc-pg-supply = <&reg_3v3>;
+
+	uart0_pe_pins: uart0-pe-pins {
+		pins = "PE2", "PE3";
+		function = "uart0";
+	};
+
+	lcd_rgb24_pins: lcd-rgb24-pins {
+		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
+				"PD6", "PD7", "PD8", "PD9", "PD10", "PD11",
+				"PD12", "PD13", "PD14", "PD15", "PD16", "PD17",
+				"PD18", "PD19", "PD20", "PD21",
+				"PB2", "PB3", "PB4", "PB5", "PB6", "PB7";
+		function = "lcd0";
+		drive-strength = <30>;
+	};
+
+	// pwm7_pd22_pin: pwm7-pd22-pin {
+	// 	pins = "PD22";
+	// 	function = "pwm7";
+	// };
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pe_pins>;
+	status = "okay";
+};
+
+/* The USB-C socket has its CC pins pulled to GND, so is hardwired as a UFP. */
+&usb_otg {
+	dr_mode = "peripheral";
+	status = "okay";
+};
+
+&usbphy {
+	usb1_vbus-supply = <&reg_vcc5v>;
+	status = "okay";
+};
+
+// &pwm {
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&pwm7_pd22_pin>;
+// 	status = "okay";
+// };
+
+&de {
+	status = "okay";
+};
+
+&mixer0 {
+	status = "okay";
+};
+
+&tcon_lcd0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd_rgb24_pins>;
+	status = "okay";
+
+	port {
+		tcon_lcd0_out_panel: endpoint {
+			remote-endpoint = <&panel_in>;
+		};
+	};
+};
