@@ -13,12 +13,15 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
 		serial4 = &uart4;
 		i2c2 = &i2c2;
 	};
 
 	chosen {
-		stdout-path = "serial0:115200n8";
+		stdout-path = "serial2:115200n8";
 	};
 
 	/* board wide 5V supply directly from the USB-C socket */
@@ -191,17 +194,18 @@
 	clock-frequency = <24000000>;
 };
 
-&mmc0 {
-	pinctrl-0 = <&mmc0_pins>;
-	pinctrl-names = "default";
-	vmmc-supply = <&reg_3v3>;
-	/delete-property/ cap-sd-highspeed;
-	/delete-property/ no-mmc;
-	mmc-ddr-3_3v;
-	cap-mmc-highspeed;
-	non-removable;
-	bus-width = <4>;
-	status = "okay";
+&mmc2 {
+    pinctrl-0 = <&mmc2_pins>;
+    pinctrl-names = "default";
+    vmmc-supply = <&reg_3v3>;
+    vqmmc-supply = <&reg_3v3>;
+    no-1-8-v;
+    cap-mmc-highspeed;
+    non-removable;
+    cap-mmc-hw-reset;
+    bus-width = <8>;
+    max-frequency = <52000000>;
+    status = "okay";
 };
 
 &ehci0 {
@@ -227,9 +231,24 @@
 	vcc-pf-supply = <&reg_3v3>;
 	vcc-pg-supply = <&reg_3v3>;
 
-	uart0_pe_pins: uart0-pe-pins {
-		pins = "PE2", "PE3";
+	uart0_pf_pins: uart0-pf-pins {
+		pins = "PF2", "PF4";
 		function = "uart0";
+	};
+
+	uart1_pe_pins: uart1-pe-pins {
+		pins = "PE10", "PE11";
+		function = "uart1";
+	};
+
+	uart2_pe_pins: uart0-pe-pins {
+		pins = "PE2", "PE3";
+		function = "uart2";
+	};
+
+	uart3_pd_pins: uart3-pd-pins {
+		pins = "PD10", "PD11";
+		function = "uart3";
 	};
 
 	uart4_pe_pins: uart4-pe-pins {
@@ -260,7 +279,25 @@
 
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_pe_pins>;
+	pinctrl-0 = <&uart0_pf_pins>;
+	status = "okay";
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_pe_pins>;
+	status = "okay";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_pe_pins>;
+	status = "okay";
+};
+
+&uart3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart3_pd_pins>;
 	status = "okay";
 };
 

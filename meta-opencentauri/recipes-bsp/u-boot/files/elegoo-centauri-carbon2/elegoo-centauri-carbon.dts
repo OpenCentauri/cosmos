@@ -50,36 +50,6 @@
 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 - backlight on/off */
 		default-on;
 	};
-
-	panel {
-		compatible = "simple-panel";
-		backlight = <&backlight>;
-		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 - panel enable */
-		power-supply = <&reg_3v3>;
-
-		port {
-			panel_in: endpoint {
-				remote-endpoint = <&tcon_lcd0_out_panel>;
-			};
-		};
-
-		display-timings {
-			timing0: timing0 {
-				clock-frequency = <9000000>;
-				hactive = <480>;
-				vactive = <272>;
-				hback-porch = <39>;
-				hfront-porch = <8>;
-				hsync-len = <4>;
-				vback-porch = <8>;
-				vfront-porch = <8>;
-				vsync-len = <4>;
-				hsync-active = <0>;
-				vsync-active = <0>;
-				rb-swap;
-			};
-		};
-	};
 };
 
 &cpu0 {
@@ -98,17 +68,18 @@
 	status = "okay";
 };
 
-&mmc0 {
-	pinctrl-0 = <&mmc0_pins>;
-	pinctrl-names = "default";
-	vmmc-supply = <&reg_3v3>;
-	/delete-property/ cap-sd-highspeed;
-	/delete-property/ no-mmc;
-	mmc-ddr-3_3v;
-	cap-mmc-highspeed;
-	non-removable;
-	bus-width = <4>;
-	status = "okay";
+&mmc2 {
+    pinctrl-0 = <&mmc2_pins>;
+    pinctrl-names = "default";
+    vmmc-supply = <&reg_3v3>;
+    vqmmc-supply = <&reg_3v3>;
+    no-1-8-v;
+    cap-mmc-highspeed;
+    non-removable;
+    cap-mmc-hw-reset;
+    bus-width = <8>;
+    max-frequency = <52000000>;
+    status = "okay";
 };
 
 &ohci1 {
@@ -126,21 +97,6 @@
 		pins = "PE2", "PE3";
 		function = "uart0";
 	};
-
-	lcd_rgb24_pins: lcd-rgb24-pins {
-		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
-				"PD6", "PD7", "PD8", "PD9", "PD10", "PD11",
-				"PD12", "PD13", "PD14", "PD15", "PD16", "PD17",
-				"PD18", "PD19", "PD20", "PD21",
-				"PB2", "PB3", "PB4", "PB5", "PB6", "PB7";
-		function = "lcd0";
-		drive-strength = <30>;
-	};
-
-	// pwm7_pd22_pin: pwm7-pd22-pin {
-	// 	pins = "PD22";
-	// 	function = "pwm7";
-	// };
 };
 
 &uart0 {
@@ -160,12 +116,6 @@
 	status = "okay";
 };
 
-// &pwm {
-// 	pinctrl-names = "default";
-// 	pinctrl-0 = <&pwm7_pd22_pin>;
-// 	status = "okay";
-// };
-
 &de {
 	status = "okay";
 };
@@ -175,12 +125,50 @@
 };
 
 &tcon_lcd0 {
+	status = "okay";
+};
+
+&dphy {
+	status = "okay";
+};
+
+&dsi {
 	pinctrl-names = "default";
-	pinctrl-0 = <&lcd_rgb24_pins>;
+	pinctrl-0 = <&dsi_4lane_pins>;
 	status = "okay";
 
+	panel@0 {
+		/* ===== CHANGE THIS to match your actual panel ===== */
+		compatible = "simple-panel";
+		reg = <0>;
+		backlight = <&backlight>;
+		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 - panel enable */
+		power-supply = <&reg_3v3>;
+
+		display-timings {
+			native-mode = <&timing0>;
+			timing0: timing0 {
+				clock-frequency = <20000000>;
+				hactive = <532>;
+				vactive = <300>;
+				hback-porch = <80>;
+				hfront-porch = <98>;
+				hsync-len = <4>;
+				vback-porch = <20>;
+				vfront-porch = <138>;
+				vsync-len = <4>;
+			};
+		};
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out_panel>;
+			};
+		};
+	};
+
 	port {
-		tcon_lcd0_out_panel: endpoint {
+		dsi_out_panel: endpoint {
 			remote-endpoint = <&panel_in>;
 		};
 	};
