@@ -10,4 +10,4 @@ MESSAGE="$2"
 
 curl -s -X POST http://localhost/printer/gcode/script \
     -H "Content-Type: application/json" \
-    -d "{\"script\": \"SHOW_PROMPT TITLE=\\\"${TITLE}\\\" MESSAGE=\\\"${MESSAGE}\\\"\"}"
+    -d "{\"script\": \"_SHOW_PROMPT TITLE=\\\"${TITLE}\\\" MESSAGE=\\\"${MESSAGE}\\\"\"}"
