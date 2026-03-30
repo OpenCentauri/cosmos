@@ -67,7 +67,7 @@ software =
                 },
                 {
                     name = "bootcmd_mainline";
-                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon1.dtb; bootz 43000000 - 43800000";
+                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon.dtb; bootz 43000000 - 43800000";
                 },
                 {
                     name = "bootcmd";
@@ -152,7 +152,7 @@ software =
                 },
                 {
                     name = "bootcmd_mainline";
-                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon1.dtb; bootz 43000000 - 43800000";
+                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon.dtb; bootz 43000000 - 43800000";
                 },
                 {
                     name = "bootcmd";
