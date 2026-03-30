@@ -13,12 +13,14 @@ MOONRAKER_ARGS="-m moonraker.moonraker -d /etc/klipper -l /board-resource/moonra
 PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
+export TMPDIR="/user-resource/tmp"
 
 case "$1" in
     start)
         echo "Starting moonraker..."
         # Clean up OpenCentauri so moonraker doesn't index everything here
         rm -rf /user-resource/OpenCentauri
+        mkdir -p /user-resource/tmp
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;
