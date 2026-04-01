@@ -21,7 +21,7 @@ SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
 PR = "r1"
 
-inherit python3-dir update-rc.d
+inherit python3-dir python3native update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -57,6 +57,8 @@ RDEPENDS:${PN} = " \
 INITSCRIPT_NAME = "moonraker"
 INITSCRIPT_PARAMS = "defaults 96 4"
 
+INSANE_SKIP:${PN} += "buildpaths"
+
 do_configure() {
     :
 }
@@ -69,6 +71,14 @@ do_install() {
     # Install moonraker python package
     install -d ${D}${datadir}/moonraker
     cp -r ${S}/moonraker ${D}${datadir}/moonraker/
+
+    # Precompile optimized bytecode in place. Keep metadata.py because
+    # Moonraker launches it directly for gcode metadata extraction.
+    nativepython3 -OO -m compileall -b -f ${D}${datadir}/moonraker/moonraker
+    find ${D}${datadir}/moonraker/moonraker -name '*.py' \
+        ! -path "${D}${datadir}/moonraker/moonraker/components/file_manager/metadata.py" \
+        -delete
+    find ${D}${datadir}/moonraker -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper

@@ -12,6 +12,9 @@ KLIPPY_EXEC="/usr/bin/python3"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py /etc/klipper/config/printer.cfg -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
 
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONNOUSERSITE=1
+
 case "$1" in
     start)
         echo "Starting klipper..."
