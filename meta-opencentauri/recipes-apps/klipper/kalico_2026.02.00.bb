@@ -76,6 +76,15 @@ do_install() {
     find ${D} -name '*.pyc' -delete
     find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
+    # Install config_examples
+    install -d ${D}${datadir}/klipper/config
+    cp -r ${S}/config ${D}${datadir}/klipper/
+
+    # Install docs
+    install -d ${D}${datadir}/klipper/docs
+    cp -r ${S}/docs ${D}${datadir}/klipper/
+    rm -r ${D}${datadir}/klipper/docs/_kalico
+
     # Install default kalico config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
