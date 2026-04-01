@@ -9,6 +9,8 @@ inherit core-image
 
 IMAGE_FEATURES += "ssh-server-dropbear"
 
+BAD_RECOMMENDATIONS += "python3-unittest"
+
 CORE_IMAGE_EXTRA_INSTALL += "\
     usbutils \
     libgpiod \

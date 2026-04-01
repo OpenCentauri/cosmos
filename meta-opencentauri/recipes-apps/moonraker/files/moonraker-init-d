@@ -14,6 +14,8 @@ PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
 export TMPDIR="/user-resource/.tmp"
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONNOUSERSITE=1
 
 case "$1" in
     start)
