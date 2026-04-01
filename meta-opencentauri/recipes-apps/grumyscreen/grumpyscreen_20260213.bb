@@ -39,6 +39,12 @@ EXTRA_OEMAKE = " \
 
 do_compile[vardeps] += "DISTRO DISTRO_VERSION"
 
+do_compile:prepend() {
+    # Force full rebuild to pick up new version
+    cd ${S}
+    oe_runmake clean || true
+}
+
 do_compile() {
     cd ${S}
     oe_runmake libhv.a
