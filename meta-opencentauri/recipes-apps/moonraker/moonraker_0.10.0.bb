@@ -71,7 +71,7 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper/config
     install -m 0644 ${WORKDIR}/moonraker.conf ${D}${sysconfdir}/klipper/config/
     # Symlink gcodes to /user-resource
-    ln -sf /user-resource ${D}${sysconfdir}/klipper/gcodes
+    ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
     # Symlink logs to /board-resource
     ln -sf /board-resource ${D}${sysconfdir}/klipper/logs
 

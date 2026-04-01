@@ -21,6 +21,7 @@ case "$1" in
         # Clean up OpenCentauri so moonraker doesn't index everything here
         rm -rf /user-resource/OpenCentauri
         mkdir -p /user-resource/.tmp
+        mkdir -p /user-resource/gcodes
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;
