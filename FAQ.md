@@ -41,5 +41,5 @@ Maybe, but developer efforts are focused on the CC1 for the time being
 
 ## Is COSMOS related to the OpenCentauri board?
 No, the OpenCentauri board is another ongoing project to create a much more powerful drop in mainboard replacement for the Centauri Carbon. 
-How can I support COSMOS development?
+## How can I support COSMOS development?
 You can make a one time or monthly donation to [support the OpenCentauri project on our KoFi](https://ko-fi.com/opencentauri)
