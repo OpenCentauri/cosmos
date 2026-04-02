@@ -10,6 +10,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
     file://moonraker-init-d \
+    file://ip \
     file://moonraker.conf"
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
@@ -78,11 +79,16 @@ do_install() {
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/moonraker-init-d ${D}${sysconfdir}/init.d/moonraker
+
+    # Install BusyBox-compatible ip shim used by Moonraker network probing
+    install -d ${D}${sysconfdir}/klipper/bin
+    install -m 0755 ${WORKDIR}/ip ${D}${sysconfdir}/klipper/bin/ip
 }
 
 FILES:${PN} = " \
     ${datadir}/moonraker \
     ${sysconfdir}/init.d/moonraker \
+    ${sysconfdir}/klipper/bin/ip \
     ${sysconfdir}/klipper/config/moonraker.conf \
     ${sysconfdir}/klipper/gcodes \
     ${sysconfdir}/klipper/logs \
