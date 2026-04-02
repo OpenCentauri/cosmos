@@ -11,8 +11,8 @@
 set -e
 
 start() {
-    #default Factor % = 200 change this value here or create /etc/default/zram
-    FACTOR=200
+    #default Factor % = 400 (override with /etc/default/zram if needed)
+    FACTOR=400
     #& put the above single line in /etc/default/zram with the value you want
     [ -f /etc/default/zram ] && . /etc/default/zram || true
     factor=$FACTOR # percentage

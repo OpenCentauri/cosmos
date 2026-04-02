@@ -81,14 +81,12 @@ do_install() {
     install -m 0755 ${WORKDIR}/moonraker-init-d ${D}${sysconfdir}/init.d/moonraker
 
     # Install BusyBox-compatible ip shim used by Moonraker network probing
-    install -d ${D}${sysconfdir}/klipper/bin
-    install -m 0755 ${WORKDIR}/ip ${D}${sysconfdir}/klipper/bin/ip
+    install -m 0755 ${WORKDIR}/ip ${D}${datadir}/moonraker/ip
 }
 
 FILES:${PN} = " \
     ${datadir}/moonraker \
     ${sysconfdir}/init.d/moonraker \
-    ${sysconfdir}/klipper/bin/ip \
     ${sysconfdir}/klipper/config/moonraker.conf \
     ${sysconfdir}/klipper/gcodes \
     ${sysconfdir}/klipper/logs \
