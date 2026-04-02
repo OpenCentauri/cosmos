@@ -1,7 +1,7 @@
 ## What is COSMOS?
 Open source firmware for the Elegoo Centauri Carbon based on Klipper/Kalico that grants full control over the hardware.
 
-_ For detailed technical information build information [See development info](./Development.md)**_
+_For detailed technical information build information [See development info](./Development.md)_
 
 ## What does COSMOS get me that the stock firmware or OC doesn't?
 - Ability to directly enter gcode commands in webui console and calibrate from the webui
