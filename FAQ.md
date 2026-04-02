@@ -21,7 +21,7 @@ COSMOS is not currently stable so you should not install the early beta builds o
 
 ## Do I need any additional hardware to run COSMOS?
 No, COSMOS runs entirely on the stock hardware and no additional boards or equipment is required other than a flash drive 
-How do I install COSMOS?
+## How do I install COSMOS?
 Instructions are available on the [releases page](https://github.com/OpenCentauri/yocto-opencentauri/releases), you will want to use the most recent version but instructions are listed on the first release to not be redundant. Briefly, if you already have regular opencentauri installed you just need to take a fat32 formatted thumb drive with OC extracted (you can reuse the one you used to install opencentauri) and place the COSMOS update.swu file in the install_opencentauri folder, put the thumb drive in the printer and do the normal process of importing the IMPORT_ME_DO_NOT_PRINT file as you did to install opencentauri.
 
 ## How long does it take to install COSMOS?
