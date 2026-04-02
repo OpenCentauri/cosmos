@@ -13,6 +13,7 @@ SRC_URI += " \
     file://mainboard.cfg \
     file://toolhead.cfg \
     file://misc.cfg \
+    file://gcode_shell_command.py \
 "
 
 inherit python3-dir update-rc.d
@@ -71,6 +72,7 @@ do_install() {
     # Install klipper python package
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
+    cp -r ${WORKDIR}/gcode_shell_command.py ${D}${datadir}/klipper/
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
@@ -110,4 +112,5 @@ CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/klipper-readonly/mainboard.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/toolhead.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/misc.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
 "
