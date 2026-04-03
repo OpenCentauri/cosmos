@@ -551,7 +551,7 @@ index 0000000..f04c138
 +        if (doom_key == 0)
 +            continue;
 +
-+        if (ev.value == 1) {
++        if (ev.value == 1 || ev.value == 2) {
 +            event_t event;
 +            event.type = ev_keydown;
 +            event.data1 = doom_key;
