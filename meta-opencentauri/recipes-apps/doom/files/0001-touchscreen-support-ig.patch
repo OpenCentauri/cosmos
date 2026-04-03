@@ -62,27 +62,27 @@ index 0000000..f04c138
 +#include <linux/fb.h>
 +
 +// Save Linux evdev keycodes that will be overridden by doomkeys.h
-+#define LK_ENTER      KEY_ENTER      // 28
-+#define LK_TAB        KEY_TAB        // 15
-+#define LK_BACKSPACE  KEY_BACKSPACE  // 14
-+#define LK_MINUS      KEY_MINUS      // 12
-+#define LK_PAUSE      KEY_PAUSE      // 119
-+#define LK_CAPSLOCK   KEY_CAPSLOCK   // 58
-+#define LK_NUMLOCK    KEY_NUMLOCK    // 69
-+#define LK_HOME       KEY_HOME       // 102
-+#define LK_END        KEY_END        // 107
-+#define LK_F1         KEY_F1         // 59
-+#define LK_F2         KEY_F2         // 60
-+#define LK_F3         KEY_F3         // 61
-+#define LK_F4         KEY_F4         // 62
-+#define LK_F5         KEY_F5         // 63
-+#define LK_F6         KEY_F6         // 64
-+#define LK_F7         KEY_F7         // 65
-+#define LK_F8         KEY_F8         // 66
-+#define LK_F9         KEY_F9         // 67
-+#define LK_F10        KEY_F10        // 68
-+#define LK_F11        KEY_F11        // 87
-+#define LK_F12        KEY_F12        // 88
++#define LK_ENTER      28
++#define LK_TAB        15
++#define LK_BACKSPACE  14
++#define LK_MINUS      12
++#define LK_PAUSE      119
++#define LK_CAPSLOCK   58
++#define LK_NUMLOCK    69
++#define LK_HOME       102
++#define LK_END        107
++#define LK_F1         59
++#define LK_F2         60
++#define LK_F3         61
++#define LK_F4         62
++#define LK_F5         63
++#define LK_F6         64
++#define LK_F7         65
++#define LK_F8         66
++#define LK_F9         67
++#define LK_F10        68
++#define LK_F11        87
++#define LK_F12        88
 +
 +// Undef conflicting Linux macros before including Doom headers
 +#undef KEY_ENTER
@@ -551,7 +551,7 @@ index 0000000..f04c138
 +        if (doom_key == 0)
 +            continue;
 +
-+        if (ev.value == 1 || ev.value == 2) {
++        if (ev.value == 1) {
 +            event_t event;
 +            event.type = ev_keydown;
 +            event.data1 = doom_key;
