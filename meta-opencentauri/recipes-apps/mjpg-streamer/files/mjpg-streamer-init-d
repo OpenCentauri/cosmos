@@ -9,7 +9,7 @@
 ### END INIT INFO
 
 MJPEG_EXEC="/usr/bin/mjpg_streamer"
-MJPEG_INPUT_ARGS="input_uvc.so -d /dev/video0 -r 1280x720 -f 30"
+MJPEG_INPUT_ARGS="input_uvc.so -d /dev/video0 -r 1280x720 -f 15 -q 85"
 MJPEG_OUTPUT_ARGS="output_http.so -p 8080"
 MJPEG_EXTRA_ARGS=""
 PIDFILE="/var/run/mjpg-streamer.pid"
