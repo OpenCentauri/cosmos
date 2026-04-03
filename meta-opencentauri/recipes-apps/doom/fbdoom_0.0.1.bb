@@ -10,6 +10,7 @@ SRC_URI = " \
     git://github.com/maximevince/fbDOOM.git;protocol=https;branch=master \
     https://www.jbserver.com/downloads/games/doom/misc/shareware/doom1.wad.zip \
     file://0001-touchscreen-support-ig.patch \
+    file://0002-skip-exit-confirmation.patch \
     file://play-doom.sh \
 "
 SRC_URI[sha256sum] = "c1d1f430e623b5b02693a2ab42988f951fb66ae3bd3add06e557bdf36af0e24f"
