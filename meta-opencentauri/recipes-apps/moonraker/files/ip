@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+import json
+import os
+import re
+import subprocess
+import sys
+
+REAL_IP = "/sbin/ip"
+
+
+def run_real_ip() -> None:
+    os.execv(REAL_IP, [REAL_IP] + sys.argv[1:])
+
+
+def read_text(path: str, default: str = "") -> str:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return default
+
+
+def parse_addr_info(ifname: str):
+    try:
+        out = subprocess.check_output(
+            [REAL_IP, "address", "show", "dev", ifname],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except Exception:
+        return []
+
+    addr_info = []
+    for raw in out.splitlines():
+        line = raw.strip()
+        if line.startswith("inet "):
+            match = re.search(
+                r"^inet\s+([^/]+)/\d+(?:\s+brd\s+\S+)?\s+scope\s+(\S+)", line
+            )
+            if match:
+                addr_info.append(
+                    {"family": "inet", "local": match.group(1), "scope": match.group(2)}
+                )
+        elif line.startswith("inet6 "):
+            match = re.search(r"^inet6\s+([^/]+)/\d+\s+scope\s+(\S+)", line)
+            if match:
+                addr_info.append(
+                    {"family": "inet6", "local": match.group(1), "scope": match.group(2)}
+                )
+    return addr_info
+
+
+def link_type_from_sys(ifname: str) -> str:
+    net_type = read_text(f"/sys/class/net/{ifname}/type", "")
+    if net_type == "280":
+        return "can"
+    if net_type == "1":
+        return "ether"
+    return "loopback"
+
+
+def build_json_address():
+    items = []
+    try:
+        ifaces = sorted(os.listdir("/sys/class/net"))
+    except Exception:
+        ifaces = []
+
+    for ifname in ifaces:
+        operstate = read_text(f"/sys/class/net/{ifname}/operstate", "unknown").upper()
+        link_type = link_type_from_sys(ifname)
+        txqlen_text = read_text(f"/sys/class/net/{ifname}/tx_queue_len", "0")
+        try:
+            txqlen = int(txqlen_text)
+        except Exception:
+            txqlen = 0
+
+        entry = {
+            "ifname": ifname,
+            "operstate": operstate,
+            "link_type": link_type,
+            "txqlen": txqlen,
+            "addr_info": parse_addr_info(ifname),
+        }
+
+        mac = read_text(f"/sys/class/net/{ifname}/address", "")
+        if mac:
+            entry["address"] = mac
+
+        items.append(entry)
+
+    return items
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if args == ["-json", "-det", "address"]:
+        print(json.dumps(build_json_address(), separators=(",", ":")))
+        return 0
+
+    run_real_ip()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
