@@ -14,7 +14,6 @@ SRC_URI += " \
     file://toolhead.cfg \
     file://misc.cfg \
     file://shell.cfg \
-    file://gcode_shell_command.py \
 "
 
 inherit python3-dir update-rc.d
@@ -73,7 +72,6 @@ do_install() {
     # Install klipper python package
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
-    cp -r ${WORKDIR}/gcode_shell_command.py ${D}${datadir}/klipper/
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
