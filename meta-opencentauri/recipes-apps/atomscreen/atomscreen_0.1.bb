@@ -17,6 +17,9 @@ INSANE_SKIP:${PN} = "already-stripped"
 INITSCRIPT_NAME = "atomscreen"
 INITSCRIPT_PARAMS = "disable"
 
+export BINDGEN_EXTRA_CLANG_ARGS = "${TOOLCHAIN_OPTIONS} --sysroot=${STAGING_DIR_TARGET} -I${STAGING_INCDIR}"
+
+
 do_install:append() {
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
