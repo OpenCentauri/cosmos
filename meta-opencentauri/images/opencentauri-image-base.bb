@@ -40,6 +40,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     update-scripts \
     camera-led-bridge \
     logrotate \
+    fbdoom \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

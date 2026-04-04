@@ -13,6 +13,7 @@ SRC_URI += " \
     file://mainboard.cfg \
     file://toolhead.cfg \
     file://misc.cfg \
+    file://shell.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -90,7 +91,7 @@ do_install() {
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
     install -m 0644 ${WORKDIR}/macros.cfg ${WORKDIR}/bed.cfg ${WORKDIR}/mainboard.cfg \
-        ${WORKDIR}/toolhead.cfg ${WORKDIR}/misc.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+        ${WORKDIR}/toolhead.cfg ${WORKDIR}/misc.cfg ${WORKDIR}/shell.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -110,4 +111,5 @@ CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/klipper-readonly/mainboard.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/toolhead.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/misc.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
 "
