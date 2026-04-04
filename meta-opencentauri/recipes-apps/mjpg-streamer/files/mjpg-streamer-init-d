@@ -20,6 +20,8 @@ case "$1" in
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MJPEG_EXEC -- -i "$MJPEG_INPUT_ARGS" -o "$MJPEG_OUTPUT_ARGS" \
             $MJPEG_EXTRA_ARGS
+
+        echo 1000 > /proc/$(cat $PIDFILE)/oom_score_adj
         ;;
     stop)
         echo "Stopping mjpg-streamer..."

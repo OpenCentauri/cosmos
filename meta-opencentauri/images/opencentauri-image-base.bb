@@ -28,7 +28,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     i2c-tools \
     nano \
     devmem2 \
-    mjpg-streamer \
+    ustreamer \
     swupdate \
     u-boot-fw-utils \
     zram \
