@@ -1,84 +1,51 @@
-# Elegoo Centauri Carbon 1 - Yocto Firmware Build
+## What is COSMOS?
+Open source firmware for the Elegoo Centauri Carbon based on Klipper/Kalico that grants full control over the hardware.
 
-This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 1 3D printer. The mainboard of this printer is powered by an Allwinner r528 SoC.
+_For detailed technical and build information [See development info](./Development.md)_
 
-## Prerequisites
+## What does COSMOS get me that the stock firmware or OC doesn't?
+- Ability to directly enter gcode commands in webui console and calibrate from the webui
+- Ability to view the bed mesh in the webui
+- Display input shaper data and compare how mods effect achievable acceleration
+- Ability to level the bed at other temperatures which will give much better ABS first layers since you don't need to worry about bed warp if you level at temp
+- Store as many bed meshes as you'd like and automatically the appropriate mesh in start gcode for any combination of build plate and bed temp.
+- Better leveling scripts that increase accuracy
+- See fan RPM in the webUI
+- Directly set exhaust fan speed
+- Ability to add an aftermarket AMS
+- Full control over I/O pins- this should make it possible repurpose model fan - tachometer pin for a toolhead filament detector
+- Ability control and dim the toolhead led for those that have added it, from webui and printer screen
+- Dimming control on the main light
+- Additionally all the major benefits of OC V3.0 (eliminating excessive outgoing traffic, homing changes to increase cable durability, fixed mid-print fan control)
 
-Before starting the build process, you need to install the required dependencies on your host system (Ubuntu/Debian is assumed):
+## Sounds great but what's the catch?
+COSMOS is not currently stable so you should not install the early beta builds on any production machine or printer that you cannot afford to wait for a bugfix if problems arise. However if you are in a position to try the beta build any feedback and bug reports will greatly help the Dev team polish the firmware!
 
-```bash
-sudo apt update
-sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
-     chrpath socat cpio python3 python3-pip python3-pexpect xz-utils debianutils \
-     iputils-ping python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev \
-     pylint xterm python3-subunit mesa-common-dev zstd liblz4-tool file locales \
-     bmap-tools sunxi-tools
-```
+## Do I need any additional hardware to run COSMOS?
+No, COSMOS runs entirely on the stock hardware and no additional boards or equipment is required other than a flash drive 
+## How do I install COSMOS?
+Instructions are available on the [releases page](https://github.com/OpenCentauri/yocto-opencentauri/releases), you will want to use the most recent version but instructions are listed on the first release to not be redundant. Briefly, if you already have regular opencentauri installed you just need to take a fat32 formatted thumb drive with OC extracted (you can reuse the one you used to install opencentauri) and place the COSMOS update.swu file in the install_opencentauri folder, put the thumb drive in the printer and do the normal process of importing the IMPORT_ME_DO_NOT_PRINT file as you did to install opencentauri.
 
-## How to Build
+## How long does it take to install COSMOS?
+The above process takes <5 minutes to prepare if you already have OC installed, however the first boot after install will take longer than usual because new firmware is being flashed to the toolhead and bed boards. This usually takes 5-10 minutes.
 
-1. **Initialize the build environment:**
-   Source the environment setup script provided by Poky to prepare your shell for BitBake.
-   ```bash
-   source poky/oe-init-build-env build
-   ```
+## How do I uninstall COSMOS?
+There is a button in the COSMOS main menu that allows you to revert your printer to the stock firmware.
 
-2. **Run BitBake:**
-   Once the environment is set up, you can start the build process for the target image. The primary image recipe for this project is `opencentauri-image`.
-   ```bash
-   bitbake opencentauri-image
-   ```
-   *Note: The first build will take a significant amount of time as it downloads and compiles all necessary packages from source.*
+## Does installing COSMOS break my printers warranty?
+While we cannot say with certainty what elegoo's position is we have not heard of any reports of customers being denied warranty services and part replacements after installing 3rd party firmware such as OpenCentauri.
 
-## Disk Space Requirements
+## What do I do if I find a bug?
+[Open an issue on GitHub](https://github.com/OpenCentauri/yocto-opencentauri/issues) and provide a brief description of what happened and the steps to reproduce it. Alternatively you can also drop by the #COSMOS_development channel on the [Opencentauri Discord server](https://discord.gg/t6Cft3wNJ3) to let us know.
 
-Building a complete Yocto image requires a substantial amount of disk space. Based on current build sizes, you should expect the project directory (including downloaded sources, build artifacts, and caches) to use approximately **38GB to 40GB** of disk space. Please ensure you have adequate free space before starting the build.
+## Will COSMOS be available for the Centauri Carbon 2?
+Maybe, but developer efforts are focused on the CC1 for the time being
 
-## Running on the Centauri Carbon 1
+## Is COSMOS related to the OpenCentauri board?
+No, the OpenCentauri board is another ongoing project to create a much more powerful drop in mainboard replacement for the Centauri Carbon. 
 
-Note that the current install requires having a serial UART connected to the CC1 motherboard, as well as a FEL USB cable attached. This will prevent the toolhead from being plugged in!
+## Can I add a raspberrypi to offload work from the stock mainboard?
+Not currently. The stock hardware is not very powerful and has limited memory which is why adding a pi or other SBC may interest some, however the primary focus of the project right now is to create stable firmware for the stock board.
 
-1. **Install built firmware image to a USB drive.**
-   *(Warning: This is a destructive operation! Replace `sdX` with your actual USB drive device like `sdb`, `sdc`, etc.)*
-   ```bash
-   sudo bmaptool copy tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz /dev/sdX
-   ```
-
-2. **Boot into FEL Mode.**
-   Connect via serial UART. Power on the printer and boot into the Elegoo u-boot, pressing any key to abort the normal boot process. Issue the following command to boot to FEL mode:
-   ```
-   efex
-   ```
-
-3. **Boot the new Yocto firmware image via USB from FEL mode.**
-   Run the following commands on your host machine to load the mainline u-boot:
-   ```bash
-   sunxi-fel uboot tmp/deploy/images/elegoo-centauri-carbon1/u-boot-sunxi-with-spl.bin
-   ```
-
-   The mainline u-boot followed by the mainline Linux kernel should now boot! This will start up Klipper, Moonraker, Mainsail daemons, and a dropbear SSH server.
-
-   **Important:** You need to unplug the FEL USB as it will conflict with the mainboard's ability to talk to the toolhead.
-
-4. **Connect and Configure WiFi.**
-   Login as the `root` user via the serial UART console.
-
-   Configure your WiFi SSID and password:
-   ```bash
-   wpa_passphrase "SSID" "password" > /etc/wpa_supplicant.conf
-   ```
-   Then restart the WiFi adapter:
-   ```bash
-   ifdown wlan0 && sleep 5 && ifup wlan0
-   ```
-
-5. **Access the Printer Interface.**
-   Find the printer's IP address by running `ip a`. Access the Mainsail interface by visiting the printer's IP address via HTTP (port 80) in your web browser!
-
-## Configuration and Services
-
-- **Klipper Configuration:** In the current build, the Klipper `printer.cfg` is located in `/etc/klipper/config/printer.cfg`.
-- **Services:** Everything is running as an `init.d` service. You can restart Klipper by running:
-  ```bash
-  service klipper restart
-  ```
+## How can I support COSMOS development?
+You can make a one time or monthly donation to [support the OpenCentauri project on our KoFi](https://ko-fi.com/opencentauri)

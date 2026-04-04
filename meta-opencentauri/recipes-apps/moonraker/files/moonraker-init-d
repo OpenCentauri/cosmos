@@ -13,6 +13,7 @@ MOONRAKER_ARGS="-m moonraker.moonraker -d /etc/klipper -l /board-resource/moonra
 PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
+export PATH="/usr/share/moonraker:/usr/sbin:/usr/bin:/sbin:/bin"
 export TMPDIR="/user-resource/.tmp"
 
 case "$1" in
