@@ -11,6 +11,7 @@ SRC_URI:append:elegoo-centauri-carbon1 = " \
 	file://0001-Add-elegoo-centauri-carbon1.dts.patch \
 	file://0001-Add-support-for-r528-msgbox-and-remoteproc.patch \
 	file://0002-drm-add-RB-channel-swap-support-for-panels-with-swap.patch \
+	file://0003-thermal-sun8i-add-sun20i-d1-ths-support.patch \
 	file://fragment.cfg \
 	file://squashfs-overlayfs.cfg \
 	file://kernel-size-reduction.cfg \
