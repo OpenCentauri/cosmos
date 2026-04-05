@@ -15,4 +15,5 @@ SRC_URI:append:elegoo-centauri-carbon1 = " \
 	file://fragment.cfg \
 	file://squashfs-overlayfs.cfg \
 	file://kernel-size-reduction.cfg \
+	file://r8152.cfg \
 "
