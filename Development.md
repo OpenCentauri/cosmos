@@ -1,6 +1,6 @@
-# Elegoo Centauri Carbon 1 - Yocto Firmware Build
+# Elegoo Centauri Carbon - Yocto Firmware Build
 
-This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 1 3D printer. The mainboard of this printer is powered by an Allwinner r528 SoC.
+This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 3D printer family. The mainboard of these printers is powered by an Allwinner R528 SoC.
 
 _**Unsure about what COSMOS is? [Check the FAQ to learn more](./FAQ.md)**_
 
@@ -38,8 +38,6 @@ To build for CC2, specify the machine on the command line:
 MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-image-usb
 ```
 
-**Note:** The CC2 machine configuration exists but may have issues (appears to be a work-in-progress/bug). The CC1 configuration is known working for both CC1 and CC2 printers at this time.
-
 ### Image Type Selection (USB vs eMMC)
 
 Choose the appropriate image type based on your target boot media:
@@ -55,17 +53,19 @@ Choose the appropriate image type based on your target boot media:
 - Suitable for development and testing
 - Larger partition layout for USB storage
 
-**Important U-Boot Configuration for USB Builds:**
-For USB boot builds, you must remove the following lines from the U-Boot defconfig:
-- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon2/elegoo_centauri_carbon_defconfig`
+**Important U-Boot Configuration for CC1 USB Builds:**
+When building the USB image for the CC1, you must remove the following MMC environment storage options from the U-Boot defconfig:
+- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon1/elegoo_centauri_carbon_defconfig`
 
 Remove these configuration options:
 ```
-CONFIG_ENV_*
-CONFIG_SYS_REDUNDANT_ENVIRONMENT
+CONFIG_ENV_IS_IN_MMC=y
+CONFIG_ENV_OFFSET=0x1A66000
+CONFIG_ENV_OFFSET_REDUND=0x1AA5000
+CONFIG_SYS_REDUNDAND_ENVIRONMENT=y
 ```
 
-This is required for proper USB boot functionality.
+This is required for proper USB boot functionality. The CC2 defconfig is already configured for USB boot and does not require these changes.
 
 #### eMMC Image (`opencentauri-image-mmc`)
 - Installs to internal eMMC storage
@@ -112,12 +112,12 @@ tmp/deploy/images/elegoo-centauri-carbon1/
 ```
 
 ### USB Image Outputs
-- `opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz` - Compressed disk image for USB drives
+- `opencentauri-image-usb-elegoo-centauri-carbon1.rootfs.wic.gz` - Compressed disk image for USB drives
 
 ### eMMC Image Outputs
-- `opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz` - Full disk image for eMMC
-- `bootA.vfat` - Extracted boot partition image (for swupdate)
-- `bootlogos.vfat` - Extracted boot logos partition image (for swupdate)
+- `opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.wic.gz` - Full disk image for eMMC
+- `bootA.img` - Extracted boot partition image (for swupdate)
+- `bootlogos.img` - Extracted boot logos partition image (for swupdate)
 - `rootfs.squashfs` - SquashFS root filesystem
 
 ## Disk Space Requirements
@@ -133,7 +133,7 @@ Note that the current install requires having a serial UART connected to the CC1
 1. **Install built firmware image to a USB drive.**
    *(Warning: This is a destructive operation! Replace `sdX` with your actual USB drive device like `sdb`, `sdc`, etc.)*
    ```bash
-   sudo bmaptool copy tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz /dev/sdX
+   sudo bmaptool copy tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-image-usb-elegoo-centauri-carbon1.rootfs.wic.gz /dev/sdX
    ```
 
 2. **Boot into FEL Mode.**
@@ -171,10 +171,14 @@ Note that the current install requires having a serial UART connected to the CC1
 
 For installing to internal eMMC storage, use the swupdate-based installation:
 
-1. Build the `opencentauri-image-mmc` target
-2. Copy the `update.swu` file to a FAT32-formatted USB drive in the `install_opencentauri` folder
-3. Insert the USB drive into the printer
-4. Import the `IMPORT_ME_DO_NOT_PRINT` file via the printer screen as you would for stock OpenCentauri
+1. Build the `opencentauri-upgrade` target. This recipe depends on `opencentauri-image-mmc` and produces the SWUpdate bundle:
+   ```bash
+   bitbake opencentauri-upgrade
+   ```
+2. Locate the generated `.swu` file in `tmp/deploy/images/elegoo-centauri-carbon1/` (e.g. `opencentauri-upgrade-elegoo-centauri-carbon1.swu`).
+3. Copy the `.swu` file to a FAT32-formatted USB drive in the `install_opencentauri` folder, renaming it to `update.swu`.
+4. Insert the USB drive into the printer
+5. Import the `IMPORT_ME_DO_NOT_PRINT` file via the printer screen as you would for stock OpenCentauri
 
 ## Configuration and Services
 
