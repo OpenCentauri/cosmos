@@ -26,13 +26,19 @@ The build supports different machine configurations for the Centauri Carbon vari
 | Machine | Description |
 |---------|-------------|
 | `elegoo-centauri-carbon1` | Original Centauri Carbon 1 (default) |
+| `elegoo-centauri-carbon2` | Centauri Carbon 2 |
 
-**Note:** The Centauri Carbon 2 uses the same machine configuration as CC1 at this time. Select `elegoo-centauri-carbon1` for both CC1 and CC2 printers.
-
-To set your machine, edit `build/conf/local.conf`:
+The default in `build/conf/local.conf` is set to CC1:
 ```bash
 MACHINE ?= "elegoo-centauri-carbon1"
 ```
+
+To build for CC2, specify the machine on the command line:
+```bash
+MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-image-usb
+```
+
+**Note:** The CC2 machine configuration exists but may have issues (appears to be a work-in-progress/bug). The CC1 configuration is known working for both CC1 and CC2 printers at this time.
 
 ### Image Type Selection (USB vs eMMC)
 
@@ -48,6 +54,18 @@ Choose the appropriate image type based on your target boot media:
 - Read-write root filesystem
 - Suitable for development and testing
 - Larger partition layout for USB storage
+
+**Important U-Boot Configuration for USB Builds:**
+For USB boot builds, you must remove the following lines from the U-Boot defconfig:
+- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon2/elegoo_centauri_carbon_defconfig`
+
+Remove these configuration options:
+```
+CONFIG_ENV_*
+CONFIG_SYS_REDUNDANT_ENVIRONMENT
+```
+
+This is required for proper USB boot functionality.
 
 #### eMMC Image (`opencentauri-image-mmc`)
 - Installs to internal eMMC storage
