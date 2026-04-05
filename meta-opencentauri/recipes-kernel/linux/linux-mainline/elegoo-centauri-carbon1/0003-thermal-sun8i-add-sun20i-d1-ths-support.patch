@@ -6,18 +6,19 @@ Subject: [PATCH] thermal: sun8i: add sun20i-d1-ths support
 Backport support for the T113/D1 thermal block to the 6.6.85 kernel
 used by elegoo-centauri-carbon1.
 
-Adds a dedicated chip description and OF match entry for
-"allwinner,sun20i-d1-ths".
+The R528/T113-S3 uses the same THS IP block as the Allwinner D1/T113
+line, which is supported upstream as "allwinner,sun20i-d1-ths". This
+backport adds a dedicated chip description struct and OF match entry
+to the sun8i_thermal driver.
 
 ---
- drivers/thermal/sun8i_thermal.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/thermal/sun8i_thermal.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
-index c65578d6d..97f9df0f4 100644
 --- a/drivers/thermal/sun8i_thermal.c
 +++ b/drivers/thermal/sun8i_thermal.c
-@@ -671,6 +671,17 @@ static const struct ths_thermal_chip sun50i_h6_ths = {
+@@ -606,6 +606,18 @@ static const struct ths_thermal_chip sun50i_h6_ths = {
  	.calc_temp = sun8i_ths_calc_temp,
  };
  
@@ -36,7 +37,7 @@ index c65578d6d..97f9df0f4 100644
  static const struct of_device_id of_ths_match[] = {
  	{ .compatible = "allwinner,sun8i-a83t-ths", .data = &sun8i_a83t_ths },
  	{ .compatible = "allwinner,sun8i-h3-ths", .data = &sun8i_h3_ths },
-@@ -681,6 +692,7 @@ static const struct of_device_id of_ths_match[] = {
+@@ -614,6 +626,7 @@ static const struct of_device_id of_ths_match[] = {
  	{ .compatible = "allwinner,sun50i-a100-ths", .data = &sun50i_a100_ths },
  	{ .compatible = "allwinner,sun50i-h5-ths", .data = &sun50i_h5_ths },
  	{ .compatible = "allwinner,sun50i-h6-ths", .data = &sun50i_h6_ths },
