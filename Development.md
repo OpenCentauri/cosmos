@@ -53,11 +53,16 @@ Choose the appropriate image type based on your target boot media:
 - Suitable for development and testing
 - Larger partition layout for USB storage
 
-**Important U-Boot Configuration for CC1 USB Builds:**
-When building the USB image for the CC1, you must remove the following MMC environment storage options from the U-Boot defconfig:
+**Important U-Boot Configuration for USB Builds:**
+When building the USB image, the MMC environment storage options must be removed from the U-Boot defconfig for your target machine. These settings cause U-Boot to store its environment on the internal eMMC, which conflicts with USB boot.
+
+For **CC1**, edit:
 - `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon1/elegoo_centauri_carbon_defconfig`
 
-Remove these configuration options:
+For **CC2**, edit:
+- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon2/elegoo_centauri_carbon_defconfig`
+
+Remove (or ensure absent) these configuration options:
 ```
 CONFIG_ENV_IS_IN_MMC=y
 CONFIG_ENV_OFFSET=0x1A66000
@@ -65,7 +70,7 @@ CONFIG_ENV_OFFSET_REDUND=0x1AA5000
 CONFIG_SYS_REDUNDAND_ENVIRONMENT=y
 ```
 
-This is required for proper USB boot functionality. The CC2 defconfig is already configured for USB boot and does not require these changes.
+This is required for proper USB boot functionality.
 
 #### eMMC Image (`opencentauri-image-mmc`)
 - Installs to internal eMMC storage
