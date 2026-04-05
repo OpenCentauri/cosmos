@@ -1,4 +1,4 @@
-﻿From 6a8a2d8b4f7e0ab1c96c9b4b2b4c0d1d7f4d2a1b Mon Sep 17 00:00:00 2001
+From 6a8a2d8b4f7e0ab1c96c9b4b2b4c0d1d7f4d2a1b Mon Sep 17 00:00:00 2001
 From: OpenCentauri <devnull@opencentauri.local>
 Date: Sun, 5 Apr 2026 12:30:00 +0000
 Subject: [PATCH] thermal: sun8i: add sun20i-d1-ths support
