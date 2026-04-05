@@ -3,6 +3,7 @@
 This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 1 3D printer. The mainboard of this printer is powered by an Allwinner r528 SoC.
 
 _**Unsure about what COSMOS is? [Check the FAQ to learn more](./FAQ.md)**_
+
 ## Prerequisites
 
 Before starting the build process, you need to install the required dependencies on your host system (Ubuntu/Debian is assumed):
@@ -16,6 +17,44 @@ sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
      bmap-tools sunxi-tools
 ```
 
+## Build Configuration Options
+
+### Machine Selection (CC1 vs CC2)
+
+The build supports different machine configurations for the Centauri Carbon variants:
+
+| Machine | Description |
+|---------|-------------|
+| `elegoo-centauri-carbon1` | Original Centauri Carbon 1 (default) |
+
+**Note:** The Centauri Carbon 2 uses the same machine configuration as CC1 at this time. Select `elegoo-centauri-carbon1` for both CC1 and CC2 printers.
+
+To set your machine, edit `build/conf/local.conf`:
+```bash
+MACHINE ?= "elegoo-centauri-carbon1"
+```
+
+### Image Type Selection (USB vs eMMC)
+
+Choose the appropriate image type based on your target boot media:
+
+| Image Recipe | Target Media | Use Case |
+|--------------|--------------|----------|
+| `opencentauri-image-usb` | USB drive | Development, testing, or running from USB |
+| `opencentauri-image-mmc` | Internal eMMC | Production installation on printer internal storage |
+
+#### USB Image (`opencentauri-image-usb`)
+- Boots from USB drive
+- Read-write root filesystem
+- Suitable for development and testing
+- Larger partition layout for USB storage
+
+#### eMMC Image (`opencentauri-image-mmc`)
+- Installs to internal eMMC storage
+- Read-only SquashFS root with overlay filesystem for `/etc` on `/data` partition
+- Optimized for production use
+- Includes A/B boot partition scheme for safe updates via swupdate
+
 ## How to Build
 
 1. **Initialize the build environment:**
@@ -24,18 +63,52 @@ sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
    source poky/oe-init-build-env build
    ```
 
-2. **Run BitBake:**
-   Once the environment is set up, you can start the build process for the target image. The primary image recipe for this project is `opencentauri-image`.
+2. **Configure your target (if needed):**
+   Ensure `MACHINE` is set correctly in `build/conf/local.conf`:
    ```bash
-   bitbake opencentauri-image
+   # For CC1 or CC2
+   MACHINE ?= "elegoo-centauri-carbon1"
    ```
+
+3. **Run BitBake:**
+   Choose the appropriate image recipe for your target:
+   
+   **For USB booting:**
+   ```bash
+   bitbake opencentauri-image-usb
+   ```
+   
+   **For eMMC/internal storage:**
+   ```bash
+   bitbake opencentauri-image-mmc
+   ```
+   
    *Note: The first build will take a significant amount of time as it downloads and compiles all necessary packages from source.*
+
+## Build Outputs
+
+After a successful build, the output files are located in:
+
+```
+tmp/deploy/images/elegoo-centauri-carbon1/
+```
+
+### USB Image Outputs
+- `opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz` - Compressed disk image for USB drives
+
+### eMMC Image Outputs
+- `opencentauri-image-elegoo-centauri-carbon1.rootfs.wic.gz` - Full disk image for eMMC
+- `bootA.vfat` - Extracted boot partition image (for swupdate)
+- `bootlogos.vfat` - Extracted boot logos partition image (for swupdate)
+- `rootfs.squashfs` - SquashFS root filesystem
 
 ## Disk Space Requirements
 
 Building a complete Yocto image requires a substantial amount of disk space. Based on current build sizes, you should expect the project directory (including downloaded sources, build artifacts, and caches) to use approximately **38GB to 40GB** of disk space. Please ensure you have adequate free space before starting the build.
 
 ## Running on the Centauri Carbon 1
+
+### USB Boot Method (Development)
 
 Note that the current install requires having a serial UART connected to the CC1 motherboard, as well as a FEL USB cable attached. This will prevent the toolhead from being plugged in!
 
@@ -76,6 +149,15 @@ Note that the current install requires having a serial UART connected to the CC1
 5. **Access the Printer Interface.**
    Find the printer's IP address by running `ip a`. Access the Mainsail interface by visiting the printer's IP address via HTTP (port 80) in your web browser!
 
+### eMMC Install Method (Production)
+
+For installing to internal eMMC storage, use the swupdate-based installation:
+
+1. Build the `opencentauri-image-mmc` target
+2. Copy the `update.swu` file to a FAT32-formatted USB drive in the `install_opencentauri` folder
+3. Insert the USB drive into the printer
+4. Import the `IMPORT_ME_DO_NOT_PRINT` file via the printer screen as you would for stock OpenCentauri
+
 ## Configuration and Services
 
 - **Klipper Configuration:** In the current build, the Klipper `printer.cfg` is located in `/etc/klipper/config/printer.cfg`.
@@ -83,3 +165,20 @@ Note that the current install requires having a serial UART connected to the CC1
   ```bash
   service klipper restart
   ```
+
+## Troubleshooting Build Issues
+
+### Clean Build
+If you encounter build issues, try cleaning the specific package:
+```bash
+bitbake -c cleansstate <package-name>
+bitbake <image-target>
+```
+
+### Full Reset
+For a complete clean build (removes all build artifacts):
+```bash
+rm -rf tmp/
+source poky/oe-init-build-env build
+bitbake <image-target>
+```
