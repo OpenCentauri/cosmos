@@ -1,7 +1,7 @@
 From 618c5a97497dd5934dc5e8a5b6861bdaa6af5916 Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
 Date: Mon, 16 Feb 2026 21:36:45 +0100
-Subject: [PATCH] Add elegoo-centauri-carbon1.dts
+Subject: [PATCH] Add elegoo-centauri-carbon.dts
 
 Signed-off-by: James Turton <james.turton@gmx.com>
 Upstream-Status: Pending [Not submitted to upstream yet]
@@ -17,7 +17,7 @@ index 04b9863b5d5..b28ed796445 100644
  	sun8i-v3-sl631-imx179.dtb \
  	sun8i-v3s-licheepi-zero.dtb
  dtb-$(CONFIG_MACH_SUN8I_R528) += \
-+	elegoo-centauri-carbon1.dtb \
++	elegoo-centauri-carbon.dtb \
  	sun8i-t113s-mangopi-mq-r-t113.dtb
  dtb-$(CONFIG_MACH_SUN50I_H5) += \
  	sun50i-h5-bananapi-m2-plus.dtb \

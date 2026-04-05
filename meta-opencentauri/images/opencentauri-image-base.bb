@@ -14,7 +14,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod \
     libgpiod-tools \
     kernel-modules \
-    rtw88 \
     wpa-supplicant \
     iw \
     kalico \
@@ -41,6 +40,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     logrotate \
     fbdoom \
     v4l-utils \
+"
+
+CORE_IMAGE_EXTRA_INSTALL:append:elegoo-centauri-carbon1 = " \
+    rtw88 \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
