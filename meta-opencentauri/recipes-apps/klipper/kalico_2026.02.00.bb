@@ -9,10 +9,7 @@ SRC_URI += " \
     file://klipper-init-d \
     file://printer.cfg \
     file://macros.cfg \
-    file://bed.cfg \
-    file://mainboard.cfg \
-    file://toolhead.cfg \
-    file://misc.cfg \
+    file://machine.cfg \
     file://shell.cfg \
     file://screen.cfg \
 "
@@ -107,10 +104,7 @@ FILES:${PN} = " \
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/macros.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/bed.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/mainboard.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/toolhead.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/misc.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/machine.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/screen.cfg \
 "
