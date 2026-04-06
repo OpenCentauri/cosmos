@@ -91,8 +91,7 @@ do_install() {
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/macros.cfg ${WORKDIR}/bed.cfg ${WORKDIR}/mainboard.cfg \
-        ${WORKDIR}/toolhead.cfg ${WORKDIR}/misc.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
