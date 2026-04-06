@@ -22,6 +22,21 @@ fi
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 
+# Ensure /dev is populated with block device nodes before we attempt any
+# block device mounts. The kernel auto-mounts devtmpfs but partition nodes
+# for secondary partitions may not be present yet when running as PID 1.
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+
+# Wait up to 2 seconds for the data partition node to appear
+i=0
+while [ $i -lt 20 ] && [ ! -b {OVERLAYFS_ETC_DEVICE} ]; do
+    sleep 0.1
+    i=$((i + 1))
+done
+if [ ! -b {OVERLAYFS_ETC_DEVICE} ]; then
+    echo "PREINIT: Timed out waiting for {OVERLAYFS_ETC_DEVICE}"
+fi
+
 [ -z "$CONSOLE" ] && CONSOLE="/dev/console"
 
 BASE_OVERLAY_ETC_DIR={OVERLAYFS_ETC_MOUNT_POINT}/overlay-etc
