@@ -8,10 +8,14 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=db95b6e40dc7d26d8308b6b7375637b6"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI = "git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
+SRC_URI = " \
+    git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
     file://moonraker-init-d \
     file://ip \
-    file://moonraker.conf"
+    file://moonraker.conf \
+    file://0001-Webcam-allow-ports-in-local-url.patch \
+"
+
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
 S = "${WORKDIR}/git"
@@ -47,7 +51,6 @@ RDEPENDS:${PN} = " \
     python3-smart-open \
     python3-msgspec \
     python3-uvloop \
-    nginx \
     kalico \
 "
 

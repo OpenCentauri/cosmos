@@ -1,7 +1,7 @@
 #!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          webui-switcher
-# Required-Start:    $local_fs $remote_fs $network nginx
+# Required-Start:    $local_fs $remote_fs $network
 # Required-Stop:     $local_fs $remote_fs $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
@@ -9,20 +9,41 @@
 ### END INIT INFO
 
 CONF=/etc/klipper/config/display.conf
-SNIPPET=/etc/nginx-webui-root.conf
 WEBUI=mainsail
 
 [ -f "$CONF" ] && . "$CONF"
 
+DAEMON="httpd"
+DAEMON_ARGS="-p 80 -h /var/www/$WEBUI"
+PIDFILE="/var/run/httpd.pid"
+
 case "$1" in
     start)
-        echo "root /var/www/${WEBUI};" > "$SNIPPET"
-        service nginx reload
+        echo "Starting $WEBUI..."
+        start-stop-daemon -S -b -m -p $PIDFILE \
+            -x $DAEMON -- $DAEMON_ARGS
         ;;
     stop)
+        echo "Stopping $WEBUI..."
+        start-stop-daemon -K -p $PIDFILE -R 10
+        rm -f $PIDFILE
         ;;
-    restart)
+    restart|force-reload)
+        $0 stop
+        sleep 1
         $0 start
+        ;;
+    status)
+        if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
+            echo "$WEBUI is running (PID $(cat $PIDFILE))"
+        else
+            echo "$WEBUI is not running"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
         ;;
 esac
 

@@ -9,13 +9,13 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "https://github.com/mainsail-crew/mainsail/releases/download/v${PV}/mainsail.zip;subdir=mainsail \
     file://mainsail.cfg \
+    file://config.json \
 "
 SRC_URI[sha256sum] = "d010f4df25557d520ccdbb8e42fc381df2288e6a5c72d3838a5a2433c7a31d4e"
 
 S = "${WORKDIR}/mainsail"
 
 RDEPENDS:${PN} = " \
-    nginx \
     moonraker \
     webui-switcher \
 "
@@ -32,6 +32,8 @@ do_install() {
     # Install static web files
     install -d ${D}/var/www/mainsail
     cp -r ${S}/* ${D}/var/www/mainsail/
+
+    install -m 0644 ${WORKDIR}/config.json ${D}/var/www/mainsail/
 
     # Install default mainsail config
     install -d ${D}${sysconfdir}/klipper
