@@ -683,7 +683,7 @@ err_free_rproc:
 	return ret;
 }
 
-static int sunxi_r528_rproc_remove(struct platform_device *pdev)
+static void sunxi_r528_rproc_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
 	struct sunxi_r528_rproc *dsp = rproc->priv;
@@ -692,8 +692,6 @@ static int sunxi_r528_rproc_remove(struct platform_device *pdev)
 	cancel_work_sync(&dsp->rx_work);
 	sunxi_r528_rproc_free_mbox(dsp);
 	rproc_free(rproc);
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_r528_rproc_of_match[] = {
