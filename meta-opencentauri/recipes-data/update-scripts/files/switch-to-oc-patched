@@ -2,7 +2,7 @@
 
 set -e
 
-FW_URL="https://github.com/OpenCentauri/cc-fw-tools/releases/download/v0.3.0/update.swu"
+FW_URL="https://github.com/OpenCentauri/cc-fw-tools/releases/latest/download/update.swu"
 SWUFILE="/user-resource/update.swu"
 
 SERIALPORT_BED="/dev/ttyS4"

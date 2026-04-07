@@ -2,11 +2,23 @@
 
 set -e
 
-FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
+CONF=/etc/klipper/config/cosmos-update.conf
+
+[ -f "$CONF" ] && . "$CONF"
+
+case "$RELEASE" in
+    nightly)
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
+        ;;
+    *)
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
+        ;;
+esac
+
 SWUFILE="/user-resource/update.swu"
 
 # Download firmware
-curl -k -o "$SWUFILE" -L "$FW_URL"
+curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
 
 # Install firmware
 flash "$SWUFILE"
