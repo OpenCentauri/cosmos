@@ -375,15 +375,13 @@ err_disable_unprepare:
 	return ret;
 }
 
-static int sunxi_r528_msgbox_remove(struct platform_device *pdev)
+static void sunxi_r528_msgbox_remove(struct platform_device *pdev)
 {
 	struct sunxi_r528_msgbox *mbox = platform_get_drvdata(pdev);
 
 	mbox_controller_unregister(&mbox->controller);
 	/* See the comment in sunxi_r528_msgbox_probe about the reset line. */
 	clk_disable_unprepare(mbox->clk);
-
-	return 0;
 }
 
 static const struct of_device_id sunxi_r528_msgbox_of_match[] = {
