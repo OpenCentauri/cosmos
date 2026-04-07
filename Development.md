@@ -2,7 +2,7 @@
 
 This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 1 3D printer. The mainboard of this printer is powered by an Allwinner r528 SoC.
 
-_**Unsure about what COSMOS is? [Check the FAQ to learn more](./FAQ.md)**_
+_**Unsure about what KOSMOS is? [Check the FAQ to learn more](./FAQ.md)**_
 ## Prerequisites
 
 Before starting the build process, you need to install the required dependencies on your host system (Ubuntu/Debian is assumed):
