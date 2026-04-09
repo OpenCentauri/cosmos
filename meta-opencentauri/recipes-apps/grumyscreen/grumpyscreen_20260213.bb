@@ -11,12 +11,11 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "gitsm://github.com/jamesturton/grumpyscreen.git;protocol=https;branch=opencentauri \
-    file://0002-Coalesce-file-list-refreshes.patch \
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
-SRCREV = "059cbf5d579b9dcefcd8cd95afc69ff2cd395275"
-PR = "r3"
+SRCREV = "b085d2e00bc3dcb068b7fe98ec9dff59489acc77"
+PR = "r4"
 
 S = "${WORKDIR}/git"
 
