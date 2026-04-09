@@ -12,11 +12,12 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "gitsm://github.com/jamesturton/grumpyscreen.git;protocol=https;branch=opencentauri \
     file://0002-Coalesce-file-list-refreshes.patch \
+    file://0003-Add-scrollable-COSMOS-release-notes-update-flow.patch \
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
 SRCREV = "059cbf5d579b9dcefcd8cd95afc69ff2cd395275"
-PR = "r3"
+PR = "r4"
 
 S = "${WORKDIR}/git"
 

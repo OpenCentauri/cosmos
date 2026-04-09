@@ -1,0 +1,825 @@
+diff --git a/src/setting_panel.cpp b/src/setting_panel.cpp
+index 2079a7c..efc9c6b 100644
+--- a/src/setting_panel.cpp
++++ b/src/setting_panel.cpp
+@@ -5,6 +5,10 @@
+ #include "simple_dialog.h"
+ 
+ #include <experimental/filesystem>
++#include <fstream>
++#include <sstream>
++#include <thread>
++#include <vector>
+ 
+ namespace fs = std::experimental::filesystem;
+ namespace sp = subprocess;
+@@ -21,6 +25,488 @@ struct reset_ctx {
+     std::string cmd;
+ };
+ 
++struct dialog_action_ctx {
++    std::function<void(uint32_t)> callback;
++};
++
++struct dialog_button_ctx {
++    lv_obj_t *dialog;
++    std::function<void(uint32_t)> callback;
++    uint32_t index;
++};
++
++static lv_obj_t *create_modal_overlay(lv_obj_t *parent) {
++    lv_obj_t *overlay = lv_obj_create(parent);
++    lv_obj_remove_style_all(overlay);
++    lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
++    lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
++    lv_obj_set_style_bg_opa(overlay, LV_OPA_60, 0);
++    lv_obj_add_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
++    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
++    return overlay;
++}
++
++static lv_coord_t scaled_dialog_button_height() {
++    auto hscale = static_cast<double>(lv_disp_get_physical_ver_res(nullptr)) / 480.0;
++    return static_cast<lv_coord_t>(50 * hscale);
++}
++
++static lv_coord_t scaled_dialog_button_width() {
++    auto wscale = static_cast<double>(lv_disp_get_physical_hor_res(nullptr)) / 800.0;
++    return static_cast<lv_coord_t>(180 * wscale);
++}
++
++static std::string buffer_to_string(const sp::OutBuffer &buffer) {
++    return std::string(buffer.buf.begin(), buffer.buf.begin() + buffer.length);
++}
++
++static std::string strip_markdown_links(const std::string &value) {
++    std::string result;
++    size_t i = 0;
++    while (i < value.size()) {
++        if (value[i] == '[') {
++            const size_t close_bracket = value.find(']', i + 1);
++            if (close_bracket != std::string::npos && close_bracket + 1 < value.size() && value[close_bracket + 1] == '(') {
++                const size_t close_paren = value.find(')', close_bracket + 2);
++                if (close_paren != std::string::npos) {
++                    result.append(value, i + 1, close_bracket - i - 1);
++                    i = close_paren + 1;
++                    continue;
++                }
++            }
++        }
++
++        result.push_back(value[i]);
++        ++i;
++    }
++
++    return result;
++}
++
++static void replace_all(std::string &value, const std::string &from, const std::string &to) {
++    if (from.empty()) {
++        return;
++    }
++
++    size_t start_pos = 0;
++    while ((start_pos = value.find(from, start_pos)) != std::string::npos) {
++        value.replace(start_pos, from.length(), to);
++        start_pos += to.length();
++    }
++}
++
++static std::string trim_line(const std::string &value) {
++    const auto start = value.find_first_not_of(" \t");
++    if (start == std::string::npos) {
++        return "";
++    }
++
++    const auto end = value.find_last_not_of(" \t");
++    return value.substr(start, end - start + 1);
++}
++
++static std::string format_release_notes(std::string notes) {
++    replace_all(notes, "\r\n", "\n");
++    replace_all(notes, "\r", "\n");
++
++    std::istringstream stream(notes);
++    std::ostringstream formatted;
++    std::string line;
++    bool previous_blank = true;
++
++    while (std::getline(stream, line)) {
++        std::string cleaned = trim_line(line);
++
++        if (cleaned.rfind("> [!WARNING]", 0) == 0) {
++            cleaned = "WARNING";
++        } else if (cleaned.rfind("> [!CAUTION]", 0) == 0) {
++            cleaned = "CAUTION";
++        } else if (cleaned.rfind("> [!NOTE]", 0) == 0) {
++            cleaned = "NOTE";
++        } else if (cleaned.rfind("> ", 0) == 0) {
++            cleaned = cleaned.substr(2);
++        } else if (cleaned.rfind("## ", 0) == 0) {
++            cleaned = cleaned.substr(3);
++        } else if (cleaned.rfind("### ", 0) == 0) {
++            cleaned = cleaned.substr(4);
++        } else if (cleaned.rfind("* ", 0) == 0) {
++            cleaned = "• " + cleaned.substr(2);
++        }
++
++        cleaned = strip_markdown_links(cleaned);
++        replace_all(cleaned, "**", "");
++        replace_all(cleaned, "`", "");
++        replace_all(cleaned, "â€¢ ", "- ");
++        cleaned = trim_line(cleaned);
++
++        if (cleaned.empty()) {
++            if (!previous_blank) {
++                formatted << "\n";
++            }
++            previous_blank = true;
++            continue;
++        }
++
++        formatted << cleaned << "\n";
++        previous_blank = false;
++    }
++
++    std::string result = formatted.str();
++    while (!result.empty() && (result.back() == '\n' || result.back() == '\r')) {
++        result.pop_back();
++    }
++
++    if (result.empty()) {
++        result = "No release notes were provided for this release.";
++    }
++
++    return result;
++}
++
++static lv_obj_t *create_dialog_button(lv_obj_t *parent,
++                                      const char *text,
++                                      uint32_t index,
++                                      bool primary,
++                                      lv_obj_t *dialog,
++                                      const std::function<void(uint32_t)> &callback) {
++    lv_obj_t *button = lv_btn_create(parent);
++    lv_obj_set_height(button, scaled_dialog_button_height() + 10);
++    lv_obj_set_width(button, scaled_dialog_button_width());
++    lv_obj_set_flex_grow(button, 1);
++    lv_obj_set_style_radius(button, 18, 0);
++    lv_obj_set_style_pad_ver(button, 12, 0);
++    lv_obj_set_style_pad_hor(button, 12, 0);
++
++    if (!primary) {
++        lv_obj_set_style_bg_opa(button, LV_OPA_20, 0);
++        lv_obj_set_style_border_width(button, 1, 0);
++    }
++
++    lv_obj_t *label = lv_label_create(button);
++    lv_label_set_text(label, text);
++    lv_obj_center(label);
++
++#ifdef GUPPY_SMALL_SCREEN
++    lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
++#else
++    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
++#endif
++
++    auto *ctx = new dialog_button_ctx{dialog, callback, index};
++    lv_obj_add_event_cb(
++        button,
++        [](lv_event_t *e) {
++            if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
++                return;
++            }
++
++            auto *ctx = static_cast<dialog_button_ctx *>(lv_event_get_user_data(e));
++            auto callback = ctx->callback;
++            uint32_t index = ctx->index;
++            lv_obj_t *dialog = ctx->dialog;
++            delete ctx;
++            simple_dialog_close(dialog);
++            callback(index);
++        },
++        LV_EVENT_CLICKED,
++        ctx);
++
++    return button;
++}
++
++static lv_obj_t *create_loading_dialog(lv_obj_t *parent,
++                                       const std::string &title,
++                                       const std::string &message) {
++    lv_obj_t *overlay = create_modal_overlay(parent);
++    lv_obj_t *dialog = lv_obj_create(overlay);
++    lv_obj_center(dialog);
++    lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
++    lv_obj_set_flex_flow(dialog, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_flex_align(dialog, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
++    lv_obj_set_style_pad_all(dialog, 28, 0);
++    lv_obj_set_style_pad_row(dialog, 22, 0);
++    lv_obj_set_style_radius(dialog, 0, 0);
++    lv_obj_set_style_border_width(dialog, 0, 0);
++    lv_obj_set_style_bg_color(dialog, lv_color_hex(0x101820), 0);
++    lv_obj_set_style_bg_opa(dialog, LV_OPA_COVER, 0);
++    lv_obj_set_style_shadow_width(dialog, 0, 0);
++    lv_obj_set_style_text_color(dialog, lv_color_white(), 0);
++    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *spinner = lv_spinner_create(dialog, 1000, 60);
++    lv_obj_set_size(spinner, 84, 84);
++
++    lv_obj_t *title_label = lv_label_create(dialog);
++    lv_label_set_text(title_label, title.c_str());
++    lv_obj_set_width(title_label, LV_PCT(100));
++    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
++
++    if (!message.empty()) {
++        lv_obj_t *message_label = lv_label_create(dialog);
++        lv_label_set_text(message_label, message.c_str());
++        lv_label_set_long_mode(message_label, LV_LABEL_LONG_WRAP);
++        lv_obj_set_width(message_label, LV_PCT(100));
++        lv_obj_set_style_text_align(message_label, LV_TEXT_ALIGN_CENTER, 0);
++    }
++
++#ifdef GUPPY_SMALL_SCREEN
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_18, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
++#else
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_22, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_22, 0);
++#endif
++
++    return dialog;
++}
++
++static void set_loading_dialog_title(lv_obj_t *dialog, const std::string &title) {
++    lv_obj_t *title_label = lv_obj_get_child(dialog, 1);
++    if (!title_label) {
++        return;
++    }
++
++    lv_label_set_text(title_label, title.c_str());
++    lv_obj_invalidate(dialog);
++}
++
++static std::string read_update_phase() {
++    std::ifstream stream("/tmp/cosmos-update-phase");
++    if (!stream.is_open()) {
++        return "";
++    }
++
++    std::string phase;
++    std::getline(stream, phase);
++    return trim_line(phase);
++}
++
++static lv_obj_t *create_action_dialog(lv_obj_t *parent,
++                                      const char *title,
++                                      const std::string &message,
++                                      const char *primary_text,
++                                      const char *secondary_text,
++                                      const std::function<void(uint32_t)> &callback,
++                                      bool left_align,
++                                      lv_coord_t height_pct) {
++    (void)height_pct;
++    lv_obj_t *overlay = create_modal_overlay(parent);
++    lv_obj_t *dialog = lv_obj_create(overlay);
++    lv_obj_center(dialog);
++    lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
++    lv_obj_set_flex_flow(dialog, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_style_pad_left(dialog, 28, 0);
++    lv_obj_set_style_pad_right(dialog, 28, 0);
++    lv_obj_set_style_pad_top(dialog, 28, 0);
++    lv_obj_set_style_pad_bottom(dialog, 8, 0);
++    lv_obj_set_style_pad_row(dialog, 16, 0);
++    lv_obj_set_style_radius(dialog, 0, 0);
++    lv_obj_set_style_border_width(dialog, 0, 0);
++    lv_obj_set_style_bg_color(dialog, lv_color_hex(0x101820), 0);
++    lv_obj_set_style_bg_opa(dialog, LV_OPA_COVER, 0);
++    lv_obj_set_style_shadow_width(dialog, 0, 0);
++    lv_obj_set_style_text_color(dialog, lv_color_white(), 0);
++    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *content = lv_obj_create(dialog);
++    lv_obj_set_width(content, LV_PCT(100));
++    lv_obj_set_flex_grow(content, 1);
++    lv_obj_set_style_pad_all(content, 0, 0);
++    lv_obj_set_style_border_width(content, 0, 0);
++    lv_obj_set_style_bg_opa(content, LV_OPA_TRANSP, 0);
++    lv_obj_set_style_shadow_width(content, 0, 0);
++    lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_flex_align(content, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
++    lv_obj_set_style_pad_row(content, 14, 0);
++    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *title_label = lv_label_create(content);
++    lv_label_set_text(title_label, title);
++    lv_label_set_long_mode(title_label, LV_LABEL_LONG_WRAP);
++    lv_obj_set_width(title_label, LV_PCT(100));
++    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
++
++    if (!message.empty()) {
++        lv_obj_t *text_label = lv_label_create(content);
++        lv_label_set_text(text_label, message.c_str());
++        lv_label_set_long_mode(text_label, LV_LABEL_LONG_WRAP);
++        lv_obj_set_width(text_label, LV_PCT(100));
++        lv_obj_set_style_text_align(text_label, left_align ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
++    }
++
++    lv_obj_t *footer = lv_obj_create(dialog);
++    lv_obj_set_width(footer, LV_PCT(100));
++    lv_obj_set_style_pad_all(footer, 0, 0);
++    lv_obj_set_style_pad_column(footer, 12, 0);
++    lv_obj_set_style_border_width(footer, 0, 0);
++    lv_obj_set_style_bg_opa(footer, LV_OPA_TRANSP, 0);
++    lv_obj_set_style_shadow_width(footer, 0, 0);
++    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
++    lv_obj_set_flex_align(footer, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
++    lv_obj_clear_flag(footer, LV_OBJ_FLAG_SCROLLABLE);
++
++#ifdef GUPPY_SMALL_SCREEN
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_16, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
++#else
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_20, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_22, 0);
++#endif
++
++    create_dialog_button(footer, primary_text, 0, true, dialog, callback);
++    create_dialog_button(footer, secondary_text, 1, false, dialog, callback);
++
++    return dialog;
++}
++
++static lv_obj_t *create_single_action_dialog(lv_obj_t *parent,
++                                             const char *title,
++                                             const std::string &message,
++                                             const char *button_text,
++                                             const std::function<void()> &callback) {
++    lv_obj_t *overlay = create_modal_overlay(parent);
++    lv_obj_t *dialog = lv_obj_create(overlay);
++    lv_obj_center(dialog);
++    lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
++    lv_obj_set_flex_flow(dialog, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_style_pad_left(dialog, 28, 0);
++    lv_obj_set_style_pad_right(dialog, 28, 0);
++    lv_obj_set_style_pad_top(dialog, 28, 0);
++    lv_obj_set_style_pad_bottom(dialog, 8, 0);
++    lv_obj_set_style_pad_row(dialog, 16, 0);
++    lv_obj_set_style_radius(dialog, 0, 0);
++    lv_obj_set_style_border_width(dialog, 0, 0);
++    lv_obj_set_style_bg_color(dialog, lv_color_hex(0x101820), 0);
++    lv_obj_set_style_bg_opa(dialog, LV_OPA_COVER, 0);
++    lv_obj_set_style_shadow_width(dialog, 0, 0);
++    lv_obj_set_style_text_color(dialog, lv_color_white(), 0);
++    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *content = lv_obj_create(dialog);
++    lv_obj_set_width(content, LV_PCT(100));
++    lv_obj_set_flex_grow(content, 1);
++    lv_obj_set_style_pad_all(content, 0, 0);
++    lv_obj_set_style_border_width(content, 0, 0);
++    lv_obj_set_style_bg_opa(content, LV_OPA_TRANSP, 0);
++    lv_obj_set_style_shadow_width(content, 0, 0);
++    lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_flex_align(content, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
++    lv_obj_set_style_pad_row(content, 14, 0);
++    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *title_label = lv_label_create(content);
++    lv_label_set_text(title_label, title);
++    lv_label_set_long_mode(title_label, LV_LABEL_LONG_WRAP);
++    lv_obj_set_width(title_label, LV_PCT(100));
++    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
++
++    if (!message.empty()) {
++        lv_obj_t *text_label = lv_label_create(content);
++        lv_label_set_text(text_label, message.c_str());
++        lv_label_set_long_mode(text_label, LV_LABEL_LONG_WRAP);
++        lv_obj_set_width(text_label, LV_PCT(100));
++        lv_obj_set_style_text_align(text_label, LV_TEXT_ALIGN_CENTER, 0);
++    }
++
++    lv_obj_t *footer = lv_obj_create(dialog);
++    lv_obj_set_width(footer, LV_PCT(100));
++    lv_obj_set_style_pad_all(footer, 0, 0);
++    lv_obj_set_style_border_width(footer, 0, 0);
++    lv_obj_set_style_bg_opa(footer, LV_OPA_TRANSP, 0);
++    lv_obj_set_style_shadow_width(footer, 0, 0);
++    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
++    lv_obj_clear_flag(footer, LV_OBJ_FLAG_SCROLLABLE);
++
++#ifdef GUPPY_SMALL_SCREEN
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_16, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
++#else
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_20, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_22, 0);
++#endif
++
++    create_dialog_button(
++        footer,
++        button_text,
++        0,
++        true,
++        dialog,
++        [callback](uint32_t) {
++            callback();
++        });
++
++    return dialog;
++}
++
++static lv_obj_t *create_release_notes_dialog(lv_obj_t *parent,
++                                             const std::string &release_title,
++                                             const std::string &release_notes,
++                                             const std::function<void(uint32_t)> &callback) {
++    lv_obj_t *overlay = create_modal_overlay(parent);
++    lv_obj_t *dialog = lv_obj_create(overlay);
++    lv_obj_center(dialog);
++    lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
++    lv_obj_set_flex_flow(dialog, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_style_pad_left(dialog, 10, 0);
++    lv_obj_set_style_pad_right(dialog, 10, 0);
++    lv_obj_set_style_pad_top(dialog, 8, 0);
++    lv_obj_set_style_pad_bottom(dialog, 0, 0);
++    lv_obj_set_style_pad_row(dialog, 6, 0);
++    lv_obj_set_style_radius(dialog, 0, 0);
++    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
++
++    lv_obj_t *title_label = lv_label_create(dialog);
++    lv_label_set_text(title_label, release_title.c_str());
++    lv_label_set_long_mode(title_label, LV_LABEL_LONG_WRAP);
++    lv_obj_set_width(title_label, LV_PCT(100));
++    lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
++    lv_obj_set_style_pad_bottom(title_label, 2, 0);
++
++    lv_obj_t *notes_box = lv_obj_create(dialog);
++    lv_obj_set_width(notes_box, LV_PCT(100));
++    lv_obj_set_flex_grow(notes_box, 1);
++    lv_obj_set_style_pad_all(notes_box, 12, 0);
++    lv_obj_set_style_radius(notes_box, 18, 0);
++    lv_obj_set_scrollbar_mode(notes_box, LV_SCROLLBAR_MODE_ACTIVE);
++    lv_obj_set_scroll_dir(notes_box, LV_DIR_VER);
++    lv_obj_set_style_border_width(notes_box, 1, 0);
++    lv_obj_set_style_shadow_width(notes_box, 0, 0);
++    lv_obj_set_flex_flow(notes_box, LV_FLEX_FLOW_COLUMN);
++    lv_obj_set_flex_align(notes_box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
++
++    lv_obj_t *notes_label = lv_label_create(notes_box);
++    auto rendered_notes = format_release_notes(release_notes);
++    lv_label_set_text(notes_label, rendered_notes.c_str());
++    lv_label_set_long_mode(notes_label, LV_LABEL_LONG_WRAP);
++    lv_obj_set_width(notes_label, LV_PCT(100));
++    lv_obj_set_style_text_align(notes_label, LV_TEXT_ALIGN_LEFT, 0);
++    lv_obj_set_style_pad_right(notes_label, 8, 0);
++
++    lv_obj_t *footer = lv_obj_create(dialog);
++    lv_obj_set_width(footer, LV_PCT(100));
++    lv_obj_set_style_pad_all(footer, 0, 0);
++    lv_obj_set_style_pad_column(footer, 12, 0);
++    lv_obj_set_style_border_width(footer, 0, 0);
++    lv_obj_set_style_bg_opa(footer, LV_OPA_TRANSP, 0);
++    lv_obj_set_style_shadow_width(footer, 0, 0);
++    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
++    lv_obj_set_flex_align(footer, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
++    lv_obj_clear_flag(footer, LV_OBJ_FLAG_SCROLLABLE);
++
++#ifdef GUPPY_SMALL_SCREEN
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_16, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_18, 0);
++#else
++    lv_obj_set_style_text_font(dialog, &lv_font_montserrat_20, LV_STATE_DEFAULT);
++    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_22, 0);
++#endif
++
++    create_dialog_button(footer, "Cancel", 0, false, dialog, callback);
++    create_dialog_button(footer, "Install now", 1, true, dialog, callback);
++
++    return dialog;
++}
++
+ static void run_factory_reset_cb(lv_timer_t * t) {
+     reset_ctx * ctx = (reset_ctx *)t->user_data;
+ 
+@@ -40,6 +526,7 @@ static void run_factory_reset_cb(lv_timer_t * t) {
+ 
+ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
+   : ws(c)
++  , lv_lock(l)
+   , cont(lv_obj_create(parent))
+   , wifi_panel(l)
+   , wifi_btn(cont, &network_img, "WIFI", &SettingPanel::_handle_callback, this)
+@@ -47,20 +534,7 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
+   , restart_firmware_btn(cont, &refresh_img, "Restart\nFirmware", &SettingPanel::_handle_callback, this)
+   , guppy_restart_btn(cont, &refresh_img, "Restart GUI", &SettingPanel::_handle_callback, this)
+   , support_zip_btn(cont, &sd_img, "Create\nSupport ZIP", &SettingPanel::_handle_callback, this)
+-  , guppy_update_btn(cont, &update_img, "Update COSMOS", &SettingPanel::_handle_callback, this,
+-    "Are you sure you want to update COSMOS?\n\nThis will download and update to the latest version of COSMOS!",
+-            [](){
+-              LOG_INFO("update cosmos pressed");
+-              Config *conf = Config::get_instance();
+-              auto switch_to_stock_cmd = conf->get<std::string>("/commands/cosmos_update_cmd");
+-              auto ret = sp::call(switch_to_stock_cmd);
+-              if (ret == 0) {
+-                create_simple_dialog(lv_scr_act(), "Update COSMOS Initiated", "Your printer will restart shortly!", false);
+-              } else {
+-                create_simple_dialog(lv_scr_act(), "Update COSMOS Failed", "Failed to initiate update COSMOS!", true);
+-              }
+-            },
+-            true)
++  , guppy_update_btn(cont, &update_img, "Update COSMOS", &SettingPanel::_handle_callback, this)
+   , switch_to_stock_btn(cont, &emergency, "Switch to OC\nPatched", &SettingPanel::_handle_callback, this,
+     "**WARNING** **WARNING** **WARNING**\n\nAre you sure you want to switch to OpenCentauri patched firmware?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot.",
+             [](){
+@@ -96,8 +570,9 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
+   lv_obj_set_size(cont, LV_PCT(100), LV_PCT(100));
+ 
+   Config *conf = Config::get_instance();
++  auto update_check_script = conf->get<std::string>("/commands/cosmos_update_check_cmd");
+   auto update_script = conf->get<std::string>("/commands/cosmos_update_cmd");
+-  if (update_script == "") {
++  if (update_check_script == "" || update_script == "") {
+     guppy_update_btn.disable();
+   }
+   auto switch_to_stock_cmd = conf->get<std::string>("/commands/switch_to_stock_cmd");
+@@ -155,6 +630,9 @@ void SettingPanel::handle_callback(lv_event_t *event) {
+     } else if (btn == restart_firmware_btn.get_container()) {
+       LOG_TRACE("restart klipper pressed");
+       ws.send_jsonrpc("printer.firmware_restart");
++    } else if (btn == guppy_update_btn.get_container()) {
++      LOG_INFO("update cosmos pressed");
++      start_cosmos_update_flow();
+     } else if (btn == guppy_restart_btn.get_container()) {
+       LOG_TRACE("restart grumpy pressed");
+       Config *conf = Config::get_instance();
+@@ -177,3 +655,233 @@ void SettingPanel::handle_callback(lv_event_t *event) {
+     }
+   }
+ }
++
++void SettingPanel::start_cosmos_update_flow() {
++  lv_obj_t *progress_dialog = create_loading_dialog(
++      lv_scr_act(),
++      "Checking for the latest COSMOS release",
++      "");
++
++  std::thread([this, progress_dialog]() {
++    run_cosmos_update_check(progress_dialog);
++  }).detach();
++}
++
++void SettingPanel::run_cosmos_update_check(lv_obj_t *progress_dialog) {
++  Config *conf = Config::get_instance();
++  auto check_cmd = conf->get<std::string>("/commands/cosmos_update_check_cmd");
++
++  try {
++    auto output = sp::check_output(std::vector<std::string>{check_cmd});
++    auto parsed = Config::json::parse(buffer_to_string(output));
++    std::lock_guard<std::mutex> lock(lv_lock);
++    simple_dialog_close(progress_dialog);
++
++    auto status = parsed.value("status", "");
++    if (status == "update_available") {
++      show_cosmos_update_release_notes(parsed.value("current_version", "unknown"),
++                                       parsed.value("latest_version", ""),
++                                       parsed.value("release_name", "COSMOS Update"),
++                                       parsed.value("release_notes", ""),
++                                       parsed.value("download_url", ""));
++      return;
++    }
++
++    if (status == "up_to_date") {
++      show_cosmos_up_to_date_dialog();
++      return;
++    }
++
++    show_cosmos_update_retry_dialog(parsed.value("message", "Unable to connect to GitHub"));
++  } catch (const std::exception &e) {
++    std::lock_guard<std::mutex> lock(lv_lock);
++    simple_dialog_close(progress_dialog);
++    LOG_ERROR("cosmos update check failed: {}", e.what());
++    show_cosmos_update_retry_dialog("Unable to connect to GitHub");
++  }
++}
++
++void SettingPanel::show_cosmos_update_retry_dialog(const std::string &message) {
++  create_action_dialog(
++      lv_scr_act(),
++      message.c_str(),
++      "",
++      "Retry",
++      "Cancel",
++      [this](uint32_t clicked_btn) {
++        if (clicked_btn == 0) {
++          start_cosmos_update_flow();
++        }
++      },
++      false,
++      34);
++}
++
++void SettingPanel::show_cosmos_up_to_date_dialog() {
++  create_single_action_dialog(
++      lv_scr_act(),
++      "Already up to date!",
++      "",
++      "Continue",
++      []() {});
++}
++
++void SettingPanel::show_cosmos_update_complete_dialog() {
++  create_single_action_dialog(
++      lv_scr_act(),
++      "Update installed",
++      "",
++      "Restart now",
++      [this]() {
++        lv_obj_t *progress_dialog = create_loading_dialog(
++            lv_scr_act(),
++            "Restarting printer",
++            "");
++
++        std::thread([this, progress_dialog]() {
++          run_reboot_now();
++        }).detach();
++      });
++}
++
++void SettingPanel::show_cosmos_update_release_notes(const std::string &current_version,
++                                                    const std::string &latest_version,
++                                                    const std::string &release_name,
++                                                    const std::string &release_notes,
++                                                    const std::string &download_url) {
++  (void)current_version;
++  std::string notes = release_notes;
++  if (notes.empty()) {
++    notes = "No release notes were provided for this release.";
++  }
++
++  std::string dialog_title = latest_version;
++  if (!release_name.empty()) {
++    dialog_title = release_name;
++  }
++
++  create_release_notes_dialog(
++      lv_scr_act(),
++      dialog_title,
++      notes,
++      [this, download_url](uint32_t clicked_btn) {
++        if (clicked_btn != 1) {
++          return;
++        }
++
++        lv_obj_t *progress_dialog = create_loading_dialog(
++            lv_scr_act(),
++            "Downloading update",
++            "");
++
++        std::thread([this, progress_dialog, download_url]() {
++          run_cosmos_update_install(progress_dialog, download_url);
++        }).detach();
++      });
++}
++
++void SettingPanel::run_cosmos_update_install(lv_obj_t *progress_dialog, const std::string &download_url) {
++  Config *conf = Config::get_instance();
++  auto install_cmd = conf->get<std::string>("/commands/cosmos_update_cmd");
++
++  try {
++    std::vector<std::string> args{install_cmd};
++    if (!download_url.empty()) {
++      args.push_back("--url");
++      args.push_back(download_url);
++    }
++
++    sp::Popen proc(args, sp::output{sp::PIPE}, sp::error{sp::STDOUT});
++    std::string last_phase;
++    bool saw_complete_phase = false;
++
++    while (true) {
++      std::string phase = read_update_phase();
++      if (!phase.empty() && phase != last_phase) {
++        last_phase = phase;
++        std::lock_guard<std::mutex> lock(lv_lock);
++        if (phase == "DOWNLOADING") {
++          set_loading_dialog_title(progress_dialog, "Downloading update");
++        } else if (phase == "INSTALLING") {
++          set_loading_dialog_title(progress_dialog, "Installing update");
++        } else if (phase == "COMPLETE") {
++          saw_complete_phase = true;
++          set_loading_dialog_title(progress_dialog, "Update installed");
++        } else if (phase == "DOWNLOAD_FAILED") {
++          set_loading_dialog_title(progress_dialog, "Download failed");
++        } else if (phase == "INSTALL_FAILED") {
++          set_loading_dialog_title(progress_dialog, "Installation failed");
++        }
++      }
++
++      auto polled = proc.poll();
++      if (polled != -1) {
++        break;
++      }
++
++      std::this_thread::sleep_for(std::chrono::milliseconds(150));
++    }
++
++    auto ret = proc.retcode();
++    if (ret == -1) {
++      ret = proc.wait();
++    }
++    std::lock_guard<std::mutex> lock(lv_lock);
++    if (ret == 0 && saw_complete_phase) {
++      simple_dialog_close(progress_dialog);
++      show_cosmos_update_complete_dialog();
++      return;
++    }
++
++    simple_dialog_close(progress_dialog);
++    if (last_phase == "DOWNLOAD_FAILED") {
++      create_simple_dialog(lv_scr_act(),
++                           "Download failed",
++                           "Unable to download update package.",
++                           true);
++    } else if (last_phase == "INSTALL_FAILED") {
++      create_simple_dialog(lv_scr_act(),
++                           "Installation failed",
++                           "Unable to install update.",
++                           true);
++    } else if (ret == 0) {
++      create_simple_dialog(lv_scr_act(),
++                           "Update COSMOS Initiated",
++                           "Your printer will restart shortly!",
++                           false);
++    } else {
++      create_simple_dialog(lv_scr_act(),
++                           "Update COSMOS Failed",
++                           "Failed to initiate update COSMOS!",
++                           true);
++    }
++  } catch (const std::exception &e) {
++    LOG_ERROR("cosmos install failed: {}", e.what());
++    std::lock_guard<std::mutex> lock(lv_lock);
++    simple_dialog_close(progress_dialog);
++    create_simple_dialog(lv_scr_act(),
++                         "Update COSMOS Failed",
++                         "Failed to initiate update COSMOS!",
++                         true);
++  }
++}
++
++void SettingPanel::run_reboot_now() {
++  try {
++    auto ret = sp::call(std::vector<std::string>{"reboot"});
++    std::lock_guard<std::mutex> lock(lv_lock);
++    if (ret != 0) {
++      create_simple_dialog(lv_scr_act(),
++                           "Restart failed",
++                           "Failed to restart printer.",
++                           true);
++    }
++  } catch (const std::exception &e) {
++    LOG_ERROR("reboot failed: {}", e.what());
++    std::lock_guard<std::mutex> lock(lv_lock);
++    create_simple_dialog(lv_scr_act(),
++                         "Restart failed",
++                         "Failed to restart printer.",
++                         true);
++  }
++}
+diff --git a/src/setting_panel.h b/src/setting_panel.h
+index 27ef307..d8dd151 100644
+--- a/src/setting_panel.h
++++ b/src/setting_panel.h
+@@ -8,6 +8,7 @@
+ #include "lvgl/lvgl.h"
+ 
+ #include <mutex>
++#include <string>
+ 
+ class SettingPanel {
+  public:
+@@ -23,8 +24,23 @@ class SettingPanel {
+     panel->handle_callback(event);
+   };
+ 
++  void run_cosmos_update_check(lv_obj_t *progress_dialog);
++  void run_cosmos_update_install(lv_obj_t *progress_dialog, const std::string &download_url);
++  void run_reboot_now();
++
+  private:
++  void start_cosmos_update_flow();
++  void show_cosmos_update_retry_dialog(const std::string &message);
++  void show_cosmos_up_to_date_dialog();
++  void show_cosmos_update_complete_dialog();
++  void show_cosmos_update_release_notes(const std::string &current_version,
++                                        const std::string &latest_version,
++                                        const std::string &release_name,
++                                        const std::string &release_notes,
++                                        const std::string &download_url);
++
+   KWebSocketClient &ws;
++  std::mutex &lv_lock;
+   lv_obj_t *cont;
+ 
+   WifiPanel wifi_panel;
