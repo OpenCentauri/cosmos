@@ -17,7 +17,6 @@ S = "${WORKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
     moonraker \
-    webui-switcher \
 "
 
 do_configure() {

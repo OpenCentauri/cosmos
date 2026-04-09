@@ -1,6 +1,5 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
-    file://httpd.cfg \
     file://ntp.cfg \
     file://cron.cfg \
     file://crontab \
