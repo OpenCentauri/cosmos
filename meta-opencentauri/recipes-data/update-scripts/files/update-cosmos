@@ -3,27 +3,72 @@
 set -e
 
 CONF=/etc/klipper/config/cosmos-update.conf
+CHECK_CMD=/usr/bin/cosmos-update-check
 
 [ -f "$CONF" ] && . "$CONF"
 
-case "$RELEASE" in
-    nightly)
-        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
-        ;;
-    *)
-        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
-        ;;
-esac
+FW_URL=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --url)
+            shift
+            [ $# -gt 0 ] || {
+                echo "Usage: $0 [--url DOWNLOAD_URL]"
+                exit 1
+            }
+            FW_URL="$1"
+            ;;
+        *)
+            echo "Usage: $0 [--url DOWNLOAD_URL]"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$FW_URL" ]; then
+    case "$RELEASE" in
+        nightly)
+            FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
+            ;;
+        *)
+            FW_URL="$("$CHECK_CMD" --field download_url)"
+            ;;
+    esac
+fi
 
 SWUFILE="/user-resource/update.swu"
+PHASEFILE="/tmp/cosmos-update-phase"
+
+rm -f "$SWUFILE"
+echo "DOWNLOADING" > "$PHASEFILE"
 
 # Download firmware
-curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+if ! curl -k -f -sS \
+    --connect-timeout 15 \
+    --max-time 1800 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    --speed-limit 1024 \
+    --speed-time 30 \
+    -o "$SWUFILE" \
+    -L "$FW_URL"; then
+    echo "DOWNLOAD_FAILED" > "$PHASEFILE"
+    rm -f "$SWUFILE"
+    exit 1
+fi
+
+echo "INSTALLING" > "$PHASEFILE"
 
 # Install firmware
-flash "$SWUFILE"
+if ! flash "$SWUFILE"; then
+    echo "INSTALL_FAILED" > "$PHASEFILE"
+    exit 1
+fi
+
+echo "COMPLETE" > "$PHASEFILE"
 
 # Clean up firmware file
 rm "$SWUFILE"
-
-reboot
