@@ -66,10 +66,16 @@ do_compile() {
         -lm
 }
 
+do_install[vardeps] += "DISTRO_NAME DISTRO_VERSION"
+
 do_install() {
     # Install klipper python package
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
+
+    # Set our ver
+    sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
+    echo "${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
