@@ -13,7 +13,6 @@ SRC_URI = " \
     file://moonraker-init-d \
     file://ip \
     file://moonraker.conf \
-    file://0001-Webcam-allow-ports-in-local-url.patch \
     file://0001-Serve-static-files.patch \
 "
 

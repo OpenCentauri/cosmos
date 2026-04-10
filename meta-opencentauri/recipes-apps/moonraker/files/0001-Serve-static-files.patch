@@ -1,11 +1,22 @@
 From 535b872cb2cd066ce60e3a392691245da3c6ed34 Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
 Date: Thu, 9 Apr 2026 22:06:27 +0200
-Subject: [PATCH] Serve static files
+Subject: [PATCH] Serve static files and webcam redirect
 
+Add web_client_path option to [server] to serve a web frontend
+(e.g. Mainsail, Fluidd) directly from Moonraker without nginx.
+
+Add webcam_redirect option to [server] to redirect /webcam/ requests
+to a local camera streamer, avoiding the overhead of proxying.
+
+Example moonraker.conf:
+
+  [server]
+  web_client_path: ~/mainsail
+  webcam_redirect: http://127.0.0.1:8080
 ---
- moonraker/components/application.py | 72 +++++++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
+ moonraker/components/application.py | 83 +++++++++++++++++++++++++++++
+ 1 file changed, 83 insertions(+)
 
 diff --git a/moonraker/components/application.py b/moonraker/components/application.py
 index bc46864..4747b62 100644
@@ -64,7 +75,7 @@ index bc46864..4747b62 100644
          return self.application.get_handler_delegate(request, AuthorizedErrorHandler)
  
      def log_request(self, handler: tornado.web.RequestHandler) -> None:
-@@ -240,6 +279,14 @@ class MoonrakerApp:
+@@ -240,6 +279,23 @@ class MoonrakerApp:
          ):
              self.mutable_router.add_handler(ptrn, hdlr, None)
  
@@ -76,10 +87,19 @@ index bc46864..4747b62 100644
 +                {"path": self.mutable_router.web_client_path}
 +            )
 +
++        # Redirect /webcam/ to local camera streamer
++        webcam_uri = config.get("webcam_redirect", None)
++        if webcam_uri is not None:
++            self.mutable_router.add_handler(
++                "/webcam/?(.*)",
++                WebcamRedirectHandler,
++                {"upstream": webcam_uri}
++            )
++
          # Register handlers
          logfile = self.server.get_app_args().get('log_file')
          if logfile:
-@@ -1047,6 +1094,31 @@ class FileUploadHandler(AuthorizedRequestHandler):
+@@ -1047,6 +1103,42 @@ class FileUploadHandler(AuthorizedRequestHandler):
          except Exception:
              pass
  
@@ -107,6 +127,17 @@ index bc46864..4747b62 100644
 +        self.set_header("Content-Type", "text/html; charset=UTF-8")
 +        with open(index, "rb") as f:
 +            self.finish(f.read())
++
++class WebcamRedirectHandler(tornado.web.RequestHandler):
++    def initialize(self, upstream: str) -> None:
++        self.upstream = upstream.rstrip("/")
++
++    def get(self, path: str = "") -> None:
++        host = self.request.host.split(":")[0]
++        url = f"{self.upstream.replace('127.0.0.1', host).replace('localhost', host)}/{path}"
++        if self.request.query:
++            url += f"?{self.request.query}"
++        self.redirect(url)
 +
  # Default Handler for unregistered endpoints
  class AuthorizedErrorHandler(AuthorizedRequestHandler):
