@@ -3,8 +3,10 @@ From: James Turton <james.turton@gmx.com>
 Date: Thu, 9 Apr 2026 22:06:27 +0200
 Subject: [PATCH] Serve static files and webcam redirect
 
-Add web_client_path option to [server] to serve a web frontend
+Add web_client option to [server] to serve a web frontend
 (e.g. Mainsail, Fluidd) directly from Moonraker without nginx.
+Short names like "mainsail" or "fluidd" are resolved to /var/www/,
+or a full path can be provided.
 
 Add webcam_redirect option to [server] to redirect /webcam/ requests
 to a local camera streamer, avoiding the overhead of proxying.
@@ -12,24 +14,28 @@ to a local camera streamer, avoiding the overhead of proxying.
 Example moonraker.conf:
 
   [server]
-  web_client_path: ~/mainsail
+  web_client: mainsail
   webcam_redirect: http://127.0.0.1:8080
 ---
- moonraker/components/application.py | 83 +++++++++++++++++++++++++++++
- 1 file changed, 83 insertions(+)
+ moonraker/components/application.py | 87 +++++++++++++++++++++++++++++
+ 1 file changed, 87 insertions(+)
 
 diff --git a/moonraker/components/application.py b/moonraker/components/application.py
 index bc46864..4747b62 100644
 --- a/moonraker/components/application.py
 +++ b/moonraker/components/application.py
-@@ -133,6 +133,21 @@ class PrimaryRouter(MutableRouter):
+@@ -133,6 +133,25 @@ class PrimaryRouter(MutableRouter):
              'log_function': self.log_request
          }
          super().__init__(tornado.web.Application(**app_args))
 +        # Optional static web client serving
 +        self.web_client_path: Optional[str] = None
-+        wcp = config.get("web_client_path", None)
++        wcp = config.get("web_client", None)
 +        if wcp is not None:
++            # If the value is not an absolute or home-relative path,
++            # treat it as a name under /var/www/
++            if not wcp.startswith("/") and not wcp.startswith("~"):
++                wcp = f"/var/www/{wcp}"
 +            wcp = os.path.expanduser(wcp)
 +            if os.path.isdir(wcp):
 +                self.web_client_path = wcp
@@ -38,13 +44,13 @@ index bc46864..4747b62 100644
 +                )
 +            else:
 +                logging.warning(
-+                    f"web_client_path '{wcp}' is not a valid directory, "
++                    f"web_client '{wcp}' is not a valid directory, "
 +                    "static file serving disabled"
 +                )
  
      @property
      def tornado_app(self) -> tornado.web.Application:
-@@ -144,6 +159,30 @@ class PrimaryRouter(MutableRouter):
+@@ -144,6 +163,30 @@
          hdlr = super().find_handler(request, **kwargs)
          if hdlr is not None:
              return hdlr
@@ -75,7 +81,7 @@ index bc46864..4747b62 100644
          return self.application.get_handler_delegate(request, AuthorizedErrorHandler)
  
      def log_request(self, handler: tornado.web.RequestHandler) -> None:
-@@ -240,6 +279,23 @@ class MoonrakerApp:
+@@ -240,6 +283,23 @@
          ):
              self.mutable_router.add_handler(ptrn, hdlr, None)
  
