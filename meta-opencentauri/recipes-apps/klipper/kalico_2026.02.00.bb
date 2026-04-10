@@ -14,7 +14,7 @@ SRC_URI += " \
     file://screen.cfg \
 "
 
-inherit python3-dir update-rc.d
+inherit python3-dir python3native update-rc.d
 
 RDEPENDS:${PN} = " \
     python3 \
@@ -71,9 +71,10 @@ do_install() {
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
 
-    # Remove any .pyc files to avoid TMPDIR references
-    find ${D} -name '*.pyc' -delete
-    find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+    # Precompile optimized bytecode in place. Keep .py sources for Kalico:
+    # klippy/compat.py checks for on-disk .py files when resolving legacy imports.
+    nativepython3 -OO -m compileall -b -f ${D}${datadir}/klipper/klippy
+    find ${D}${datadir}/klipper -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
     # Make config_examples to suppress moonraker warnings
     install -d ${D}${datadir}/klipper/config
