@@ -9,7 +9,7 @@ SRC_URI += " \
     file://klipper-firmware-bed-init-d \
 "
 
-PR = "r2"
+PR = "r3"
 
 DEPENDS += "gcc-arm-none-eabi-native"
 RDEPENDS:${PN} = " \
@@ -28,7 +28,7 @@ INITSCRIPT_PARAMS = "defaults 94 4"
 do_install() {
     install -d ${D}/lib/firmware
     cp -r ${S}/out/klipper.bin ${D}/lib/firmware/klipper-bed.bin
-    echo ${SRCREV} > ${D}/lib/firmware/klipper-bed.bin.ver
+    echo "${SRCREV}-${PR}" > ${D}/lib/firmware/klipper-bed.bin.ver
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
