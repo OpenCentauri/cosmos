@@ -26,7 +26,7 @@ flash "$SWUFILE"
 
 # Flash stock bootloader
 service klipper stop
-flashtool -d $SERIALPORT_BED -b 115200 -r
+flashtool -d $SERIALPORT_BED -b 250000 -r
 flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
 flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
 
