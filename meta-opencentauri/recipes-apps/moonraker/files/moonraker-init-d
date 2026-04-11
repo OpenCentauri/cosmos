@@ -23,6 +23,13 @@ case "$1" in
         rm -rf /user-resource/OpenCentauri
         mkdir -p /user-resource/.tmp
         mkdir -p /user-resource/gcodes
+
+        if [ -d /etc/webui ]; then
+            rm -rf /etc/webui
+        fi
+
+        ln -sf "/var/www/${config-manager ui web_ui}/" /etc/webui
+
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;

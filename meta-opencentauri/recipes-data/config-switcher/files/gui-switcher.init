@@ -8,11 +8,8 @@
 # Short-Description: GUI Switcher
 ### END INIT INFO
 
-CONF=/etc/klipper/config/display.conf
-GUI=grumpyscreen
 PIDFILE=/var/run/gui.pid
-
-[ -f "$CONF" ] && . "$CONF"
+GUI="${config-manager ui screen_ui}"
 
 case "$1" in
     start)

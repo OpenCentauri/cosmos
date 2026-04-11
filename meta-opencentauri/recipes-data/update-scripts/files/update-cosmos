@@ -2,10 +2,7 @@
 
 set -e
 
-CONF=/etc/klipper/config/cosmos-update.conf
-
-[ -f "$CONF" ] && . "$CONF"
-
+RELEASE=$(config-manager update release)
 case "$RELEASE" in
     nightly)
         FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
