@@ -15,6 +15,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod-tools \
     kernel-modules \
     rtw88 \
+    aic8800 \
     wpa-supplicant \
     iw \
     kalico \
