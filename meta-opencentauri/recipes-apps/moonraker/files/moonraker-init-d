@@ -25,7 +25,7 @@ case "$1" in
         mkdir -p /user-resource/gcodes
 
         if [ -d /etc/webui ]; then
-            rm -rf /etc/webui
+            rm -f /etc/webui
         fi
 
         ln -sf "/var/www/$(config-manager ui web_ui)/" /etc/webui
