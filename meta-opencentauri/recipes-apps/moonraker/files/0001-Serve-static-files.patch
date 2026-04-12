@@ -143,7 +143,7 @@ index bc46864..4747b62 100644
 +        url = f"{self.upstream.replace('127.0.0.1', host).replace('localhost', host)}/{path}"
 +        if self.request.query:
 +            url += f"?{self.request.query}"
-+        self.redirect(url, permanent=True)
++        self.redirect(url)
 +
  # Default Handler for unregistered endpoints
  class AuthorizedErrorHandler(AuthorizedRequestHandler):
