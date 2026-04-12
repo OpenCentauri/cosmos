@@ -9,7 +9,7 @@
 ### END INIT INFO
 
 PIDFILE=/var/run/gui.pid
-GUI="${config-manager ui screen_ui}"
+GUI="$(config-manager ui screen_ui)"
 
 case "$1" in
     start)

@@ -28,7 +28,7 @@ case "$1" in
             rm -rf /etc/webui
         fi
 
-        ln -sf "/var/www/${config-manager ui web_ui}/" /etc/webui
+        ln -sf "/var/www/$(config-manager ui web_ui)/" /etc/webui
 
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
