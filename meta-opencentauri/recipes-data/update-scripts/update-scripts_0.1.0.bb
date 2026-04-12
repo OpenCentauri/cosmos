@@ -8,7 +8,6 @@ SRC_URI = " \
     file://switch-to-stock \
     file://switch-to-oc-patched \
     file://swu-decrypt.py \
-    file://cosmos-update.conf \
 "
 
 RDEPENDS:${PN} = " \
@@ -17,6 +16,7 @@ RDEPENDS:${PN} = " \
     flashtool \
     toolhead-bootloader-stock \
     bed-bootloader-stock \
+    config-manager \
 "
 
 do_install() {
@@ -29,7 +29,6 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/cosmos-update.conf ${D}${sysconfdir}/klipper/config
 }
 
 FILES_${PN} += " \
@@ -38,5 +37,4 @@ FILES_${PN} += " \
     ${bindir}/switch-to-stock \
     ${bindir}/switch-to-oc-patched \
     ${bindir}/swu-decrypt.py \
-    ${sysconfdir}/klipper/config/cosmos-update.conf \
 "
