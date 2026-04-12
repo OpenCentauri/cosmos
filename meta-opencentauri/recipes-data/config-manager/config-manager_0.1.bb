@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-3.0-only;md5=c79ff39f19dfec
 
 SRC_URI = " \
     file://config_manager.py \
-    file://default.cfg \
+    file://default.conf \
 "
 
 do_install() {
