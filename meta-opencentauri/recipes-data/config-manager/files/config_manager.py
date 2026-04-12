@@ -12,7 +12,7 @@ VALIDATORS = {
 }
 
 VARIABLE_CONFIG_PATH = '/etc/klipper/config/cosmos.conf'
-DEFAULT_CONFIG_PATH = '/usr/share/config-manager/default.cfg'
+DEFAULT_CONFIG_PATH = '/usr/share/config-manager/default.conf'
 
 def validate_config(config : dict):
     for section, options in VALIDATORS.items():
