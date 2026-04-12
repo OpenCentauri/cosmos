@@ -1,3 +1,6 @@
+<img width="688" height="384" alt="image" src="https://github.com/user-attachments/assets/18686f2d-dab3-4c92-ae3c-e20a10dc7862" />
+
+
 ## What is COSMOS?
 Open source firmware for the Elegoo Centauri Carbon based on Klipper/Kalico that grants full control over the hardware.
 
@@ -12,7 +15,7 @@ _For detailed technical and build information [See development info](./Developme
 - Better leveling scripts that increase accuracy
 - See fan RPM in the webUI
 - Directly set exhaust fan speed
-- Ability to add an aftermarket AMS
+- Ability to add an aftermarket AMS (see this [repository](https://github.com/shawn-makes-stuff/cosmoace-integration) for information on ancubic ACE integration on COSMOS)
 - Full control over I/O pins- this should make it possible repurpose model fan - tachometer pin for a toolhead filament detector
 - Ability control and dim the toolhead led for those that have added it, from webui and printer screen
 - Dimming control on the main light
@@ -45,7 +48,15 @@ Maybe, but developer efforts are focused on the CC1 for the time being
 No, the OpenCentauri board is another ongoing project to create a much more powerful drop in mainboard replacement for the Centauri Carbon. 
 
 ## Can I add a raspberrypi to offload work from the stock mainboard?
+
 Not currently. The stock hardware is not very powerful and has limited memory which is why adding a pi or other SBC may interest some, however the primary focus of the project right now is to create stable firmware for the stock board.
 
 ## How can I support COSMOS development?
 You can make a one time or monthly donation to [support the OpenCentauri project on our KoFi](https://ko-fi.com/opencentauri)
+
+
+<img width="455" height="340" alt="image" src="https://github.com/user-attachments/assets/3719aa77-7d4c-46c4-bdc8-f78f7947ef2b" />
+
+_Credit to Opencentauri Discord user notgut for logo design_
+
+_Credit to Github user [shawn-makes-stuff](https://github.com/shawn-makes-stuff) for Demo print on CC1 and anycubic ACE multicolor print with COSMOS_

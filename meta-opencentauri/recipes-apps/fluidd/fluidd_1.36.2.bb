@@ -16,9 +16,7 @@ SRC_URI[sha256sum] = "3f9dbe9ac5db51d1025a5737b207d83558c07cb0d7af34d3c5832c868f
 S = "${WORKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
-    nginx \
     moonraker \
-    webui-switcher \
 "
 
 do_configure() {

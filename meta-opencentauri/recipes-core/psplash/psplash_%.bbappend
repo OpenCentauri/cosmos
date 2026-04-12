@@ -4,7 +4,7 @@ SRC_URI += " \
     file://psplash-bar.png \
 "
 SPLASH_IMAGES = " \
-    file://lines1.png;outsuffix=default \
+    file://cosmos_1.png;outsuffix=default \
 "
 
 do_compile:prepend() {

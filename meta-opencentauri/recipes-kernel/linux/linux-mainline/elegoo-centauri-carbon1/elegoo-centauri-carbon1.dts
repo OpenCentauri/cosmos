@@ -21,6 +21,28 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	thermal-zones {
+		cpu-thermal {
+			polling-delay-passive = <250>;
+			polling-delay = <1000>;
+			thermal-sensors = <&ths>;
+
+			trips {
+				cpu_alert: cpu-alert {
+					temperature = <85000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+
+				cpu_crit: cpu-crit {
+					temperature = <100000>;
+					hysteresis = <0>;
+					type = "critical";
+				};
+			};
+		};
+	};
+
 	/* board wide 5V supply directly from the USB-C socket */
 	reg_vcc5v: regulator-5v {
 		compatible = "regulator-fixed";
@@ -125,6 +147,17 @@
 	};
 
 	soc {
+		ths: thermal-sensor@2009400 {
+			compatible = "allwinner,sun20i-d1-ths";
+			reg = <0x02009400 0x400>;
+			interrupts = <SOC_PERIPHERAL_IRQ(58) IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&ccu CLK_BUS_THS>;
+			clock-names = "bus";
+			resets = <&ccu RST_BUS_THS>;
+			#thermal-sensor-cells = <0>;
+			status = "okay";
+		};
+
 		msgbox: mailbox@3003000 {
 			compatible = "allwinner,sunxi-r528-msgbox";
 			reg = <0x03003000 0x1000>,  /* ARM CPUX_MSGBOX (local/RX) */

@@ -1,30 +1,25 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          webui-switcher
+# Provides:          ustreamer
 # Required-Start:    $local_fs $remote_fs $network
 # Required-Stop:     $local_fs $remote_fs $network
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: WebUI Switcher
+# Short-Description: uStreamer MJPEG-HTTP streamer
 ### END INIT INFO
 
-CONF=/etc/klipper/config/display.conf
-WEBUI=mainsail
-
-[ -f "$CONF" ] && . "$CONF"
-
-DAEMON="httpd"
-DAEMON_ARGS="-p 80 -h /var/www/$WEBUI"
-PIDFILE="/var/run/httpd.pid"
+USTREAMER_EXEC="/usr/bin/ustreamer-wrapper"
+USTREAMER_ARGS="-r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
+PIDFILE="/var/run/ustreamer.pid"
 
 case "$1" in
     start)
-        echo "Starting $WEBUI..."
+        echo "Starting ustreamer..."
         start-stop-daemon -S -b -m -p $PIDFILE \
-            -x $DAEMON -- $DAEMON_ARGS
+            -x $USTREAMER_EXEC -- $USTREAMER_ARGS
         ;;
     stop)
-        echo "Stopping $WEBUI..."
+        echo "Stopping ustreamer..."
         start-stop-daemon -K -p $PIDFILE -R 10
         rm -f $PIDFILE
         ;;
@@ -35,9 +30,9 @@ case "$1" in
         ;;
     status)
         if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
-            echo "$WEBUI is running (PID $(cat $PIDFILE))"
+            echo "ustreamer is running (PID $(cat $PIDFILE))"
         else
-            echo "$WEBUI is not running"
+            echo "ustreamer is not running"
             exit 1
         fi
         ;;

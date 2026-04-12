@@ -1,0 +1,888 @@
+From 6bd234580606b3ec3b7577d9b91d897645b5dd2b Mon Sep 17 00:00:00 2001
+From: DevMiner <devminer@devminer.xyz>
+Date: Tue, 31 Mar 2026 23:37:59 +0200
+Subject: [PATCH] touchscreen support ig
+
+---
+ fbdoom/Makefile        |   4 +-
+ fbdoom/i_input_evdev.c | 765 +++++++++++++++++++++++++++++++++++++++++
+ fbdoom/i_video_fbdev.c |  39 ++-
+ 3 files changed, 803 insertions(+), 5 deletions(-)
+ create mode 100644 fbdoom/i_input_evdev.c
+
+diff --git a/fbdoom/Makefile b/fbdoom/Makefile
+index fb32c7b..ee3cfa4 100644
+--- a/fbdoom/Makefile
++++ b/fbdoom/Makefile
+@@ -17,10 +17,10 @@ endif
+ #CFLAGS+=-Wunused-const-variable=0 
+ #CFLAGS+=-fsanitize=address
+ OBJS+=$(OBJDIR)/i_video_fbdev.o
+-OBJS+=$(OBJDIR)/i_input_tty.o
++OBJS+=$(OBJDIR)/i_input_evdev.o
+ 
+ CC=$(CROSS_COMPILE)gcc  # gcc or g++
+-CFLAGS+=-ggdb3 -Os
++CFLAGS+=-ggdb3 -Os -std=gnu11
+ LDFLAGS+=-Wl,--gc-sections
+ CFLAGS+=-ggdb3 -Wall -DNORMALUNIX -DLINUX -DSNDSERV # -DUSEASM
+ LIBS+=-lm -lc
+diff --git a/fbdoom/i_input_evdev.c b/fbdoom/i_input_evdev.c
+new file mode 100644
+index 0000000..f04c138
+--- /dev/null
++++ b/fbdoom/i_input_evdev.c
+@@ -0,0 +1,765 @@
++//
++// Copyright(C) 1993-1996 Id Software, Inc.
++// Copyright(C) 2005-2014 Simon Howard
++//
++// This program is free software; you can redistribute it and/or
++// modify it under the terms of the GNU General Public License
++// as published by the Free Software Foundation; either version 2
++// of the License, or (at your option) any later version.
++//
++// This program is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++//
++// DESCRIPTION:
++//	DOOM input via Linux evdev (keyboard + touchscreen)
++//
++
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <stdio.h>
++#include <time.h>
++#include <sys/ioctl.h>
++#include <linux/input.h>
++#include <linux/fb.h>
++
++// Save Linux evdev keycodes that will be overridden by doomkeys.h
++#define LK_ENTER      28
++#define LK_TAB        15
++#define LK_BACKSPACE  14
++#define LK_MINUS      12
++#define LK_PAUSE      119
++#define LK_CAPSLOCK   58
++#define LK_NUMLOCK    69
++#define LK_HOME       102
++#define LK_END        107
++#define LK_F1         59
++#define LK_F2         60
++#define LK_F3         61
++#define LK_F4         62
++#define LK_F5         63
++#define LK_F6         64
++#define LK_F7         65
++#define LK_F8         66
++#define LK_F9         67
++#define LK_F10        68
++#define LK_F11        87
++#define LK_F12        88
++
++// Undef conflicting Linux macros before including Doom headers
++#undef KEY_ENTER
++#undef KEY_TAB
++#undef KEY_BACKSPACE
++#undef KEY_MINUS
++#undef KEY_PAUSE
++#undef KEY_CAPSLOCK
++#undef KEY_NUMLOCK
++#undef KEY_HOME
++#undef KEY_END
++#undef KEY_F1
++#undef KEY_F2
++#undef KEY_F3
++#undef KEY_F4
++#undef KEY_F5
++#undef KEY_F6
++#undef KEY_F7
++#undef KEY_F8
++#undef KEY_F9
++#undef KEY_F10
++#undef KEY_F11
++#undef KEY_F12
++
++#include "config.h"
++#include "doomtype.h"
++#include "doomkeys.h"
++#include "i_system.h"
++#include "i_video.h"
++#include "m_argv.h"
++#include "d_event.h"
++
++// Framebuffer info from i_video_fbdev.c
++extern struct fb_var_screeninfo fb;
++
++// ---------- Tuning constants ----------
++
++#define TOUCH_DEADZONE_FRAC  0.03f
++#define TOUCH_TURN_SCALE     3
++#define TOUCH_FWD_SCALE      1
++#define TAP_MAX_TIME_MS      200
++#define TAP_MAX_DIST_FRAC    0.03f
++#define ZONE_SPLIT_X         0.40f
++#define ZONE_TOP_FRAC        0.08f
++#define ZONE_BOTTOM_FRAC     0.88f
++#define BTN_W_FRAC           0.10f
++#define MAX_EVDEV_SCAN       32
++#define MAX_TOUCH_SLOTS      10
++
++#ifndef EVIOCGABS
++#define EVIOCGABS(abs) _IOR('E', 0x40 + (abs), struct input_absinfo)
++#endif
++
++// ---------- Touch zones ----------
++
++enum {
++    ZONE_NONE = 0,
++    ZONE_MOVE,
++    ZONE_AIM,
++    ZONE_BTN_ESC,
++    ZONE_BTN_USE,
++    ZONE_BTN_FIRE,
++    ZONE_BTN_PREV_WEAPON,
++    ZONE_BTN_NEXT_WEAPON,
++};
++
++// ---------- Touch slot state ----------
++
++typedef struct {
++    int active;
++    int zone;
++    int start_px, start_py;
++    int cur_px, cur_py;
++    int prev_px, prev_py;
++    int has_prev;
++    uint32_t start_time_ms;
++    int moved;
++    int key_fwd, key_back, key_left, key_right;
++} touch_slot_t;
++
++static touch_slot_t touch_slots[MAX_TOUCH_SLOTS];
++static int current_slot = 0;
++static int fire_release_pending = 0;
++
++static int ts_x_min = 0, ts_x_max = 1;
++static int ts_y_min = 0, ts_y_max = 1;
++
++static int kb_fd = -1;
++static int ts_fd = -1;
++static int ts_is_multitouch = 0;  // 1 = Protocol B (ABS_MT_*), 0 = single-touch (ABS_X/Y)
++
++static int shiftdown = 0;
++
++int vanilla_keyboard_mapping = 1;
++
++// ---------- evdev keycode -> Doom keycode ----------
++// Array indices use Linux evdev codes (LK_* for conflicting ones).
++// Array values use Doom codes from doomkeys.h.
++
++static const unsigned char evdev_to_doom[256] = {
++    [KEY_ESC]         = KEY_ESCAPE,
++    [KEY_1]           = '1',
++    [KEY_2]           = '2',
++    [KEY_3]           = '3',
++    [KEY_4]           = '4',
++    [KEY_5]           = '5',
++    [KEY_6]           = '6',
++    [KEY_7]           = '7',
++    [KEY_8]           = '8',
++    [KEY_9]           = '9',
++    [KEY_0]           = '0',
++    [LK_MINUS]        = '-',
++    [KEY_EQUAL]       = '=',
++    [LK_BACKSPACE]    = KEY_BACKSPACE,
++    [LK_TAB]          = KEY_TAB,
++    [KEY_Q]           = 'q',
++    [KEY_W]           = 'w',
++    [KEY_E]           = 'e',
++    [KEY_R]           = 'r',
++    [KEY_T]           = 't',
++    [KEY_Y]           = 'y',
++    [KEY_U]           = 'u',
++    [KEY_I]           = 'i',
++    [KEY_O]           = 'o',
++    [KEY_P]           = 'p',
++    [KEY_LEFTBRACE]   = '[',
++    [KEY_RIGHTBRACE]  = ']',
++    [LK_ENTER]        = KEY_ENTER,
++    [KEY_LEFTCTRL]    = KEY_FIRE,
++    [KEY_A]           = 'a',
++    [KEY_S]           = 's',
++    [KEY_D]           = 'd',
++    [KEY_F]           = 'f',
++    [KEY_G]           = 'g',
++    [KEY_H]           = 'h',
++    [KEY_J]           = 'j',
++    [KEY_K]           = 'k',
++    [KEY_L]           = 'l',
++    [KEY_SEMICOLON]   = ';',
++    [KEY_APOSTROPHE]  = '\'',
++    [KEY_GRAVE]       = '`',
++    [KEY_LEFTSHIFT]   = KEY_RSHIFT,
++    [KEY_BACKSLASH]   = '\\',
++    [KEY_Z]           = 'z',
++    [KEY_X]           = 'x',
++    [KEY_C]           = 'c',
++    [KEY_V]           = 'v',
++    [KEY_B]           = 'b',
++    [KEY_N]           = 'n',
++    [KEY_M]           = 'm',
++    [KEY_COMMA]       = ',',
++    [KEY_DOT]         = '.',
++    [KEY_SLASH]       = '/',
++    [KEY_RIGHTSHIFT]  = KEY_RSHIFT,
++    [KEY_KPASTERISK]  = KEYP_MULTIPLY,
++    [KEY_LEFTALT]     = KEY_LALT,
++    [KEY_SPACE]       = KEY_USE,
++    [LK_CAPSLOCK]     = KEY_CAPSLOCK,
++    [LK_F1]           = KEY_F1,
++    [LK_F2]           = KEY_F2,
++    [LK_F3]           = KEY_F3,
++    [LK_F4]           = KEY_F4,
++    [LK_F5]           = KEY_F5,
++    [LK_F6]           = KEY_F6,
++    [LK_F7]           = KEY_F7,
++    [LK_F8]           = KEY_F8,
++    [LK_F9]           = KEY_F9,
++    [LK_F10]          = KEY_F10,
++    [LK_NUMLOCK]      = KEY_NUMLOCK,
++    [LK_F11]          = KEY_F11,
++    [LK_F12]          = KEY_F12,
++    [KEY_RIGHTCTRL]   = KEY_FIRE,
++    [KEY_RIGHTALT]    = KEY_RALT,
++    [KEY_UP]          = KEY_UPARROW,
++    [KEY_DOWN]        = KEY_DOWNARROW,
++    [KEY_LEFT]        = KEY_LEFTARROW,
++    [KEY_RIGHT]       = KEY_RIGHTARROW,
++    [LK_PAUSE]        = KEY_PAUSE,
++    [LK_HOME]         = KEY_HOME,
++    [LK_END]          = KEY_END,
++    [KEY_PAGEUP]      = KEY_PGUP,
++    [KEY_PAGEDOWN]    = KEY_PGDN,
++    [KEY_INSERT]      = KEY_INS,
++    [KEY_DELETE]       = KEY_DEL,
++};
++
++// Shift transform table (same as i_input_tty.c)
++static const char shiftxform[] = {
++    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
++    11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
++    21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
++    31, ' ', '!', '"', '#', '$', '%', '&',
++    '"',
++    '(', ')', '*', '+',
++    '<',
++    '_',
++    '>',
++    '?',
++    ')', '!', '@', '#', '$', '%', '^', '&', '*', '(',
++    ':',
++    ':',
++    '<',
++    '+',
++    '>', '?', '@',
++    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
++    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
++    '[', '!', ']', '"', '_',
++    '\'',
++    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
++    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
++    '{', '|', '}', '~', 127
++};
++
++// ---------- Helpers ----------
++
++static uint32_t now_ms(void)
++{
++    struct timespec ts;
++    clock_gettime(CLOCK_MONOTONIC, &ts);
++    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
++}
++
++static int map_coord(int v, int v_min, int v_max, int fb_max)
++{
++    if (v_max <= v_min)
++        return 0;
++    if (v < v_min) v = v_min;
++    if (v > v_max) v = v_max;
++    double t = (double)(v - v_min) / (double)(v_max - v_min);
++    int px = (int)(t * fb_max + 0.5);
++    if (px < 0) px = 0;
++    if (px > fb_max) px = fb_max;
++    return px;
++}
++
++static int test_bit(int bit, const unsigned long *array)
++{
++    return (array[bit / (sizeof(long) * 8)] >> (bit % (sizeof(long) * 8))) & 1;
++}
++
++static int classify_zone(int px, int py, int fbw, int fbh)
++{
++    float fx = (float)px / fbw;
++    float fy = (float)py / fbh;
++
++    if (fy < ZONE_TOP_FRAC) {
++        if (fx < BTN_W_FRAC)
++            return ZONE_BTN_ESC;
++        if (fx > 1.0f - 2 * BTN_W_FRAC && fx <= 1.0f - BTN_W_FRAC)
++            return ZONE_BTN_PREV_WEAPON;
++        if (fx > 1.0f - BTN_W_FRAC)
++            return ZONE_BTN_NEXT_WEAPON;
++        return (fx < ZONE_SPLIT_X) ? ZONE_MOVE : ZONE_AIM;
++    }
++
++    if (fy > ZONE_BOTTOM_FRAC) {
++        if (fx < BTN_W_FRAC + 0.05f)
++            return ZONE_BTN_USE;
++        if (fx > 1.0f - BTN_W_FRAC - 0.05f)
++            return ZONE_BTN_FIRE;
++        return (fx < ZONE_SPLIT_X) ? ZONE_MOVE : ZONE_AIM;
++    }
++
++    if (fx < ZONE_SPLIT_X)
++        return ZONE_MOVE;
++    return ZONE_AIM;
++}
++
++static const char *zone_name(int zone)
++{
++    switch (zone) {
++    case ZONE_MOVE:            return "MOVE";
++    case ZONE_AIM:             return "AIM";
++    case ZONE_BTN_ESC:         return "ESC";
++    case ZONE_BTN_USE:         return "USE";
++    case ZONE_BTN_FIRE:        return "FIRE";
++    case ZONE_BTN_PREV_WEAPON: return "PREV_WPN";
++    case ZONE_BTN_NEXT_WEAPON: return "NEXT_WPN";
++    default:                   return "NONE";
++    }
++}
++
++static void post_key(int doom_key, int down)
++{
++    event_t event;
++    event.type = down ? ev_keydown : ev_keyup;
++    event.data1 = doom_key;
++    event.data2 = 0;
++    event.data3 = 0;
++    event.data4 = 0;
++    D_PostEvent(&event);
++}
++
++static void release_movement_keys(touch_slot_t *s)
++{
++    if (s->key_fwd)   { post_key(KEY_UPARROW, 0);   s->key_fwd = 0; }
++    if (s->key_back)  { post_key(KEY_DOWNARROW, 0);  s->key_back = 0; }
++    if (s->key_left)  { post_key(KEY_STRAFE_L, 0);   s->key_left = 0; }
++    if (s->key_right) { post_key(KEY_STRAFE_R, 0);   s->key_right = 0; }
++}
++
++static void finger_up(touch_slot_t *s)
++{
++    if (!s->active)
++        return;
++    printf("touch: up zone=%s moved=%d\n", zone_name(s->zone), s->moved);
++    if (s->zone == ZONE_AIM && !s->moved) {
++        uint32_t elapsed = now_ms() - s->start_time_ms;
++        if (elapsed < TAP_MAX_TIME_MS) {
++            printf("touch: tap -> ENTER\n");
++            post_key(KEY_ENTER, 1);
++            fire_release_pending = 1;
++        }
++    }
++    release_movement_keys(s);
++    if (s->zone == ZONE_BTN_ESC)
++        post_key(KEY_ESCAPE, 0);
++    else if (s->zone == ZONE_BTN_USE)
++        post_key(KEY_USE, 0);
++    else if (s->zone == ZONE_BTN_FIRE)
++        post_key(KEY_FIRE, 0);
++    s->active = 0;
++    s->zone = ZONE_NONE;
++}
++
++// ---------- Device detection ----------
++
++static int detect_keyboard(void)
++{
++    char path[64];
++    unsigned long evbits[(EV_MAX + 1) / (sizeof(long) * 8) + 1];
++    unsigned long keybits[(KEY_MAX + 1) / (sizeof(long) * 8) + 1];
++
++    for (int i = 0; i < MAX_EVDEV_SCAN; i++) {
++        snprintf(path, sizeof(path), "/dev/input/event%d", i);
++        int fd = open(path, O_RDONLY | O_NONBLOCK);
++        if (fd < 0)
++            continue;
++
++        memset(evbits, 0, sizeof(evbits));
++        memset(keybits, 0, sizeof(keybits));
++
++        if (ioctl(fd, EVIOCGBIT(0, sizeof(evbits)), evbits) < 0) {
++            close(fd);
++            continue;
++        }
++        if (!test_bit(EV_KEY, evbits)) {
++            close(fd);
++            continue;
++        }
++        if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits) < 0) {
++            close(fd);
++            continue;
++        }
++
++        // A keyboard has letter keys
++        if (test_bit(KEY_A, keybits) && test_bit(KEY_Z, keybits)) {
++            printf("I_InitInput: Found keyboard at %s\n", path);
++            return fd;
++        }
++
++        close(fd);
++    }
++    return -1;
++}
++
++static int detect_touchscreen(int *is_multitouch)
++{
++    char path[64];
++    unsigned long evbits[(EV_MAX + 1) / (sizeof(long) * 8) + 1];
++    unsigned long absbits[(ABS_MAX + 1) / (sizeof(long) * 8) + 1];
++    int fallback_fd = -1;
++
++    *is_multitouch = 0;
++
++    for (int i = 0; i < MAX_EVDEV_SCAN; i++) {
++        snprintf(path, sizeof(path), "/dev/input/event%d", i);
++        int fd = open(path, O_RDONLY | O_NONBLOCK);
++        if (fd < 0)
++            continue;
++
++        memset(evbits, 0, sizeof(evbits));
++        memset(absbits, 0, sizeof(absbits));
++
++        if (ioctl(fd, EVIOCGBIT(0, sizeof(evbits)), evbits) < 0) {
++            close(fd);
++            continue;
++        }
++        if (!test_bit(EV_ABS, evbits)) {
++            close(fd);
++            continue;
++        }
++        if (ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(absbits)), absbits) < 0) {
++            close(fd);
++            continue;
++        }
++
++        // Prefer multitouch (Protocol B)
++        if (test_bit(ABS_MT_POSITION_X, absbits) &&
++            test_bit(ABS_MT_POSITION_Y, absbits)) {
++            printf("I_InitInput: Found multitouch screen at %s\n", path);
++            *is_multitouch = 1;
++            if (fallback_fd >= 0)
++                close(fallback_fd);
++            return fd;
++        }
++
++        // Accept single-touch / tablet (ABS_X + ABS_Y) as fallback
++        if (test_bit(ABS_X, absbits) && test_bit(ABS_Y, absbits) &&
++            fallback_fd < 0) {
++            fallback_fd = fd;
++            continue;  // keep scanning for multitouch
++        }
++
++        close(fd);
++    }
++
++    if (fallback_fd >= 0) {
++        // Re-read the path for logging
++        printf("I_InitInput: Found single-touch device (fd %d)\n", fallback_fd);
++        *is_multitouch = 0;
++    }
++    return fallback_fd;
++}
++
++// ---------- Shutdown ----------
++
++static void evdev_shutdown(void)
++{
++    for (int i = 0; i < MAX_TOUCH_SLOTS; i++) {
++        if (touch_slots[i].active)
++            release_movement_keys(&touch_slots[i]);
++    }
++    if (kb_fd >= 0) { close(kb_fd); kb_fd = -1; }
++    if (ts_fd >= 0) { close(ts_fd); ts_fd = -1; }
++}
++
++// ---------- Keyboard reading ----------
++
++static unsigned char get_typed_char(unsigned char doom_key)
++{
++    if (shiftdown > 0) {
++        if (doom_key < sizeof(shiftxform))
++            return shiftxform[(unsigned)doom_key];
++        return 0;
++    }
++    return doom_key;
++}
++
++static void read_keyboard(void)
++{
++    struct input_event ev;
++
++    while (kb_fd >= 0 && read(kb_fd, &ev, sizeof(ev)) == (int)sizeof(ev)) {
++        if (ev.type != EV_KEY || ev.code >= 256)
++            continue;
++
++        if (ev.code == KEY_LEFTSHIFT || ev.code == KEY_RIGHTSHIFT) {
++            if (ev.value == 1)
++                shiftdown++;
++            else if (ev.value == 0 && shiftdown > 0)
++                shiftdown--;
++        }
++
++        unsigned char doom_key = evdev_to_doom[ev.code];
++        if (doom_key == 0)
++            continue;
++
++        if (ev.value == 1) {
++            event_t event;
++            event.type = ev_keydown;
++            event.data1 = doom_key;
++            event.data2 = get_typed_char(doom_key);
++            event.data3 = 0;
++            event.data4 = 0;
++            D_PostEvent(&event);
++        } else if (ev.value == 0) {
++            event_t event;
++            event.type = ev_keyup;
++            event.data1 = doom_key;
++            event.data2 = 0;
++            event.data3 = 0;
++            event.data4 = 0;
++            D_PostEvent(&event);
++        }
++    }
++}
++
++// ---------- Touchscreen reading ----------
++
++static void read_touchscreen(void)
++{
++    struct input_event ev;
++    int fbw = fb.xres;
++    int fbh = fb.yres;
++
++    if (fbw <= 0 || fbh <= 0)
++        return;
++
++    int deadzone_px_x = (int)(TOUCH_DEADZONE_FRAC * fbw);
++    int deadzone_px_y = (int)(TOUCH_DEADZONE_FRAC * fbh);
++    int tap_dist_px = (int)(TAP_MAX_DIST_FRAC * fbw);
++
++    int aim_dx = 0, aim_dy = 0;
++
++    if (fire_release_pending) {
++        post_key(KEY_ENTER, 0);
++        fire_release_pending = 0;
++    }
++
++    // Phase 1: Read raw evdev events, update slot state
++    while (ts_fd >= 0 && read(ts_fd, &ev, sizeof(ev)) == (int)sizeof(ev)) {
++        if (ev.type == EV_ABS) {
++            if (ts_is_multitouch) {
++                // Protocol B multitouch
++                if (ev.code == ABS_MT_SLOT) {
++                    if (ev.value >= 0 && ev.value < MAX_TOUCH_SLOTS)
++                        current_slot = ev.value;
++                } else if (ev.code == ABS_MT_TRACKING_ID) {
++                    touch_slot_t *s = &touch_slots[current_slot];
++                    if (ev.value >= 0) {
++                        s->active = 1;
++                        s->zone = ZONE_NONE;
++                        s->start_px = -1;
++                        s->start_py = -1;
++                        s->has_prev = 0;
++                        s->start_time_ms = now_ms();
++                        s->moved = 0;
++                        s->key_fwd = s->key_back = s->key_left = s->key_right = 0;
++                    } else {
++                        finger_up(s);
++                    }
++                } else if (ev.code == ABS_MT_POSITION_X) {
++                    touch_slots[current_slot].cur_px = ev.value;
++                } else if (ev.code == ABS_MT_POSITION_Y) {
++                    touch_slots[current_slot].cur_py = ev.value;
++                }
++            } else {
++                // Single-touch (ABS_X / ABS_Y) — always slot 0
++                if (ev.code == ABS_X) {
++                    touch_slots[0].cur_px = ev.value;
++                } else if (ev.code == ABS_Y) {
++                    touch_slots[0].cur_py = ev.value;
++                }
++            }
++        } else if (ev.type == EV_KEY && !ts_is_multitouch) {
++            // Single-touch: BTN_LEFT or BTN_TOUCH = finger down/up
++            if (ev.code == BTN_LEFT || ev.code == BTN_TOUCH) {
++                touch_slot_t *s = &touch_slots[0];
++                if (ev.value == 1 && !s->active) {
++                    s->active = 1;
++                    s->zone = ZONE_NONE;
++                    s->start_px = -1;
++                    s->start_py = -1;
++                    s->has_prev = 0;
++                    s->start_time_ms = now_ms();
++                    s->moved = 0;
++                    s->key_fwd = s->key_back = s->key_left = s->key_right = 0;
++                } else if (ev.value == 0) {
++                    finger_up(s);
++                }
++            }
++        }
++        // Don't break at SYN_REPORT — drain all pending events so we
++        // don't fall behind when events arrive faster than the tic rate.
++    }
++
++    // Phase 2: Process touch state into Doom events
++    for (int i = 0; i < MAX_TOUCH_SLOTS; i++) {
++        touch_slot_t *s = &touch_slots[i];
++        if (!s->active)
++            continue;
++
++        int px = map_coord(s->cur_px, ts_x_min, ts_x_max, fbw - 1);
++        int py = map_coord(s->cur_py, ts_y_min, ts_y_max, fbh - 1);
++
++        // Assign zone on first position update after touch-down
++        if (s->start_px < 0) {
++            s->start_px = px;
++            s->start_py = py;
++            s->zone = classify_zone(px, py, fbw, fbh);
++            printf("touch: slot=%d zone=%s pos=(%d,%d) fb=(%dx%d)\n",
++                   i, zone_name(s->zone), px, py, fbw, fbh);
++
++            if (s->zone == ZONE_BTN_ESC)
++                post_key(KEY_ESCAPE, 1);
++            else if (s->zone == ZONE_BTN_USE)
++                post_key(KEY_USE, 1);
++            else if (s->zone == ZONE_BTN_FIRE)
++                post_key(KEY_FIRE, 1);
++            else if (s->zone == ZONE_BTN_PREV_WEAPON)
++                post_key('-', 1);
++            else if (s->zone == ZONE_BTN_NEXT_WEAPON)
++                post_key('=', 1);
++        }
++
++        // Movement zone: virtual D-pad
++        if (s->zone == ZONE_MOVE) {
++            int dx = px - s->start_px;
++            int dy = py - s->start_py;
++
++            int want_fwd   = (dy < -deadzone_px_y);
++            int want_back  = (dy >  deadzone_px_y);
++            int want_left  = (dx < -deadzone_px_x);
++            int want_right = (dx >  deadzone_px_x);
++
++            if (want_fwd && !s->key_fwd)     { post_key(KEY_UPARROW, 1);   s->key_fwd = 1; }
++            if (!want_fwd && s->key_fwd)     { post_key(KEY_UPARROW, 0);   s->key_fwd = 0; }
++            if (want_back && !s->key_back)   { post_key(KEY_DOWNARROW, 1); s->key_back = 1; }
++            if (!want_back && s->key_back)   { post_key(KEY_DOWNARROW, 0); s->key_back = 0; }
++            if (want_left && !s->key_left)   { post_key(KEY_STRAFE_L, 1);  s->key_left = 1; }
++            if (!want_left && s->key_left)   { post_key(KEY_STRAFE_L, 0);  s->key_left = 0; }
++            if (want_right && !s->key_right) { post_key(KEY_STRAFE_R, 1);  s->key_right = 1; }
++            if (!want_right && s->key_right) { post_key(KEY_STRAFE_R, 0);  s->key_right = 0; }
++        }
++
++        // Aim zone: accumulate mouse deltas
++        if (s->zone == ZONE_AIM) {
++            if (s->has_prev) {
++                aim_dx += px - s->prev_px;
++                aim_dy += py - s->prev_py;
++            }
++            s->prev_px = px;
++            s->prev_py = py;
++            s->has_prev = 1;
++
++            int total = abs(px - s->start_px) + abs(py - s->start_py);
++            if (total > tap_dist_px)
++                s->moved = 1;
++        }
++    }
++
++    // Post accumulated aim as a single mouse event
++    if (aim_dx != 0 || aim_dy != 0) {
++        event_t event;
++        event.type = ev_mouse;
++        event.data1 = 0;
++        event.data2 = aim_dx * TOUCH_TURN_SCALE;
++        event.data3 = -aim_dy * TOUCH_FWD_SCALE;
++        event.data4 = 0;
++        D_PostEvent(&event);
++    }
++}
++
++// ---------- Public interface ----------
++
++void I_GetEvent(void)
++{
++    read_keyboard();
++    read_touchscreen();
++}
++
++void I_StartTic(void)
++{
++    I_GetEvent();
++}
++
++int I_InitInput(void)
++{
++    memset(touch_slots, 0, sizeof(touch_slots));
++
++    int p = M_CheckParmWithArgs("-evdev_kb", 1);
++    if (p > 0) {
++        kb_fd = open(myargv[p + 1], O_RDONLY | O_NONBLOCK);
++        if (kb_fd < 0)
++            fprintf(stderr, "I_InitInput: Could not open keyboard device %s\n",
++                    myargv[p + 1]);
++        else
++            printf("I_InitInput: Using keyboard at %s\n", myargv[p + 1]);
++    } else {
++        kb_fd = detect_keyboard();
++    }
++
++    if (kb_fd < 0)
++        fprintf(stderr, "I_InitInput: No keyboard found (touch-only mode)\n");
++
++    p = M_CheckParmWithArgs("-evdev_ts", 1);
++    if (p > 0) {
++        ts_fd = open(myargv[p + 1], O_RDONLY | O_NONBLOCK);
++        if (ts_fd < 0)
++            fprintf(stderr, "I_InitInput: Could not open touchscreen device %s\n",
++                    myargv[p + 1]);
++        else
++            printf("I_InitInput: Using touchscreen at %s\n", myargv[p + 1]);
++    } else {
++        ts_fd = detect_touchscreen(&ts_is_multitouch);
++    }
++
++    if (ts_fd >= 0) {
++        struct input_absinfo absinfo;
++        int abs_x_code = ts_is_multitouch ? ABS_MT_POSITION_X : ABS_X;
++        int abs_y_code = ts_is_multitouch ? ABS_MT_POSITION_Y : ABS_Y;
++        if (ioctl(ts_fd, EVIOCGABS(abs_x_code), &absinfo) == 0) {
++            ts_x_min = absinfo.minimum;
++            ts_x_max = absinfo.maximum;
++        }
++        if (ioctl(ts_fd, EVIOCGABS(abs_y_code), &absinfo) == 0) {
++            ts_y_min = absinfo.minimum;
++            ts_y_max = absinfo.maximum;
++        }
++        printf("I_InitInput: Touch range X=[%d,%d] Y=[%d,%d]\n",
++               ts_x_min, ts_x_max, ts_y_min, ts_y_max);
++    } else {
++        fprintf(stderr, "I_InitInput: No touchscreen found (keyboard-only mode)\n");
++    }
++
++    if (kb_fd < 0 && ts_fd < 0) {
++        fprintf(stderr, "I_InitInput: WARNING: No input devices found!\n"
++                "  Check /dev/input/event* permissions (need read access)\n");
++    }
++
++    I_AtExit(evdev_shutdown, true);
++
++    return 0;
++}
+diff --git a/fbdoom/i_video_fbdev.c b/fbdoom/i_video_fbdev.c
+index c6e5925..2ee92d2 100644
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -38,6 +38,7 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
+ 
+ #include <stdbool.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include <unistd.h>
+ #include <fcntl.h>
+ 
+@@ -45,6 +46,7 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
++#include <sys/mman.h>
+ #include <linux/fb.h>
+ #include <sys/ioctl.h>
+ 
+@@ -70,6 +72,8 @@ byte *I_VideoBuffer_FB = NULL;
+ 
+ /* framebuffer file descriptor */
+ int fd_fb = 0;
++static uint8_t *fb_mmap = NULL;
++static long fb_screensize = 0;
+ 
+ int	X_width;
+ int X_height;
+@@ -196,6 +200,20 @@ void I_InitGraphics (void)
+     }
+ 
+ 
++    /* mmap the framebuffer for direct access */
++    struct fb_fix_screeninfo finfo;
++    ioctl(fd_fb, FBIOGET_FSCREENINFO, &finfo);
++    fb_screensize = fb.yres_virtual * finfo.line_length;
++    fb_mmap = mmap(0, fb_screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fd_fb, 0);
++    if (fb_mmap == MAP_FAILED) {
++        fb_mmap = NULL;
++        printf("I_InitGraphics: mmap failed, falling back to write()\n");
++    } else {
++        printf("I_InitGraphics: mmap OK, screensize=%ld, line_length=%d\n",
++               fb_screensize, finfo.line_length);
++        ioctl(fd_fb, FBIOBLANK, 0); /* FB_BLANK_UNBLANK */
++    }
++
+     /* Allocate screen to draw to */
+ 	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);  // For DOOM to draw on
+ 	I_VideoBuffer_FB = (byte*)malloc(fb.xres * fb.yres * (fb.bits_per_pixel/8));     // For a single write() syscall to fbdev
+@@ -208,6 +226,10 @@ void I_InitGraphics (void)
+ 
+ void I_ShutdownGraphics (void)
+ {
++	if (fb_mmap) {
++		munmap(fb_mmap, fb_screensize);
++		fb_mmap = NULL;
++	}
+ 	Z_Free (I_VideoBuffer);
+ 	free(I_VideoBuffer_FB);
+ }
+@@ -441,9 +463,20 @@ void I_FinishUpdate (void)
+         line_in += SCREENWIDTH;
+     }
+ 
+-    /* Start drawing from y-offset */
+-    lseek(fd_fb, y_offset * fb.xres, SEEK_SET);
+-    write(fd_fb, I_VideoBuffer_FB, (SCREENHEIGHT * fb_scaling * (fb.bits_per_pixel/8)) * fb.xres); /* draw only portion used by doom + x-offsets */
++    /* Blit to framebuffer */
++    int draw_bytes = (SCREENHEIGHT * fb_scaling * (fb.bits_per_pixel/8)) * fb.xres;
++    int offset = y_offset * fb.xres;
++
++    if (fb_mmap) {
++        memcpy(fb_mmap + offset, I_VideoBuffer_FB, draw_bytes);
++        /* Notify DRM fbdev emulation that the buffer changed */
++        fb.xoffset = 0;
++        fb.yoffset = 0;
++        ioctl(fd_fb, FBIOPAN_DISPLAY, &fb);
++    } else {
++        lseek(fd_fb, offset, SEEK_SET);
++        write(fd_fb, I_VideoBuffer_FB, draw_bytes);
++    }
+ }
+ 
+ //
+-- 
+2.53.0
+

@@ -1,0 +1,22 @@
+diff --git a/klippy/configfile.py b/klippy/configfile.py
+index 691f1eb8..a868da61 100644
+--- a/klippy/configfile.py
++++ b/klippy/configfile.py
+@@ -521,8 +521,6 @@ class PrinterConfig:
+         filename = self.printer.get_start_args()["config_file"]
+         data = self._read_config_file(filename)
+         regular_data, autosave_data = self._find_autosave_data(data)
+-        regular_config = self._build_config_wrapper(regular_data, filename)
+-        autosave_data = self._strip_duplicates(autosave_data, regular_config)
+         self.autosave = self._build_config_wrapper(autosave_data, filename)
+         cfg = self._build_config_wrapper(regular_data + autosave_data, filename)
+         return cfg
+@@ -791,8 +789,6 @@ class PrinterConfig:
+         if get_danger_options().autosave_includes:
+             self._save_includes(cfgname, data, set(), gcode)
+ 
+-        # NOW we're safe to check for conflicts
+-        self._disallow_include_conflicts(regular_data, cfgname, gcode)
+         data = regular_data.rstrip() + autosave_data
+         self._write_backup(cfgname, data, gcode)
+ 

@@ -16,6 +16,7 @@ SERIALPORT="/dev/ttyS4"
 GPIO="201"
 
 update(){
+    flashtool -d $SERIALPORT -b 250000 -r
     flashtool -d $SERIALPORT -b 115200 -r
     if flashtool -d $SERIALPORT -f $FIRMWARE -b 115200; then
         cp $FIRMWARE_VERSION $INSTALLED_VERSION

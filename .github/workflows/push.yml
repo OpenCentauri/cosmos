@@ -10,4 +10,26 @@ jobs:
     with:
       use_cache: true
       write_back_cache: true
-      upload_all_artifacts: true
+      upload_all_artifacts: false
+      version: ${{ github.sha }}
+
+  publish-nightly:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download CC1 Firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CC1 Firmware
+          path: ./firmware
+
+      - name: Upload SWU to nightly release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload 0.0.0 \
+            "./firmware/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu" \
+            --clobber \
+            --repo OpenCentauri/yocto-opencentauri

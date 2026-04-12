@@ -6,7 +6,7 @@
             "display_sleep_sec": 300,
             "moonraker_api_key": false,
             "moonraker_host": "127.0.0.1",
-            "moonraker_port": 7125
+            "moonraker_port": 80
         }
     },
     "thumbnail_path": "/user-resource/.thumbs",

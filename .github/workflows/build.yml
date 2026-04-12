@@ -12,6 +12,9 @@ on:
       upload_all_artifacts:
         type: boolean
         default: false
+      version:
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       use_cache:
@@ -26,6 +29,10 @@ on:
         description: 'Upload all artifacts'
         type: boolean
         default: false
+      version:
+        description: 'Override distro version'
+        type: string
+        default: ''
 
 env:
   # Sims server cache dir
@@ -47,6 +54,13 @@ jobs:
         run: |
           mkdir -p ./build
           cp -ar ${{ env.CACHE_DIR }}/* ./build
+
+      - name: Set distro version
+        if: ${{ inputs.version != '' }}
+        run: |
+          version="${{ inputs.version }}"
+          version="${version:0:10}"
+          sed -i -E "s/^DISTRO_VERSION = \".*\"/DISTRO_VERSION = \"${version}\"/" meta-opencentauri/conf/distro/cosmos.conf
 
       - name: Build image
         run: |

@@ -1,0 +1,47 @@
+From 6a8a2d8b4f7e0ab1c96c9b4b2b4c0d1d7f4d2a1b Mon Sep 17 00:00:00 2001
+From: OpenCentauri <devnull@opencentauri.local>
+Date: Sun, 5 Apr 2026 12:30:00 +0000
+Subject: [PATCH] thermal: sun8i: add sun20i-d1-ths support
+
+Backport support for the T113/D1 thermal block to the 6.6.85 kernel
+used by elegoo-centauri-carbon1.
+
+The R528/T113-S3 uses the same THS IP block as the Allwinner D1/T113
+line, which is supported upstream as "allwinner,sun20i-d1-ths". This
+backport adds a dedicated chip description struct and OF match entry
+to the sun8i_thermal driver.
+
+---
+ drivers/thermal/sun8i_thermal.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/thermal/sun8i_thermal.c b/drivers/thermal/sun8i_thermal.c
+--- a/drivers/thermal/sun8i_thermal.c
++++ b/drivers/thermal/sun8i_thermal.c
+@@ -606,6 +606,18 @@ static const struct ths_thermal_chip sun50i_h6_ths = {
+ 	.calc_temp = sun8i_ths_calc_temp,
+ };
+ 
++static const struct ths_thermal_chip sun20i_d1_ths = {
++	.sensor_num = 1,
++	.has_bus_clk_reset = true,
++	.offset = 188552,
++	.scale = 672,
++	.temp_data_base = SUN50I_H6_THS_TEMP_DATA,
++	.calibrate = sun50i_h6_ths_calibrate,
++	.init = sun50i_h6_thermal_init,
++	.irq_ack = sun50i_h6_irq_ack,
++	.calc_temp = sun8i_ths_calc_temp,
++};
++
+ static const struct of_device_id of_ths_match[] = {
+ 	{ .compatible = "allwinner,sun8i-a83t-ths", .data = &sun8i_a83t_ths },
+ 	{ .compatible = "allwinner,sun8i-h3-ths", .data = &sun8i_h3_ths },
+@@ -614,6 +626,7 @@ static const struct of_device_id of_ths_match[] = {
+ 	{ .compatible = "allwinner,sun50i-a100-ths", .data = &sun50i_a100_ths },
+ 	{ .compatible = "allwinner,sun50i-h5-ths", .data = &sun50i_h5_ths },
+ 	{ .compatible = "allwinner,sun50i-h6-ths", .data = &sun50i_h6_ths },
++	{ .compatible = "allwinner,sun20i-d1-ths", .data = &sun20i_d1_ths },
+ 	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, of_ths_match);

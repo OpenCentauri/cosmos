@@ -21,6 +21,7 @@ jobs:
       use_cache: true
       write_back_cache: false
       upload_all_artifacts: false
+      version: PR-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
 
   comment:
     needs: build

@@ -15,6 +15,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod-tools \
     kernel-modules \
     rtw88 \
+    aic8800 \
     wpa-supplicant \
     iw \
     kalico \
@@ -28,7 +29,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     i2c-tools \
     nano \
     devmem2 \
-    mjpg-streamer \
+    ustreamer \
     swupdate \
     u-boot-fw-utils \
     zram \
@@ -38,8 +39,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     opencentauri-bootlogos \
     swu-flasher \
     update-scripts \
-    camera-led-bridge \
     logrotate \
+    fbdoom \
+    v4l-utils \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

@@ -15,9 +15,7 @@ SRC_URI[sha256sum] = "d010f4df25557d520ccdbb8e42fc381df2288e6a5c72d3838a5a2433c7
 S = "${WORKDIR}/mainsail"
 
 RDEPENDS:${PN} = " \
-    nginx \
     moonraker \
-    webui-switcher \
 "
 
 do_configure() {

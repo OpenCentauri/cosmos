@@ -1,0 +1,150 @@
+From 535b872cb2cd066ce60e3a392691245da3c6ed34 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Thu, 9 Apr 2026 22:06:27 +0200
+Subject: [PATCH] Serve static files and webcam redirect
+
+Add web_client option to [server] to serve a web frontend
+(e.g. Mainsail, Fluidd) directly from Moonraker without nginx.
+Short names like "mainsail" or "fluidd" are resolved to /var/www/,
+or a full path can be provided.
+
+Add webcam_redirect option to [server] to redirect /webcam/ requests
+to a local camera streamer, avoiding the overhead of proxying.
+
+Example moonraker.conf:
+
+  [server]
+  web_client: mainsail
+  webcam_redirect: http://127.0.0.1:8080
+---
+ moonraker/components/application.py | 87 +++++++++++++++++++++++++++++
+ 1 file changed, 87 insertions(+)
+
+diff --git a/moonraker/components/application.py b/moonraker/components/application.py
+index bc46864..4747b62 100644
+--- a/moonraker/components/application.py
++++ b/moonraker/components/application.py
+@@ -133,6 +133,25 @@ class PrimaryRouter(MutableRouter):
+             'log_function': self.log_request
+         }
+         super().__init__(tornado.web.Application(**app_args))
++        # Optional static web client serving
++        self.web_client_path: Optional[str] = None
++        wcp = config.get("web_client", None)
++        if wcp is not None:
++            # If the value is not an absolute or home-relative path,
++            # treat it as a name under /var/www/
++            if not wcp.startswith("/") and not wcp.startswith("~"):
++                wcp = f"/var/www/{wcp}"
++            wcp = os.path.expanduser(wcp)
++            if os.path.isdir(wcp):
++                self.web_client_path = wcp
++                logging.info(
++                    f"Static web client enabled, serving from: {wcp}"
++                )
++            else:
++                logging.warning(
++                    f"web_client '{wcp}' is not a valid directory, "
++                    "static file serving disabled"
++                )
+ 
+     @property
+     def tornado_app(self) -> tornado.web.Application:
+@@ -144,6 +163,30 @@
+         hdlr = super().find_handler(request, **kwargs)
+         if hdlr is not None:
+             return hdlr
++        # Fall back to serving static web client files if configured
++        if self.web_client_path is not None:
++            req_path = urllib.parse.urlparse(request.path).path
++            req_path = url_unescape(req_path, plus=False)
++            # Sanitize: strip leading slashes, block path traversal
++            rel_path = req_path.strip("/")
++            if ".." not in rel_path:
++                full_path = os.path.join(self.web_client_path, rel_path)
++                if os.path.isfile(full_path):
++                    return self.application.get_handler_delegate(
++                        request,
++                        WebClientFileHandler,
++                        path_args=[rel_path],
++                        target_kwargs={"path": self.web_client_path}
++                    )
++            # SPA fallback: serve index.html for non-API, non-file paths
++            index_path = os.path.join(self.web_client_path, "index.html")
++            if os.path.isfile(index_path):
++                return self.application.get_handler_delegate(
++                    request,
++                    WebClientFileHandler,
++                    path_args=["index.html"],
++                    target_kwargs={"path": self.web_client_path}
++                )
+         return self.application.get_handler_delegate(request, AuthorizedErrorHandler)
+ 
+     def log_request(self, handler: tornado.web.RequestHandler) -> None:
+@@ -240,6 +283,23 @@
+         ):
+             self.mutable_router.add_handler(ptrn, hdlr, None)
+ 
++        # If a web client path is configured, override the root handler
++        if self.mutable_router.web_client_path is not None:
++            self.mutable_router.add_handler(
++                home_pattern,
++                WebClientRootHandler,
++                {"path": self.mutable_router.web_client_path}
++            )
++
++        # Redirect /webcam/ to local camera streamer
++        webcam_uri = config.get("webcam_redirect", None)
++        if webcam_uri is not None:
++            self.mutable_router.add_handler(
++                "/webcam/?(.*)",
++                WebcamRedirectHandler,
++                {"upstream": webcam_uri}
++            )
++
+         # Register handlers
+         logfile = self.server.get_app_args().get('log_file')
+         if logfile:
+@@ -1047,6 +1103,42 @@ class FileUploadHandler(AuthorizedRequestHandler):
+         except Exception:
+             pass
+ 
++# Static file handler for serving a web client (e.g. Mainsail, Fluidd)
++class WebClientFileHandler(tornado.web.StaticFileHandler):
++    def initialize(self, path: str) -> None:
++        super().initialize(path, default_filename="index.html")
++
++    def validate_absolute_path(
++        self, root: str, absolute_path: str
++    ) -> Optional[str]:
++        try:
++            return super().validate_absolute_path(root, absolute_path)
++        except tornado.web.HTTPError:
++            # SPA fallback: return index.html for paths that don't
++            # match a real file (client-side routing)
++            return os.path.join(root, "index.html")
++
++class WebClientRootHandler(tornado.web.RequestHandler):
++    def initialize(self, path: str) -> None:
++        self.root = path
++
++    async def get(self) -> None:
++        index = os.path.join(self.root, "index.html")
++        self.set_header("Content-Type", "text/html; charset=UTF-8")
++        with open(index, "rb") as f:
++            self.finish(f.read())
++
++class WebcamRedirectHandler(tornado.web.RequestHandler):
++    def initialize(self, upstream: str) -> None:
++        self.upstream = upstream.rstrip("/")
++
++    def get(self, path: str = "") -> None:
++        host = self.request.host.split(":")[0]
++        url = f"{self.upstream.replace('127.0.0.1', host).replace('localhost', host)}/{path}"
++        if self.request.query:
++            url += f"?{self.request.query}"
++        self.redirect(url)
++
+ # Default Handler for unregistered endpoints
+ class AuthorizedErrorHandler(AuthorizedRequestHandler):
+     async def prepare(self) -> None:

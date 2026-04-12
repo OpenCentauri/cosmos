@@ -1,0 +1,4 @@
+/.vscode
+
+# Yocto build artifacts (generated locally)
+/build

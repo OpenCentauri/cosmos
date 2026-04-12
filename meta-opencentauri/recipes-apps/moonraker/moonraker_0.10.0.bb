@@ -8,10 +8,15 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=db95b6e40dc7d26d8308b6b7375637b6"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI = "git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
+SRC_URI = " \
+    git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
     file://moonraker-init-d \
     file://ip \
-    file://moonraker.conf"
+    file://moonraker.conf \
+    file://moonraker-readonly.conf \
+    file://0001-Serve-static-files.patch \
+"
+
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
 S = "${WORKDIR}/git"
@@ -47,7 +52,6 @@ RDEPENDS:${PN} = " \
     python3-smart-open \
     python3-msgspec \
     python3-uvloop \
-    nginx \
     kalico \
 "
 
@@ -71,6 +75,11 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
     install -m 0644 ${WORKDIR}/moonraker.conf ${D}${sysconfdir}/klipper/config/
+
+    # Copy readonly config file to readonly folder
+    install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
+    install -m 0644 ${WORKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
+
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
     # Symlink logs to /board-resource
@@ -88,6 +97,7 @@ FILES:${PN} = " \
     ${datadir}/moonraker \
     ${sysconfdir}/init.d/moonraker \
     ${sysconfdir}/klipper/config/moonraker.conf \
+    ${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf \
     ${sysconfdir}/klipper/gcodes \
     ${sysconfdir}/klipper/logs \
 "

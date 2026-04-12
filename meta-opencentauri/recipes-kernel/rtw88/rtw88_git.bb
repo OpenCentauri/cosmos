@@ -15,9 +15,6 @@ S = "${WORKDIR}/git"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}"
 
-# Auto-load the 8821CU module (pulls in rtw_usb, rtw_8821c, rtw_core)
-KERNEL_MODULE_AUTOLOAD += "rtw_8821cu"
-
 # Disable deep power save (RTL8821CU firmware crashes in LPS deep mode)
 KERNEL_MODULE_PROBECONF += "rtw_core"
 module_conf_rtw_core = "options rtw_core disable_lps_deep=Y"

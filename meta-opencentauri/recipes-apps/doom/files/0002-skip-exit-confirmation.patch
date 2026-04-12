@@ -1,0 +1,29 @@
+diff --git a/fbdoom/i_system.c b/fbdoom/i_system.c
+index 5d00091..64b30ae 100644
+--- a/fbdoom/i_system.c
++++ b/fbdoom/i_system.c
+@@ -257,6 +257,8 @@ void I_Quit (void)
+         entry = entry->next;
+     }
+ 
++    exit(0);
++
+ #if ORIGCODE
+     SDL_Quit();
+ 
+diff --git a/fbdoom/m_menu.c b/fbdoom/m_menu.c
+index 5347522..2c43a32 100644
+--- a/fbdoom/m_menu.c
++++ b/fbdoom/m_menu.c
+@@ -1167,10 +1167,7 @@ static char *M_SelectEndMessage(void)
+ 
+ void M_QuitDOOM(int choice)
+ {
+-    DEH_snprintf(endstring, sizeof(endstring), "%s\n\n" DOSY,
+-                 DEH_String(M_SelectEndMessage()));
+-
+-    M_StartMessage(endstring,M_QuitResponse,true);
++    M_QuitResponse(key_menu_confirm);
+ }
+ 
+ 

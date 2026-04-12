@@ -6,12 +6,3 @@
     copytruncate
     nocompress
 }
-
-/var/log/nginx/error.log {
-    size 5k
-    rotate 0
-    missingok
-    notifempty
-    copytruncate
-    nocompress
-}

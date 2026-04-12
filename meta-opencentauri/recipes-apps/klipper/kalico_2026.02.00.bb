@@ -9,10 +9,9 @@ SRC_URI += " \
     file://klipper-init-d \
     file://printer.cfg \
     file://macros.cfg \
-    file://bed.cfg \
-    file://mainboard.cfg \
-    file://toolhead.cfg \
-    file://misc.cfg \
+    file://machine.cfg \
+    file://shell.cfg \
+    file://screen.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -67,10 +66,16 @@ do_compile() {
         -lm
 }
 
+do_install[vardeps] += "DISTRO_NAME DISTRO_VERSION"
+
 do_install() {
     # Install klipper python package
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
+
+    # Set our ver
+    sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
+    echo "${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
@@ -89,8 +94,7 @@ do_install() {
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/macros.cfg ${WORKDIR}/bed.cfg ${WORKDIR}/mainboard.cfg \
-        ${WORKDIR}/toolhead.cfg ${WORKDIR}/misc.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -106,8 +110,7 @@ FILES:${PN} = " \
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/macros.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/bed.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/mainboard.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/toolhead.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/misc.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/machine.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/screen.cfg \
 "
