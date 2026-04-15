@@ -1,0 +1,277 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# SysV init script for HelixScreen
+# For use on systems without systemd (e.g., FlashForge AD5M with BusyBox init)
+#
+# Installation varies by firmware:
+#   Forge-X:      /etc/init.d/S90helixscreen -> /opt/helixscreen
+#   Klipper Mod:  /etc/init.d/S80helixscreen -> /opt/helixscreen (v00.06+)
+#                                            or /root/printer_software/helixscreen (v00.05)
+#
+# The install.sh script automatically selects the correct paths.
+# DAEMON_DIR below is updated by the installer to match the install location.
+#
+# Usage:
+#   /etc/init.d/S*helixscreen start|stop|restart|status
+#
+# Note: S80/S90 prefix ensures we start after network and Moonraker
+
+NAME="helixscreen"
+DESC="HelixScreen 3D Printer Touch UI"
+DAEMON_DIR="/opt/helixscreen"  # Updated by installer for different firmware
+DAEMON="${DAEMON_DIR}/bin/helix-screen"
+SPLASH="${DAEMON_DIR}/bin/helix-splash"
+WATCHDOG="${DAEMON_DIR}/bin/helix-watchdog"
+LAUNCHER="${DAEMON_DIR}/bin/helix-launcher.sh"
+PIDFILE="/var/run/${NAME}.pid"
+LOGFILE="/tmp/helixscreen.log"
+
+# Override asset directory if ui_xml/assets/config are not under DAEMON_DIR
+# Export so helix-screen picks it up at startup
+# HELIX_DATA_DIR="/mnt/data/helixscreen"
+# export HELIX_DATA_DIR
+
+# Ensure HOME is set (BusyBox init may not set it).
+# Without HOME, config backup falls back to volatile /tmp/ and is lost on reboot.
+: "${HOME:=/root}"
+export HOME
+
+# Point user-writable settings at klipper's printer_data so they persist even
+# when the baseline install lives on a read-only rootfs (e.g., the cosmos
+# squashfs). Honored by helix::Config::init in src/system/config.cpp.
+: "${HELIX_CONFIG_DIR:=${HOME}/printer_data/config/helixscreen}"
+export HELIX_CONFIG_DIR
+
+# Ensure config backup directory exists (survives Moonraker's shutil.rmtree wipe).
+# On systemd systems StateDirectory= creates /var/lib/helixscreen/; on SysV we do it here.
+mkdir -p /var/lib/helixscreen 2>/dev/null || mkdir -p "${HOME}/.helixscreen" 2>/dev/null || true
+
+# Check if binary exists
+[ -x "$DAEMON" ] || exit 0
+
+# Platform hook defaults (no-ops). Platform-specific hook files override these.
+platform_stop_competing_uis() { :; }
+platform_enable_backlight() { :; }
+platform_wait_for_services() { :; }
+platform_pre_start() { :; }
+platform_post_stop() { :; }
+platform_wait_for_boot_complete() { :; }
+
+# Source platform hooks if available
+PLATFORM_HOOKS="${DAEMON_DIR}/platform/hooks.sh"
+if [ -f "$PLATFORM_HOOKS" ]; then
+    # shellcheck disable=SC1090  # path depends on DAEMON_DIR set by installer
+    . "$PLATFORM_HOOKS"
+fi
+
+# Stop splash screen
+stop_splash() {
+    if [ -f /var/run/helix-splash.pid ]; then
+        SPLASH_PID=$(cat /var/run/helix-splash.pid)
+        kill "$SPLASH_PID" 2>/dev/null || true
+        rm -f /var/run/helix-splash.pid
+    fi
+}
+
+start() {
+    # Ensure valid CWD before anything else.
+    # The installer or boot system may leave us in a deleted/unmounted directory,
+    # which causes "getcwd: cannot access parent directories" errors from sh and chroot.
+    cd / 2>/dev/null || true
+
+    echo "Starting $DESC..."
+
+    # Platform-specific pre-start (e.g., flag files for firmware coordination)
+    platform_pre_start
+
+    # Stop any competing UIs first
+    platform_stop_competing_uis
+
+    # Enable backlight (some firmware may leave it off)
+    platform_enable_backlight
+
+    # Check if already running. The PIDFILE may store a recycled PID after a
+    # reboot or crash — confirm by looking for the actual helix-screen process
+    # before trusting it. Otherwise a stale PID owned by an unrelated process
+    # makes us return "already running" while no UI is actually up.
+    DAEMON_NAME=$(basename "$DAEMON")
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null && pidof "$DAEMON_NAME" >/dev/null 2>&1; then
+            echo "$NAME is already running (PID $PID)"
+            return 0
+        fi
+        rm -f "$PIDFILE"
+    fi
+    # Catch the no-PIDFILE-but-running case (e.g., started outside this script)
+    if pidof "$DAEMON_NAME" >/dev/null 2>&1; then
+        RUNNING_PID=$(pidof "$DAEMON_NAME" | awk '{print $1}')
+        echo "$NAME is already running (PID $RUNNING_PID, no PID file)"
+        return 0
+    fi
+
+    cd "$DAEMON_DIR" || exit 1
+
+    # Start splash screen early (before launcher) so it's visible during load
+    # Set HELIX_NO_SPLASH=1 to disable splash (for debugging backlight issues)
+    # Splash auto-detects resolution from display hardware
+    EARLY_SPLASH_PID=""
+    if [ -x "$SPLASH" ] && [ "${HELIX_NO_SPLASH:-0}" != "1" ]; then
+        echo "Starting splash screen..."
+        "$SPLASH" >/dev/null 2>&1 &
+        EARLY_SPLASH_PID=$!
+        echo "$EARLY_SPLASH_PID" > /var/run/helix-splash.pid
+    elif [ "${HELIX_NO_SPLASH:-0}" = "1" ]; then
+        echo "Splash screen disabled (HELIX_NO_SPLASH=1)"
+    fi
+
+    # Fork the service wait + helix-screen launch into background
+    # This lets the init script exit so later scripts can run (e.g., S99 starts moonraker)
+    # Without this, we'd deadlock: S90 waits for services, S99 starts them but can't run until S90 finishes
+    (
+        # Wait for required services before starting the main UI
+        # Platform hooks control what (if anything) to wait for
+        if [ "${HELIX_NO_SERVICE_WAIT:-0}" != "1" ]; then
+            platform_wait_for_services
+        fi
+
+        # Wait for platform boot sequence to finish (e.g., ForgeX S99root)
+        # Ensures no other process is writing to the framebuffer when helix-screen starts
+        if [ "${HELIX_NO_BOOT_WAIT:-0}" != "1" ]; then
+            platform_wait_for_boot_complete
+        fi
+
+        # Use launcher script if available (handles watchdog)
+        # Pass early splash PID so watchdog doesn't start another splash
+        if [ -x "$LAUNCHER" ]; then
+            if [ -n "$EARLY_SPLASH_PID" ]; then
+                export HELIX_SPLASH_PID="$EARLY_SPLASH_PID"
+            fi
+            cd "$DAEMON_DIR" && exec $LAUNCHER
+        else
+            # Fallback: start daemon directly
+            cd "$DAEMON_DIR" && exec "$DAEMON" --splash-pid="$EARLY_SPLASH_PID"
+        fi
+    ) >> "$LOGFILE" 2>&1 &
+    echo $! > "$PIDFILE"
+
+    # Wait briefly and check if started
+    sleep 2
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "$NAME started (PID $PID)"
+            return 0
+        fi
+    fi
+
+    echo "Failed to start $NAME"
+    stop_splash
+    return 1
+}
+
+stop() {
+    echo "Stopping $DESC..."
+
+    # Stop splash first
+    stop_splash
+
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            # Wait for process to exit
+            for _ in 1 2 3 4 5; do
+                if ! kill -0 "$PID" 2>/dev/null; then
+                    break
+                fi
+                sleep 1
+            done
+            # Force kill if still running
+            if kill -0 "$PID" 2>/dev/null; then
+                kill -9 "$PID" 2>/dev/null || true
+            fi
+        fi
+        rm -f "$PIDFILE"
+    fi
+
+    # Also kill by name in case PID file is stale or the launcher died before
+    # signaling its children. Kill watchdog first to prevent crash dialog flash
+    # during clean shutdown. SIGTERM then SIGKILL: helix-watchdog and helix-screen
+    # may catch SIGTERM without exiting (splash handoff, blocked I/O).
+    WATCHDOG_NAME=$(basename "$WATCHDOG")
+    DAEMON_NAME=$(basename "$DAEMON")
+    SPLASH_NAME=$(basename "$SPLASH")
+    for proc in "$WATCHDOG_NAME" "$DAEMON_NAME" "$SPLASH_NAME"; do
+        pids=$(pidof "$proc" 2>/dev/null || true)
+        [ -n "$pids" ] || continue
+        # shellcheck disable=SC2086
+        kill $pids 2>/dev/null || true
+    done
+    # Give caught-SIGTERM handlers a moment, then SIGKILL any survivors.
+    sleep 1
+    for proc in "$WATCHDOG_NAME" "$DAEMON_NAME" "$SPLASH_NAME"; do
+        pids=$(pidof "$proc" 2>/dev/null || true)
+        [ -n "$pids" ] || continue
+        # shellcheck disable=SC2086
+        kill -9 $pids 2>/dev/null || true
+    done
+
+    # Platform-specific post-stop cleanup (e.g., remove flag files)
+    # Runs after daemon is fully stopped so platform can safely reclaim resources
+    platform_post_stop
+
+    echo "$NAME stopped"
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+status() {
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "$NAME is running (PID $PID)"
+            return 0
+        fi
+        echo "$NAME is not running (stale PID file)"
+        return 1
+    fi
+
+    # Check if running without PID file
+    if command -v pidof >/dev/null 2>&1; then
+        PID=$(pidof "$(basename "$DAEMON")" 2>/dev/null)
+        if [ -n "$PID" ]; then
+            echo "$NAME is running (PID $PID) [no PID file]"
+            return 0
+        fi
+    fi
+
+    echo "$NAME is not running"
+    return 1
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart|reload)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit $?
