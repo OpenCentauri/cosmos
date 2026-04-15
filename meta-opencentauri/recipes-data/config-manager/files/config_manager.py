@@ -3,7 +3,7 @@ import os, configparser, sys
 
 VALIDATORS = {
     'ui': {
-        'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen'],
+        'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen', 'helixscreen'],
         'web_ui': ['mainsail', 'fluidd'],
     },
     'update': {
