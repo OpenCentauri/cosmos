@@ -1,17 +1,17 @@
-# Elegoo CANVAS Lite filament switcher - Klipper integration
+# Elegoo E400 Lite filament switcher — Klipper integration
 #
-# Communicates with the CANVAS Lite 4-channel AMS-style filament changer
+# Communicates with the E400 Lite 4-channel AMS-style filament changer
 # via Modbus RTU (over UART/USB-UART adapter) or USB CDC debug CLI.
 #
 # Protocol reference: ../PROTOCOL.md
 #
-# Copyright 2024 - released under GPL-v3 (same as Klipper)
+# Copyright 2024 — released under GPL-v3 (same as Klipper)
 
 import serial
 import struct
 import logging
 
-# -- Modbus register map ----------------------------------------------
+# ── Modbus register map ──────────────────────────────────────────────
 
 # Write registers (FC06)
 REG_W_RFID_ENABLE    = 0x3000
@@ -29,7 +29,7 @@ REG_W_LOAD_X_DIST    = 0x3086
 REG_W_UNLOAD_X_DIST  = 0x3087
 
 # Read registers (FC03)
-REG_R_CHAN_STATE     = 0x3034  # active channel + channel state
+REG_R_CHAN_STATE      = 0x3034  # active channel + channel state
 REG_R_ACTIVE_CH      = 0x3037
 REG_R_FILAMENT_DET   = 0x304B  # per-channel filament presence bitmask
 REG_R_SW_VERSION     = 0x3190  # (major<<8)|(minor<<4)|patch
@@ -37,7 +37,7 @@ REG_R_HW_VERSION     = 0x3191
 REG_R_SERIAL         = 0x3192
 
 
-# -- Modbus CRC-16 ----------------------------------------------------
+# ── Modbus CRC-16 ────────────────────────────────────────────────────
 
 def _crc16(data):
     """Standard Modbus CRC-16 (poly 0xA001, init 0xFFFF)."""
@@ -52,15 +52,15 @@ def _crc16(data):
     return crc & 0xFFFF
 
 
-# -- Exception ---------------------------------------------------------
+# ── Exception ─────────────────────────────────────────────────────────
 
-class CANVASError(Exception):
+class E400Error(Exception):
     pass
 
 
-# -- Main class --------------------------------------------------------
+# ── Main class ────────────────────────────────────────────────────────
 
-class ElegooCANVAS:
+class ElegooE400:
     def __init__(self, config):
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
@@ -83,29 +83,29 @@ class ElegooCANVAS:
 
         if self.mode not in ('modbus', 'cli'):
             raise config.error(
-                "elegoo_canvas: 'mode' must be 'modbus' or 'cli'")
+                "elegoo_e400: 'mode' must be 'modbus' or 'cli'")
 
         self.ser = None
         self.current_tool = -1
 
         # Register GCode commands
         for name, handler, desc in [
-            ("CANVAS_STATUS",      self.cmd_STATUS,
-             "Report CANVAS status"),
-            ("CANVAS_VERSION",     self.cmd_VERSION,
-             "Report CANVAS firmware version"),
-            ("CANVAS_LOAD",        self.cmd_LOAD,
-             "Load filament: CANVAS_LOAD CHANNEL=<0-3>"),
-            ("CANVAS_UNLOAD",      self.cmd_UNLOAD,
-             "Unload filament: CANVAS_UNLOAD CHANNEL=<0-3>"),
-            ("CANVAS_SELECT",      self.cmd_SELECT,
-             "Set active channel: CANVAS_SELECT CHANNEL=<0-3>"),
-            ("CANVAS_CHANGE_TOOL", self.cmd_CHANGE_TOOL,
-             "Full tool change: CANVAS_CHANGE_TOOL CHANNEL=<0-3>"),
-            ("CANVAS_SET_SPEEDS",  self.cmd_SET_SPEEDS,
-             "Set CANVAS speeds: LOAD=<mm/s> UNLOAD=<mm/s>"),
-            ("CANVAS_CLEAR_ERROR", self.cmd_CLEAR_ERROR,
-             "Attempt to clear CANVAS error state"),
+            ('EL_CANVAS_CC_STATUS',      self.cmd_STATUS,
+             "Report E400 Lite status"),
+            ('EL_CANVAS_CC_VERSION',     self.cmd_VERSION,
+             "Report E400 Lite firmware version"),
+            ('EL_CANVAS_CC_LOAD',        self.cmd_LOAD,
+             "Load filament: EL_CANVAS_CC_LOAD CHANNEL=<0-3>"),
+            ('EL_CANVAS_CC_UNLOAD',      self.cmd_UNLOAD,
+             "Unload filament: EL_CANVAS_CC_UNLOAD CHANNEL=<0-3>"),
+            ('EL_CANVAS_CC_SELECT',      self.cmd_SELECT,
+             "Set active channel: EL_CANVAS_CC_SELECT CHANNEL=<0-3>"),
+            ('EL_CANVAS_CC_CHANGE_TOOL', self.cmd_CHANGE_TOOL,
+             "Full tool change: EL_CANVAS_CC_CHANGE_TOOL CHANNEL=<0-3>"),
+            ('EL_CANVAS_CC_SET_SPEEDS',  self.cmd_SET_SPEEDS,
+             "Set E400 Lite speeds: LOAD=<mm/s> UNLOAD=<mm/s>"),
+            ('EL_CANVAS_CC_CLEAR_ERROR', self.cmd_CLEAR_ERROR,
+             "Attempt to clear E400 Lite error state"),
         ]:
             self.gcode.register_command(name, handler, desc=desc)
 
@@ -114,7 +114,7 @@ class ElegooCANVAS:
         self.printer.register_event_handler(
             'klippy:disconnect', self._handle_disconnect)
 
-    # -- Klipper object interface --------------------------------------
+    # ── Klipper object interface ──────────────────────────────────────
 
     def get_status(self, eventtime):
         return {
@@ -122,7 +122,7 @@ class ElegooCANVAS:
             'mode': self.mode,
         }
 
-    # -- Lifecycle -----------------------------------------------------
+    # ── Lifecycle ─────────────────────────────────────────────────────
 
     def _handle_connect(self):
         self._open_serial()
@@ -149,28 +149,28 @@ class ElegooCANVAS:
                 stopbits=serial.STOPBITS_ONE,
                 timeout=self.serial_timeout,
             )
-            logging.info("CANVAS: opened %s @ %d baud (%s mode)",
+            logging.info("E400: opened %s @ %d baud (%s mode)",
                          self.serial_port, self.baud, self.mode)
         except Exception as e:
             raise self.printer.config_error(
-                "CANVAS: cannot open serial port %s: %s"
+                "E400: cannot open serial port %s: %s"
                 % (self.serial_port, e))
 
     def _modbus_probe(self):
         """Read version and active channel at startup."""
         try:
             ver = self._read_version()
-            self.gcode.respond_info("CANVAS Lite firmware %s" % ver)
-        except CANVASError as e:
-            logging.warning("CANVAS: version query failed: %s", e)
+            self.gcode.respond_info("E400 Lite firmware %s" % ver)
+        except E400Error as e:
+            logging.warning("E400: version query failed: %s", e)
         try:
             ch = self._read_active_channel()
             self.current_tool = ch
-            self.gcode.respond_info("CANVAS active channel: %d" % ch)
-        except CANVASError as e:
-            logging.warning("CANVAS: channel query failed: %s", e)
+            self.gcode.respond_info("E400 active channel: %d" % ch)
+        except E400Error as e:
+            logging.warning("E400: channel query failed: %s", e)
 
-    # -- Modbus RTU transport ------------------------------------------
+    # ── Modbus RTU transport ──────────────────────────────────────────
 
     def _mb_build(self, fc, register, value):
         pdu = struct.pack('>BBHH', self.slave_addr, fc, register, value)
@@ -178,7 +178,7 @@ class ElegooCANVAS:
 
     def _mb_transact(self, tx, rx_len):
         if not self.ser or not self.ser.is_open:
-            raise CANVASError("serial port not open")
+            raise E400Error("serial port not open")
         last_err = None
         for attempt in range(1 + self.retries):
             try:
@@ -187,43 +187,43 @@ class ElegooCANVAS:
                 self.ser.flush()
                 rx = self.ser.read(rx_len)
                 if len(rx) < 5:
-                    last_err = CANVASError(
+                    last_err = E400Error(
                         "short response (%d/%d bytes)"
                         % (len(rx), rx_len))
                     continue
                 # CRC
                 if _crc16(rx[:-2]) != struct.unpack('<H', rx[-2:])[0]:
-                    last_err = CANVASError("CRC mismatch")
+                    last_err = E400Error("CRC mismatch")
                     continue
                 # Slave address
                 if rx[0] != self.slave_addr:
-                    raise CANVASError("wrong slave addr %d" % rx[0])
+                    raise E400Error("wrong slave addr %d" % rx[0])
                 # Modbus exception response
                 if rx[1] & 0x80:
-                    raise CANVASError(
+                    raise E400Error(
                         "Modbus exception 0x%02X" % rx[2])
                 return rx
             except (OSError, serial.SerialException) as e:
-                last_err = CANVASError("serial I/O: %s" % e)
+                last_err = E400Error("serial I/O: %s" % e)
         raise last_err
 
     def _write_reg(self, register, value):
-        """FC06 - write single holding register."""
+        """FC06 — write single holding register."""
         tx = self._mb_build(0x06, register, value & 0xFFFF)
         self._mb_transact(tx, 8)
 
     def _read_regs(self, register, count=1):
-        """FC03 - read holding registers. Returns list of uint16."""
+        """FC03 — read holding registers. Returns list of uint16."""
         tx = self._mb_build(0x03, register, count)
         rx = self._mb_transact(tx, 5 + 2 * count)
         data = rx[3:-2]
         return [struct.unpack('>H', data[i:i+2])[0]
                 for i in range(0, len(data), 2)]
 
-    # -- CLI transport -------------------------------------------------
+    # ── CLI transport ─────────────────────────────────────────────────
 
     def _cli_activate(self):
-        """Send ENTER x2 to activate the CANVAS debug CLI."""
+        """Send ENTER x2 to activate the E400 debug CLI."""
         if not self.ser:
             return
         try:
@@ -231,18 +231,18 @@ class ElegooCANVAS:
             self.ser.flush()
             self.reactor.pause(self.reactor.monotonic() + 0.5)
             self.ser.reset_input_buffer()
-            logging.info("CANVAS: CLI activation sequence sent")
+            logging.info("E400: CLI activation sequence sent")
         except Exception as e:
-            logging.warning("CANVAS: CLI activation failed: %s", e)
+            logging.warning("E400: CLI activation failed: %s", e)
 
     def _cli_send(self, command):
         if not self.ser:
-            raise CANVASError("serial port not open")
+            raise E400Error("serial port not open")
         self.ser.reset_input_buffer()
         self.ser.write(('%s\r\n' % command).encode('ascii'))
         self.ser.flush()
 
-    # -- High-level reads (Modbus only) --------------------------------
+    # ── High-level reads (Modbus only) ────────────────────────────────
 
     def _read_version(self):
         v = self._read_regs(REG_R_SW_VERSION)[0]
@@ -259,14 +259,14 @@ class ElegooCANVAS:
     def _read_filament_bitmask(self):
         return self._read_regs(REG_R_FILAMENT_DET)[0]
 
-    # -- Wait for operation completion ---------------------------------
+    # ── Wait for operation completion ─────────────────────────────────
 
     def _wait_op(self, timeout, label="operation"):
         if self.mode == 'cli':
             self.reactor.pause(
                 self.reactor.monotonic() + self.cli_wait)
             return
-        # Modbus: let the CANVAS start the operation, then poll for
+        # Modbus: let the E400 start the operation, then poll for
         # state stability (3 consecutive identical reads).
         deadline = self.reactor.monotonic() + timeout
         self.reactor.pause(
@@ -280,19 +280,19 @@ class ElegooCANVAS:
                     stable += 1
                     if stable >= 3:
                         logging.info(
-                            "CANVAS: %s done (state 0x%02X)", label, state)
+                            "E400: %s done (state 0x%02X)", label, state)
                         return
                 else:
                     stable = 0
                 prev = state
-            except CANVASError as e:
-                logging.debug("CANVAS: poll error in %s: %s", label, e)
+            except E400Error as e:
+                logging.debug("E400: poll error in %s: %s", label, e)
                 stable = 0
             self.reactor.pause(
                 self.reactor.monotonic() + self.poll_interval)
-        raise CANVASError("%s timed out (%.0fs)" % (label, timeout))
+        raise E400Error("%s timed out (%.0fs)" % (label, timeout))
 
-    # -- Operations ----------------------------------------------------
+    # ── Operations ────────────────────────────────────────────────────
 
     def _do_load(self, channel):
         if self.mode == 'modbus':
@@ -313,7 +313,7 @@ class ElegooCANVAS:
             self._write_reg(REG_W_SELECT, channel)
         self.current_tool = channel
 
-    # -- GCode command handlers ----------------------------------------
+    # ── GCode command handlers ────────────────────────────────────────
 
     def cmd_STATUS(self, gcmd):
         if self.mode == 'modbus':
@@ -321,106 +321,106 @@ class ElegooCANVAS:
                 ch, state = self._read_channel_state()
                 fdet = self._read_filament_bitmask()
                 gcmd.respond_info(
-                    "CANVAS: channel=%d state=0x%02X filament=0x%02X "
+                    "E400: channel=%d state=0x%02X filament=0x%02X "
                     "current_tool=%d" % (ch, state, fdet, self.current_tool))
                 for i in range(4):
                     detected = bool(fdet & (1 << i))
                     gcmd.respond_info("  ch%d: %s" % (
                         i, "filament detected" if detected else "empty"))
-            except CANVASError as e:
-                gcmd.respond_info("CANVAS status error: %s" % e)
+            except E400Error as e:
+                gcmd.respond_info("E400 status error: %s" % e)
         else:
             gcmd.respond_info(
-                "CANVAS (CLI mode): current_tool=%d" % self.current_tool)
+                "E400 (CLI mode): current_tool=%d" % self.current_tool)
 
     def cmd_VERSION(self, gcmd):
         if self.mode != 'modbus':
-            gcmd.respond_info("CANVAS: version query requires modbus mode")
+            gcmd.respond_info("E400: version query requires modbus mode")
             return
         try:
             ver = self._read_version()
-            gcmd.respond_info("CANVAS Lite firmware: %s" % ver)
-        except CANVASError as e:
-            gcmd.respond_info("CANVAS version error: %s" % e)
+            gcmd.respond_info("E400 Lite firmware: %s" % ver)
+        except E400Error as e:
+            gcmd.respond_info("E400 version error: %s" % e)
 
     def cmd_LOAD(self, gcmd):
         ch = gcmd.get_int('CHANNEL', minval=0, maxval=3)
-        gcmd.respond_info("CANVAS: loading channel %d ..." % ch)
+        gcmd.respond_info("E400: loading channel %d ..." % ch)
         try:
             self._do_load(ch)
-        except CANVASError as e:
-            raise self.gcode.error("CANVAS: load failed: %s" % e)
+        except E400Error as e:
+            raise self.gcode.error("E400: load failed: %s" % e)
         self.current_tool = ch
-        gcmd.respond_info("CANVAS: channel %d loaded" % ch)
+        gcmd.respond_info("E400: channel %d loaded" % ch)
 
     def cmd_UNLOAD(self, gcmd):
         ch = gcmd.get_int('CHANNEL', minval=0, maxval=3)
-        gcmd.respond_info("CANVAS: unloading channel %d ..." % ch)
+        gcmd.respond_info("E400: unloading channel %d ..." % ch)
         try:
             self._do_unload(ch)
-        except CANVASError as e:
-            raise self.gcode.error("CANVAS: unload failed: %s" % e)
-        gcmd.respond_info("CANVAS: channel %d unloaded" % ch)
+        except E400Error as e:
+            raise self.gcode.error("E400: unload failed: %s" % e)
+        gcmd.respond_info("E400: channel %d unloaded" % ch)
 
     def cmd_SELECT(self, gcmd):
         ch = gcmd.get_int('CHANNEL', minval=0, maxval=3)
         try:
             self._do_select(ch)
-        except CANVASError as e:
-            raise self.gcode.error("CANVAS: select failed: %s" % e)
-        gcmd.respond_info("CANVAS: active channel set to %d" % ch)
+        except E400Error as e:
+            raise self.gcode.error("E400: select failed: %s" % e)
+        gcmd.respond_info("E400: active channel set to %d" % ch)
 
     def cmd_CHANGE_TOOL(self, gcmd):
         ch = gcmd.get_int('CHANNEL', minval=0, maxval=3)
         if self.current_tool == ch:
-            gcmd.respond_info("CANVAS: already on channel %d" % ch)
+            gcmd.respond_info("E400: already on channel %d" % ch)
             return
         old = self.current_tool
-        gcmd.respond_info("CANVAS: tool change %d -> %d" % (old, ch))
+        gcmd.respond_info("E400: tool change %d -> %d" % (old, ch))
         try:
             if old >= 0:
                 self._do_unload(old)
             self._do_select(ch)
             self._do_load(ch)
-        except CANVASError as e:
-            raise self.gcode.error("CANVAS: tool change failed: %s" % e)
-        gcmd.respond_info("CANVAS: now on channel %d" % ch)
+        except E400Error as e:
+            raise self.gcode.error("E400: tool change failed: %s" % e)
+        gcmd.respond_info("E400: now on channel %d" % ch)
 
     def cmd_SET_SPEEDS(self, gcmd):
         if self.mode != 'modbus':
             raise self.gcode.error(
-                "CANVAS: SET_SPEEDS requires modbus mode")
+                "E400: SET_SPEEDS requires modbus mode")
         load_spd = gcmd.get_int('LOAD', None, minval=1, maxval=200)
         unload_spd = gcmd.get_int('UNLOAD', None, minval=1, maxval=200)
         try:
             if load_spd is not None:
                 self._write_reg(REG_W_LOAD_SPD, load_spd)
                 gcmd.respond_info(
-                    "CANVAS: load speed -> %d mm/s" % load_spd)
+                    "E400: load speed -> %d mm/s" % load_spd)
             if unload_spd is not None:
                 self._write_reg(REG_W_UNLOAD_SPD, unload_spd)
                 gcmd.respond_info(
-                    "CANVAS: unload speed -> %d mm/s" % unload_spd)
-        except CANVASError as e:
-            raise self.gcode.error("CANVAS: set speeds failed: %s" % e)
+                    "E400: unload speed -> %d mm/s" % unload_spd)
+        except E400Error as e:
+            raise self.gcode.error("E400: set speeds failed: %s" % e)
         if load_spd is None and unload_spd is None:
-            gcmd.respond_info("Usage: CANVAS_SET_SPEEDS LOAD=N UNLOAD=N")
+            gcmd.respond_info("Usage: EL_CANVAS_CC_SET_SPEEDS LOAD=N UNLOAD=N")
 
     def cmd_CLEAR_ERROR(self, gcmd):
         if self.mode != 'modbus':
             gcmd.respond_info(
-                "CANVAS: CLEAR_ERROR not available in CLI mode")
+                "E400: CLEAR_ERROR not available in CLI mode")
             return
         try:
-            # Re-select the current channel - this resets the command
+            # Re-select the current channel — this resets the command
             # register and clears transient error states.
             if self.current_tool >= 0:
                 self._write_reg(REG_W_SELECT, self.current_tool)
-            gcmd.respond_info("CANVAS: error clear sent")
-        except CANVASError as e:
+            gcmd.respond_info("E400: error clear sent")
+        except E400Error as e:
             raise self.gcode.error(
-                "CANVAS: clear error failed: %s" % e)
+                "E400: clear error failed: %s" % e)
 
 
 def load_config(config):
-    return ElegooCANVAS(config)
+    return ElegooE400(config)
