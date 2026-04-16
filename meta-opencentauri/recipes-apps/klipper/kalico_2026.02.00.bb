@@ -73,6 +73,9 @@ do_install() {
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
 
+    # Override input shaping script from pellcorp
+    cp -r ${S}/pellcorp/klippy/extras/resonance_tester.py ${D}${datadir}/klipper/klippy/extras/resonance_tester.py
+
     # Set our ver
     sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
     echo "${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version

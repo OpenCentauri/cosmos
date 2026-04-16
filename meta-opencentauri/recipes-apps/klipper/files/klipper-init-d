@@ -11,6 +11,7 @@
 KLIPPY_EXEC="/usr/bin/python3"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py /etc/klipper/config/printer.cfg -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
+export TMPDIR="/user-resource/.tmp"
 
 case "$1" in
     start)
