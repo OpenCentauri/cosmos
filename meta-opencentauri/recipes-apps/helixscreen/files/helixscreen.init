@@ -15,6 +15,8 @@ HELIX_LAUNCHER="@HELIX_BINDIR@/helix-launcher.sh"
 HELIX_DATA_DIR="@HELIX_DATA_DIR@"
 HELIX_CONFIG_DIR="@HELIX_USER_CONFIG_DIR@"
 
+# gui.pid (not helixscreen.pid): cosmos gui-switcher's stop handler reads
+# /var/run/gui.pid to kill the active UI. Must match guppyscreen/grumpyscreen.
 PIDFILE=/var/run/gui.pid
 
 export HELIX_DATA_DIR HELIX_CONFIG_DIR
