@@ -158,10 +158,15 @@ pkg_postinst:${PN}() {
     if [ -d "$legacy_dir" ] && [ ! -f "$target_dir/.migrated_from_tarball" ]; then
         mkdir -p "$target_dir"
 
-        # Writable user state — copy if present, never overwrite existing files
-        # in the new dir (so a prior opkg install's state wins over an even
-        # older tarball).
-        for f in settings.json helixconfig.json telemetry_config.json \
+        # Writable user state — copy if present. For settings.json specifically,
+        # OVERWRITE the cc1 preset that do_install placed — the user's tarball
+        # settings contain their actual preferences/calibration, which matter more
+        # than the shipped default. For everything else, don't overwrite (so a
+        # prior opkg install's state wins over an even older tarball).
+        if [ -f "$legacy_dir/settings.json" ]; then
+            cp "$legacy_dir/settings.json" "$target_dir/settings.json"
+        fi
+        for f in helixconfig.json telemetry_config.json \
                  telemetry_device.json telemetry_queue.json \
                  telemetry_snapshot.json tool_spools.json \
                  ace_slot_overrides.json pending_remap.json \
