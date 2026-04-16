@@ -1,0 +1,23 @@
+From: HelixScreen packaging
+Subject: [PATCH] CMakeLists: set VERSION/SOVERSION on the shared lib target
+
+Without this, libhv's shared library gets installed as a plain "libhv.so"
+with no DT_SONAME, which means downstream binaries linking against -lhv
+end up with DT_NEEDED=libhv.so (the unversioned, dev-only name) rather
+than DT_NEEDED=libhv.so.1. They then fail to find the library at runtime
+when the dev package isn't installed.
+
+Setting VERSION + SOVERSION lets CMake produce the standard symlink chain
+(libhv.so -> libhv.so.1 -> libhv.so.1.3.4) and stamp the correct DT_SONAME
+into the ELF, so the runtime package alone is enough to satisfy the dep.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -253,6 +253,7 @@ if(BUILD_SHARED)
+     target_include_directories(hv PRIVATE ${LIBHV_SRCDIRS}
+         INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+     target_link_libraries(hv ${LIBS})
++    set_target_properties(hv PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION 1)
+     install(TARGETS hv
+         EXPORT libhvConfig
+         ARCHIVE DESTINATION lib
