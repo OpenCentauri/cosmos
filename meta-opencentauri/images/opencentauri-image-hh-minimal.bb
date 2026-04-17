@@ -46,6 +46,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     logrotate \
     happy-hare \
     mainsail \
+    backlight-off \
 "
 
 # zram auf 200% für MMU-Betrieb (ausgewogen für 128MB RAM = 256MB Swap)
