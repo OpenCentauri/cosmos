@@ -62,6 +62,10 @@ SITECONF
         echo "========================================"
         echo ""
 
+        # Clean and rebuild backlight-off to ensure IPK is available
+        bitbake backlight-off -c clean
+        bitbake backlight-off
+
         # Build SWUpdate images (pass any arguments or build all)
         if [ -n "$1" ]; then
             bitbake "$@"
