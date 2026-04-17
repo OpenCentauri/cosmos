@@ -1,0 +1,136 @@
+# Happy Hare Hardware Konfiguration für FYSETC ERB V2.0
+# Elegoo Centauri Carbon 1 (128MB RAM optimiert)
+#
+# Diese Datei enthält die Motor-Treiber und mechanischen Einstellungen
+#
+
+# =============================================================================
+# TMC2209 Treiber-Konfiguration
+# =============================================================================
+
+# Gear Stepper (TMC2209 onboard)
+[tmc2209 stepper_mmu_gear]
+uart_pin: mmu:gpio11
+uart_address: 0
+interpolate: false  # RAM-Optimierung: Weniger Interpolation
+run_current: 0.8    # Anpassen an Motor (NEMA14 typisch: 0.6-1.0A)
+hold_current: 0.4   # 50% von run_current
+sense_resistor: 0.110
+stealthchop_threshold: 0  # Force SpreadCycle für bessere Kontrolle
+# Optional für Touch Homing (StallGuard):
+#diag_pin: ^mmu:gpio13
+#driver_SGTHRS: 60
+
+# Selector Stepper (TMC2209 onboard)
+[tmc2209 stepper_mmu_selector]
+uart_pin: mmu:gpio17
+uart_address: 1
+interpolate: false  # RAM-Optimierung
+run_current: 0.6    # NEMA17 typisch: 0.5-0.8A
+hold_current: 0.3   # 50% von run_current
+sense_resistor: 0.110
+stealthchop_threshold: 100  # StealthChop im Home für leisere Operation
+# Optional für Touch Homing:
+#diag_pin: ^mmu:gpio19
+#driver_SGTHRS: 55
+
+# =============================================================================
+# Mechanische Konfiguration
+# =============================================================================
+
+# Gear Stepper Mechanik
+[stepper_mmu_gear]
+rotation_distance: 22.7316868  # Bondtech 5mm Drive Gears
+# Alternative für andere Getriebe:
+#rotation_distance: 6.283185307179586  # Direktantrieb
+microsteps: 16
+full_steps_per_rotation: 200
+# Gear Ratio für ERCF v2:
+# 80:1 für Selector, 52:10 für Gear (abhängig vom Build)
+
+# Selector Stepper Mechanik
+[stepper_mmu_selector]
+rotation_distance: 40  # Anpassen an tatsächliche Distanz pro Rotation
+microsteps: 16
+full_steps_per_rotation: 200
+# Endstop für Selector Homing
+endstop_pin: ^mmu:gpio24
+endstop_name: mmu_selector_endstop
+
+# =============================================================================
+# Servo-Konfiguration
+# =============================================================================
+
+# Selector Servo (Gate-Verriegelung)
+[mmu_servo selector_servo]
+pin: mmu:gpio23
+minimum_pulse_width: 0.001000
+maximum_pulse_width: 0.002000
+maximum_servo_angle: 180
+# Servo-Positionen (werden in mmu_parameters.cfg überschrieben)
+#up_angle: 90
+#down_angle: 0
+
+# =============================================================================
+# Encoder-Konfiguration
+# =============================================================================
+
+# Encoder für Filamentbewegungsmessung
+[mmu_encoder mmu_encoder]
+encoder_pin: ^mmu:gpio22
+encoder_resolution: 1.0  # mm pro Count (wird kalibriert)
+# RAM-Optimierung: Weniger Samples für weniger Memory
+#sample_time: 0.1
+
+# =============================================================================
+# LED-Konfiguration
+# =============================================================================
+
+# Neopixel LEDs für Status-Anzeige
+[neopixel mmu_leds]
+pin: mmu:gpio21
+chain_count: 12  # Anzahl Gates (anpassen: 6 oder 12)
+color_order: GRB
+initial_RED: 0.0
+initial_GREEN: 0.5
+initial_BLUE: 0.0
+
+# =============================================================================
+# Sensor-Konfiguration
+# =============================================================================
+
+# Alle Filament-Sensoren
+[mmu_sensors]
+# Gate Sensor (Hall-Effekt, gemeinsamer Sensor)
+gate_switch_pin: ^mmu:gpio25
+
+# Pre-Gate Sensoren (individuell pro Gate)
+pre_gate_switch_pin_0: ^mmu:gpio12
+pre_gate_switch_pin_1: ^mmu:gpio18
+pre_gate_switch_pin_2: ^mmu:gpio2
+pre_gate_switch_pin_3: ^mmu:gpio3
+pre_gate_switch_pin_4: ^mmu:gpio4
+pre_gate_switch_pin_5: ^mmu:gpio5
+pre_gate_switch_pin_6: ^mmu:gpio6
+pre_gate_switch_pin_7: ^mmu:gpio7
+pre_gate_switch_pin_8: ^mmu:gpio26
+pre_gate_switch_pin_9: ^mmu:gpio27
+pre_gate_switch_pin_10: ^mmu:gpio28
+pre_gate_switch_pin_11: ^mmu:gpio29
+
+# Post-Gear Sensoren (optional, nach dem Getriebe)
+#post_gear_switch_pin_0:
+#post_gear_switch_pin_1:
+#post_gear_switch_pin_2:
+#post_gear_switch_pin_3:
+#post_gear_switch_pin_4:
+#post_gear_switch_pin_5:
+
+# Toolhead/Extruder Sensoren (optional)
+#extruder_switch_pin:
+#toolhead_switch_pin:
+
+# Sync Feedback (optional für Spannungs-/Druckmessung)
+#sync_feedback_tension_pin:
+#sync_feedback_compression_pin:
+#sync_feedback_analog_pin:
