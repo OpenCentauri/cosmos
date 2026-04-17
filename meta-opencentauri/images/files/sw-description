@@ -59,7 +59,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0 init=/sbin/preinit";
                 },
                 {
                     name = "bootcmd_";
@@ -144,7 +144,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0 init=/sbin/preinit";
                 },
                 {
                     name = "bootcmd_";

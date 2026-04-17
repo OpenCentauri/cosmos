@@ -25,9 +25,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     atomscreen \
     guppyscreen \
     grumpyscreen \
-    htop \
     i2c-tools \
-    nano \
     devmem2 \
     ustreamer \
     swupdate \
@@ -42,6 +40,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     logrotate \
     fbdoom \
     v4l-utils \
+    initscripts \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

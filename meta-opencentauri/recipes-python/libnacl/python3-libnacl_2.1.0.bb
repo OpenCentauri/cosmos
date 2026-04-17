@@ -6,5 +6,7 @@ inherit pypi python_poetry_core
 SRC_URI[sha256sum] = "f3418da7df29e6d9b11fd7d990289d16397dc1020e4e35192e11aee826922860"
 
 RDEPENDS:${PN} += " \
-    libsodium \
+    libsodium-dev \
 "
+
+INSANE_SKIP:${PN} += "dev-deps"

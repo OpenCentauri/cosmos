@@ -10,6 +10,10 @@ SRC_URI += " \
 DEPENDS += "allwinner-ota-burnboot"
 RDEPENDS:${PN} += "allwinner-ota-burnboot"
 
+SECURITY_LDFLAGS:remove = "-Wl,--gc-sections"
+TARGET_LDFLAGS:remove = "-Wl,--gc-sections"
+LDFLAGS:remove = "-Wl,--gc-sections"
+
 do_install:append() {
     install -d ${D}${sysconfdir}
     install -m 0644 ${WORKDIR}/swupdate.cfg ${D}${sysconfdir}/swupdate.cfg
