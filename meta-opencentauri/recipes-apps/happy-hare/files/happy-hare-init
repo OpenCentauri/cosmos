@@ -1,0 +1,40 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: happy-hare-setup
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Happy Hare MMU Setup
+# Description: Sets up Happy Hare MMU configuration on first boot
+### END INIT INFO
+
+case "$1" in
+    start)
+        # Check if MMU config needs setup
+        if [ ! -f /etc/klipper/config/mmu/mmu.cfg ]; then
+            echo "Setting up Happy Hare MMU configuration..."
+            
+            # Copy default config if exists
+            if [ -d /usr/share/happy-hare/config ]; then
+                cp -r /usr/share/happy-hare/config/*.cfg /etc/klipper/config/mmu/ 2>/dev/null || true
+            fi
+            
+            # Setup symlinks for Moonraker update manager
+            if [ -d /home/mainsail ]; then
+                ln -sf /usr/share/happy-hare /home/mainsail/Happy-Hare 2>/dev/null || true
+            fi
+        fi
+        ;;
+    stop)
+        ;;
+    restart)
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

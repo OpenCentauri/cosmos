@@ -1,0 +1,25 @@
+# Yocto Build-Verzeichnis (riesig, wird im Container neu gebaut)
+build/
+
+# Git
+.git/
+.gitmodules
+
+# Cache (kann im Container neu erstellt werden)
+cache/
+
+# Logs (lokal, nicht im Container benötigt)
+*.log
+build-log.txt
+build-docker-log.txt
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporäre Dateien
+*.tmp
+*.bak
