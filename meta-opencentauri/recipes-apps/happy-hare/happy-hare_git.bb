@@ -9,9 +9,6 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "git://github.com/moggieuk/Happy-Hare.git;protocol=https;branch=main \
     file://mmu \
-    file://mmu.cfg.erb-v2 \
-    file://mmu_hardware.cfg.erb-v2 \
-    file://mmu_parameters.cfg.erb-v2 \
     file://happy-hare-init \
 "
 
