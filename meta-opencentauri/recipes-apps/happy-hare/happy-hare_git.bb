@@ -82,7 +82,7 @@ do_install() {
         cp -r ${WORKDIR}/mmu/optional/*.cfg ${D}${sysconfdir}/klipper/config/mmu/optional/ 2>/dev/null || true
     fi
     if [ -f "${WORKDIR}/mmu/mmu_vars.cfg" ]; then
-        install -m 0644 ${WORKDIR}/mmu/mmu_vars.cfg ${D}${sysconfdir}/klipper/config/mmu/mmu_vars.cfg
+        install -m 0644 ${WORKDIR}/mmu/mmu_vars.cfg ${D}${sysconfdir}/klipper/config/mmu_vars.cfg
     fi
 
     # Install Init-Skript für Setup
@@ -99,6 +99,7 @@ FILES:${PN} = " \
     ${datadir}/klipper/klippy/extras/mmu.py \
     ${sysconfdir}/klipper/config/happy-hare \
     ${sysconfdir}/klipper/config/mmu \
+    ${sysconfdir}/klipper/config/mmu_vars.cfg \
     ${sysconfdir}/init.d/happy-hare-setup \
     /home/mainsail/Happy-Hare \
 "
@@ -108,7 +109,7 @@ FILES:${PN} += "${datadir}/klipper"
 
 # Config files that should be editable (like printer.cfg)
 CONFFILES:${PN} = " \
-    ${sysconfdir}/klipper/config/mmu/mmu_vars.cfg \
+    ${sysconfdir}/klipper/config/mmu_vars.cfg \
 "
 
 # Memory-Optimierung: Strip Python-Bytecode
