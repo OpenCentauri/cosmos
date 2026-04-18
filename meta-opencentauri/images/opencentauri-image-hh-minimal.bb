@@ -13,8 +13,6 @@ inherit core-image
 
 # Enable MMU/COSMOS macros for this image
 PACKAGECONFIG:pn-kalico = "opencentauri-hh-minimal"
-# Mainsail config only (no frontend) - macros needed for Klipper
-PACKAGECONFIG:pn-mainsail = "config-only"
 
 IMAGE_FEATURES += "ssh-server-dropbear"
 
@@ -45,7 +43,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     update-scripts \
     logrotate \
     happy-hare \
-    mainsail \
+    mainsail-config \
     backlight-off \
 "
 
