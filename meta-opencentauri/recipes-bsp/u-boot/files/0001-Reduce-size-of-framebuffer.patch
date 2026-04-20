@@ -1,0 +1,42 @@
+From 6edcdf3d10cd00c3dcb92efc3afa0caa636d53dd Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Mon, 20 Apr 2026 22:13:01 +0200
+Subject: [PATCH] Reduce size of framebuffer
+
+Signed-off-by: James Turton <james.turton@gmx.com>
+Upstream-Status: Pending [Not submitted to upstream yet]
+---
+ drivers/video/sunxi/sunxi_de2.c     | 4 ++--
+ drivers/video/sunxi/sunxi_display.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/video/sunxi/sunxi_de2.c b/drivers/video/sunxi/sunxi_de2.c
+index cca57a5b9d8..864bb4ed288 100644
+--- a/drivers/video/sunxi/sunxi_de2.c
++++ b/drivers/video/sunxi/sunxi_de2.c
+@@ -26,8 +26,8 @@ DECLARE_GLOBAL_DATA_PTR;
+ 
+ enum {
+ 	/* Maximum LCD size we support */
+-	LCD_MAX_WIDTH		= 3840,
+-	LCD_MAX_HEIGHT		= 2160,
++	LCD_MAX_WIDTH		= 480,
++	LCD_MAX_HEIGHT		= 272,
+ 	LCD_MAX_LOG2_BPP	= VIDEO_BPP32,
+ };
+ 
+diff --git a/drivers/video/sunxi/sunxi_display.c b/drivers/video/sunxi/sunxi_display.c
+index 8da44a1bb6d..5224d0853d3 100644
+--- a/drivers/video/sunxi/sunxi_display.c
++++ b/drivers/video/sunxi/sunxi_display.c
+@@ -49,8 +49,8 @@
+ DECLARE_GLOBAL_DATA_PTR;
+ 
+ /* Maximum LCD size we support */
+-#define LCD_MAX_WIDTH		3840
+-#define LCD_MAX_HEIGHT		2160
++#define LCD_MAX_WIDTH		480
++#define LCD_MAX_HEIGHT		272
+ #define LCD_MAX_LOG2_BPP	VIDEO_BPP32
+ 
+ enum sunxi_monitor {
