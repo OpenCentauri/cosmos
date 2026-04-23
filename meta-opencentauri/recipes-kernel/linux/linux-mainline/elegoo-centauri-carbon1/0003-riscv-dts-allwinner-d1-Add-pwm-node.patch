@@ -1,0 +1,38 @@
+From bf3cafe321576bf50348a30120b0e9d77092c083 Mon Sep 17 00:00:00 2001
+From: Aleksandr Shubin <privatesub2@gmail.com>
+Date: Thu, 24 Aug 2023 14:40:27 +0300
+Subject: [PATCH] riscv: dts: allwinner: d1: Add pwm node
+
+D1 and T113s contain a pwm controller with 8 channels.
+This controller is supported by the sun20i-pwm driver.
+
+Add a device tree node for it.
+
+Signed-off-by: Aleksandr Shubin <privatesub2@gmail.com>
+---
+ arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+index 822f022eec2d..92b6432f7734 100644
+--- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
++++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
+@@ -145,6 +145,18 @@ uart3_pb_pins: uart3-pb-pins {
+ 			};
+ 		};
+ 
++		pwm: pwm@2000c00 {
++			compatible = "allwinner,sun20i-d1-pwm";
++			reg = <0x02000c00 0x400>;
++			clocks = <&ccu CLK_BUS_PWM>,
++				 <&dcxo>,
++				 <&ccu CLK_APB0>;
++			clock-names = "bus", "hosc", "apb0";
++			resets = <&ccu RST_BUS_PWM>;
++			status = "disabled";
++			#pwm-cells = <0x3>;
++		};
++
+ 		ccu: clock-controller@2001000 {
+ 			compatible = "allwinner,sun20i-d1-ccu";
+ 			reg = <0x2001000 0x1000>;

@@ -85,9 +85,11 @@
 	};
 
 	backlight: backlight {
-		compatible = "gpio-backlight";
-		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
-		default-on;
+		compatible = "pwm-backlight";
+		pwms = <&pwm 7 20000 0>;
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
+		power-supply = <&reg_vcc5v>;
 	};
 
 	reserved-memory {
@@ -254,10 +256,10 @@
 		function = "uart4";
 	};
 
-	// pwm7_pd22_pin: pwm7-pd22-pin {
-	// 	pins = "PD22";
-	// 	function = "pwm7";
-	// };
+	pwm7_pd22_pin: pwm7-pd22-pin {
+		pins = "PD22";
+		function = "pwm7";
+	};
 
 	i2c2_pins: i2c2-pins {
 		pins = "PB0", "PB1";
@@ -289,11 +291,11 @@
 };
 
 
-// &pwm {
-// 	pinctrl-names = "default";
-// 	pinctrl-0 = <&pwm7_pd22_pin>;
-// 	status = "okay";
-// };
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm7_pd22_pin>;
+	status = "okay";
+};
 
 &de {
 	status = "disabled";
