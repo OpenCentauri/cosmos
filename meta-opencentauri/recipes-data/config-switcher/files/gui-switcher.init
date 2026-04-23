@@ -10,12 +10,14 @@
 
 PIDFILE=/var/run/gui.pid
 GUI="$(config-manager ui screen_ui)"
+BRIGHTNESS="$(config-manager ui screen_brightness)"
 
 case "$1" in
     start)
         echo "Starting GUI..."
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "PROGRESS 100"
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "QUIT"
+        echo "${BRIGHTNESS}" > /sys/class/backlight/backlight/brightness
         if [ -x "/etc/init.d/${GUI}" ]; then
             /etc/init.d/${GUI} start
         fi
