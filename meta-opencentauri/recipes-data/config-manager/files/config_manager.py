@@ -5,7 +5,7 @@ VALIDATORS = {
     'ui': {
         'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen'],
         'web_ui': ['mainsail', 'fluidd'],
-        'screen_brightness': [str(i) for i in range(101)],
+        'screen_brightness': ['0', '1', '2', '3', '4', '5', '6', '7'],
     },
     'update': {
         'release': ['stable', 'nightly'],
