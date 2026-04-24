@@ -87,8 +87,9 @@
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pwm 7 20000 0>;
-		brightness-levels = <0 16 32 64 128 192 255>;
-		default-brightness-level = <6>;
+		brightness-levels = <0 16 32 64 128 255>;
+		num-interpolated-steps = <20>;
+		default-brightness-level = <100>;
 		power-supply = <&reg_vcc5v>;
 	};
 

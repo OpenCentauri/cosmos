@@ -1,29 +1,29 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-# Get the first argument as the brightness level. This value is between 0 and 100, and may have a % sign behind it.
+import os, sys
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <brightness>"
-    exit 1
-fi
+def step(x : int) -> int:
+    if x <= 0:
+        return 0
+    if 0 < x <= 20:
+        return 20
+    if 20 < x <= 100:
+        return x
 
-BRIGHTNESS="$1"
-# Remove the % sign if it exists
-BRIGHTNESS="${BRIGHTNESS%\%}"
-# Validate that the brightness is a number between 0 and 100
-case "$BRIGHTNESS" in
-    ''|*[!0-9]*)
-        echo "Not a number (0-100)"
-        exit 1
-        ;;
-esac
+    return 100
 
-if [ "$BRIGHTNESS" -lt 0 ] || [ "$BRIGHTNESS" -gt 100 ]; then
-    echo "Out of range (0-100)"
-    exit 1
-fi
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: brightness <level>", file=sys.stderr)
+        sys.exit(1)
 
-# Equally divide the brightness range into 7 steps (0 to 6) and calculate the corresponding brightness value for the backlight
-BRIGHTNESS=$(($BRIGHTNESS * 6 / 100))
+    brightness = sys.argv[1]
+    brightness = brightness.replace("%", "")
+    if not brightness.isdigit() or int(brightness) < 0 or int(brightness) > 100:
+        print("Brightness must be a number between 0 and 100", file=sys.stderr)
+        sys.exit(1)
 
-echo $BRIGHTNESS > /sys/class/backlight/backlight/brightness
+    brightness = step(int(brightness))
+
+    with open("/sys/class/backlight/backlight/brightness", "w") as f:
+        f.write(str(brightness))
