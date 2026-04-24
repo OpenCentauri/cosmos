@@ -23,7 +23,7 @@ if [ "$BRIGHTNESS" -lt 0 ] || [ "$BRIGHTNESS" -gt 100 ]; then
     exit 1
 fi
 
-# Equally divide the brightness range into 8 steps (0 to 7) and calculate the corresponding brightness value for the backlight
-BRIGHTNESS=$(($BRIGHTNESS * 7 / 100))
+# Equally divide the brightness range into 7 steps (0 to 6) and calculate the corresponding brightness value for the backlight
+BRIGHTNESS=$(($BRIGHTNESS * 6 / 100))
 
 echo $BRIGHTNESS > /sys/class/backlight/backlight/brightness
