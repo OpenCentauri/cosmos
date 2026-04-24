@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Get the first argument as the brightness level. This value is between 0 and 100, and may have a % sign behind it.
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <brightness>"
+    exit 1
+fi
+
+BRIGHTNESS="$1"
+# Remove the % sign if it exists
+BRIGHTNESS="${BRIGHTNESS%\%}"
+# Validate that the brightness is a number between 0 and 100
+case "$BRIGHTNESS" in
+    ''|*[!0-9]*)
+        echo "Not a number (0-100)"
+        exit 1
+        ;;
+esac
+
+if [ "$BRIGHTNESS" -lt 0 ] || [ "$BRIGHTNESS" -gt 100 ]; then
+    echo "Out of range (0-100)"
+    exit 1
+fi
+
+# Equally divide the brightness range into 8 steps (0 to 7) and calculate the corresponding brightness value for the backlight
+BRIGHTNESS=$(($BRIGHTNESS * 7 / 100))
+
+echo $BRIGHTNESS > /sys/class/backlight/backlight/brightness

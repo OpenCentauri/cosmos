@@ -17,7 +17,7 @@ case "$1" in
         echo "Starting GUI..."
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "PROGRESS 100"
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "QUIT"
-        echo "${BRIGHTNESS}" > /sys/class/backlight/backlight/brightness
+        brightness $BRIGHTNESS
         if [ -x "/etc/init.d/${GUI}" ]; then
             /etc/init.d/${GUI} start
         fi

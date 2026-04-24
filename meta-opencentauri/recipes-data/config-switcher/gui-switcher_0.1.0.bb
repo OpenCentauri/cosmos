@@ -4,6 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-3.0-only;md5=c79ff39f19dfec
 
 SRC_URI = " \
     file://gui-switcher.init \
+    file://brightness \
 "
 
 inherit update-rc.d
@@ -14,8 +15,12 @@ INITSCRIPT_PARAMS = "defaults 96 4"
 do_install() {
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/gui-switcher.init ${D}${sysconfdir}/init.d/gui-switcher
+
+    install -d ${D}${bindir}
+    install -m 0755 ${WORKDIR}/brightness ${D}${bindir}/brightness
 }
 
 FILES_${PN} += " \
     ${sysconfdir}/init.d/gui-switcher \
+    ${bindir}/brightness \
 "
