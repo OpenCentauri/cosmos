@@ -18,7 +18,21 @@
 	};
 
 	chosen {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
 		stdout-path = "serial0:115200n8";
+
+		framebuffer-lcd0 {
+			compatible = "allwinner,simple-framebuffer", "simple-framebuffer";
+			allwinner,pipeline = "mixer0-lcd0";
+			clocks = <&display_clocks CLK_BUS_MIXER0>,
+					<&display_clocks CLK_MIXER0>,
+					<&ccu CLK_BUS_TCON_LCD0>,
+					<&ccu CLK_TCON_LCD0>;
+			status = "disabled";
+		};
 	};
 
 	thermal-zones {
@@ -74,36 +88,6 @@
 		compatible = "gpio-backlight";
 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
 		default-on;
-	};
-
-	panel {
-		compatible = "panel-dpi";
-		bus-format = <0x1013>;
-		power-supply = <&reg_3v3>;
-		backlight = <&backlight>;
-		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 */
-
-		port {
-			panel_in: endpoint {
-				remote-endpoint = <&tcon_lcd0_out_panel>;
-			};
-		};
-
-		panel-timing {
-			clock-frequency = <9000000>;
-			hactive = <480>;
-			vactive = <272>;
-			hback-porch = <39>;
-			hfront-porch = <8>;
-			hsync-len = <4>;
-			vback-porch = <8>;
-			vfront-porch = <8>;
-			vsync-len = <4>;
-			de-active = <1>;
-			hsync-active = <0>;
-			vsync-active = <0>;
-			pixelclk-active = <1>;
-		};
 	};
 
 	reserved-memory {
@@ -270,16 +254,6 @@
 		function = "uart4";
 	};
 
-	lcd_rgb24_pins: lcd-rgb24-pins {
-		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5",
-				"PD6", "PD7", "PD8", "PD9", "PD10", "PD11",
-				"PD12", "PD13", "PD14", "PD15", "PD16", "PD17",
-				"PD18", "PD19", "PD20", "PD21",
-				"PB2", "PB3", "PB4", "PB5", "PB6", "PB7";
-		function = "lcd0";
-		drive-strength = <30>;
-	};
-
 	// pwm7_pd22_pin: pwm7-pd22-pin {
 	// 	pins = "PD22";
 	// 	function = "pwm7";
@@ -322,24 +296,15 @@
 // };
 
 &de {
-	status = "okay";
+	status = "disabled";
 };
 
 &mixer0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &tcon_lcd0 {
-    pinctrl-names = "default";
-    pinctrl-0 = <&lcd_rgb24_pins>;
-    status = "okay";
-};
-
-&tcon_lcd0_out {
-    tcon_lcd0_out_panel: endpoint@0 {
-        reg = <0>;
-        remote-endpoint = <&panel_in>;
-    };
+	status = "disabled";
 };
 
 &syscon {
