@@ -1,0 +1,38 @@
+diff --git a/src/ustreamer/http/server.c b/src/ustreamer/http/server.c
+index cbd34c6..cdd78bc 100644
+--- a/src/ustreamer/http/server.c
++++ b/src/ustreamer/http/server.c
+@@ -238,12 +238,28 @@ int us_server_listen(us_server_s *server) {
+ #	endif
+ 
+ 	} else {
+-		_LOG_DEBUG("Binding HTTP to [%s]:%u ...", server->host, server->port);
+-		if (evhttp_bind_socket(run->http, server->host, server->port) < 0) {
+-			_LOG_PERROR("Can't bind HTTP on [%s]:%u", server->host, server->port)
+-			return -1;
++		const uint bind_retries = 5;
++		const uint bind_retry_delay = 5;
++
++		for (uint retry = 0; ; ++retry) {
++			_LOG_DEBUG("Binding HTTP to [%s]:%u ...", server->host, server->port);
++			if (evhttp_bind_socket(run->http, server->host, server->port) == 0) {
++				_LOG_INFO("Listening HTTP on [%s]:%u", server->host, server->port);
++				break;
++			}
++			_LOG_PERROR("Can't bind HTTP on [%s]:%u", server->host, server->port);
++			if (retry >= bind_retries) {
++				return -1;
++			}
++			_LOG_INFO(
++				"Retrying HTTP bind on [%s]:%u in %u seconds (%u/%u) ...",
++				server->host,
++				server->port,
++				bind_retry_delay,
++				retry + 1,
++				bind_retries);
++			sleep(bind_retry_delay);
+ 		}
+-		_LOG_INFO("Listening HTTP on [%s]:%u", server->host, server->port);
+ 	}
+ 
+ 	return 0;

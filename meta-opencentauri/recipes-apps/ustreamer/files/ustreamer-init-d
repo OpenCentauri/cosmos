@@ -8,7 +8,7 @@
 # Short-Description: uStreamer MJPEG-HTTP streamer
 ### END INIT INFO
 
-USTREAMER_EXEC="/usr/bin/ustreamer-wrapper"
+USTREAMER_EXEC="/usr/bin/ustreamer"
 USTREAMER_ARGS="-r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
 PIDFILE="/var/run/ustreamer.pid"
 
@@ -17,6 +17,8 @@ case "$1" in
         echo "Starting ustreamer..."
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $USTREAMER_EXEC -- $USTREAMER_ARGS
+
+        echo 1000 > /proc/$(cat $PIDFILE)/oom_score_adj
         ;;
     stop)
         echo "Stopping ustreamer..."
