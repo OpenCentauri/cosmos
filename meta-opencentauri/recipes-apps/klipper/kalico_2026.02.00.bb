@@ -13,7 +13,6 @@ SRC_URI += " \
     file://shell.cfg \
     file://screen.cfg \
     file://client.cfg \
-    file://saved_variables.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -111,7 +110,6 @@ FILES:${PN} = " \
 
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
-    ${sysconfdir}/klipper/config/saved_variables.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/macros.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/machine.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
