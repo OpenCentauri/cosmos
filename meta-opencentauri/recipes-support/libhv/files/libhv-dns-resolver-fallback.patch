@@ -1,0 +1,327 @@
+diff --git a/base/dns_resolv.c b/base/dns_resolv.c
+new file mode 100644
+index 0000000..28c1c98
+--- /dev/null
++++ b/base/dns_resolv.c
+@@ -0,0 +1,233 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++//
++// Minimal DNS resolver fallback for statically-linked glibc builds.
++// Provides direct UDP DNS resolution when getaddrinfo() fails.
++
++#include "dns_resolv.h"
++
++#include "hsocket.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <time.h>
++
++#ifdef OS_WIN
++#include <process.h>
++#define getpid _getpid
++#else
++#include <unistd.h>
++#endif
++
++// Skip a DNS name in wire format. Returns new offset, or -1 on error.
++static int dns_resolv_skip_name(const uint8_t* buf, int off, int len) {
++    while (off < len) {
++        uint8_t label_len = buf[off];
++        if (label_len == 0) {
++            return off + 1;
++        }
++        if ((label_len & 0xC0) == 0xC0) {
++            // Compression pointer: 2 bytes
++            return (off + 1 < len) ? off + 2 : -1;
++        }
++        if (label_len > 63) {
++            return -1;  // Invalid: labels max 63 bytes, reserved bits set
++        }
++        off += label_len + 1;
++    }
++    return -1;
++}
++
++int dns_resolv_build_query(const char* hostname, uint8_t* buf, int buflen) {
++    if (!hostname || !buf || hostname[0] == '\0') return -1;
++
++    int hostname_len = (int)strlen(hostname);
++    if (hostname_len > 253) return -1;
++
++    // Strip trailing dot
++    char name[256];
++    memcpy(name, hostname, hostname_len + 1);
++    if (hostname_len > 0 && name[hostname_len - 1] == '.') {
++        name[--hostname_len] = '\0';
++    }
++    if (hostname_len == 0) return -1;
++
++    // Estimate: header(12) + name(hostname_len+2) + type(2) + class(2)
++    int est_len = 12 + hostname_len + 2 + 4;
++    if (est_len > buflen) return -1;
++
++    memset(buf, 0, 12);
++
++    // Transaction ID
++    uint16_t txid = (uint16_t)((unsigned)getpid() ^ (unsigned)time(NULL));
++    buf[0] = (uint8_t)(txid >> 8);
++    buf[1] = (uint8_t)(txid & 0xFF);
++    // Flags: RD=1 (recursion desired)
++    buf[2] = 0x01;
++    // Questions: 1
++    buf[5] = 0x01;
++
++    // Encode hostname into DNS wire format
++    uint8_t* p = buf + 12;
++    const char* start = name;
++    const char* dot;
++    while ((dot = strchr(start, '.')) != NULL) {
++        int label_len = (int)(dot - start);
++        if (label_len > 63 || label_len == 0) return -1;
++        *p++ = (uint8_t)label_len;
++        memcpy(p, start, label_len);
++        p += label_len;
++        start = dot + 1;
++    }
++    // Last label
++    int last_len = (int)strlen(start);
++    if (last_len > 63 || last_len == 0) return -1;
++    *p++ = (uint8_t)last_len;
++    memcpy(p, start, last_len);
++    p += last_len;
++    *p++ = 0;  // Root label
++
++    // Type A (1)
++    *p++ = 0x00; *p++ = 0x01;
++    // Class IN (1)
++    *p++ = 0x00; *p++ = 0x01;
++
++    return (int)(p - buf);
++}
++
++int dns_resolv_parse_response(const uint8_t* buf, int len, struct in_addr* addr) {
++    if (!buf || !addr || len < 12) return -1;
++
++    // Must be a response (QR=1)
++    if (!(buf[2] & 0x80)) return -1;
++
++    // Check RCODE is 0 (no error)
++    if ((buf[3] & 0x0F) != 0) return -1;
++
++    uint16_t nquestion = (uint16_t)((buf[4] << 8) | buf[5]);
++    uint16_t nanswer   = (uint16_t)((buf[6] << 8) | buf[7]);
++    if (nanswer == 0) return -1;
++
++    int off = 12;
++
++    // Skip question section
++    for (uint16_t i = 0; i < nquestion; i++) {
++        off = dns_resolv_skip_name(buf, off, len);
++        if (off < 0) return -1;
++        off += 4;  // type + class
++        if (off > len) return -1;
++    }
++
++    // Parse answer section, looking for first A record
++    for (uint16_t i = 0; i < nanswer; i++) {
++        off = dns_resolv_skip_name(buf, off, len);
++        if (off < 0) return -1;
++        if (off + 10 > len) return -1;
++
++        uint16_t rtype    = (uint16_t)((buf[off] << 8) | buf[off + 1]);
++        uint16_t rdlength = (uint16_t)((buf[off + 8] << 8) | buf[off + 9]);
++        off += 10;
++
++        if (off + rdlength > len) return -1;
++
++        if (rtype == 1 && rdlength == 4) {
++            // A record: 4 bytes of IPv4 address
++            memcpy(&addr->s_addr, buf + off, 4);
++            return 0;
++        }
++
++        off += rdlength;
++    }
++
++    return -1;  // No A record found
++}
++
++int dns_resolv_get_nameservers_from(const char* path,
++                                    char nameservers[][DNS_RESOLV_NAMESERVER_LEN],
++                                    int max) {
++    if (!path || !nameservers || max <= 0) return 0;
++
++    FILE* fp = fopen(path, "r");
++    if (!fp) return 0;
++
++    int count = 0;
++    char line[256];
++    while (fgets(line, sizeof(line), fp) && count < max) {
++        // Skip leading whitespace
++        char* p = line;
++        while (*p == ' ' || *p == '\t') p++;
++
++        // Skip comments and empty lines
++        if (*p == '#' || *p == ';' || *p == '\n' || *p == '\0') continue;
++
++        char ns[64];
++        if (sscanf(p, "nameserver %63s", ns) == 1) {
++            strncpy(nameservers[count], ns, DNS_RESOLV_NAMESERVER_LEN - 1);
++            nameservers[count][DNS_RESOLV_NAMESERVER_LEN - 1] = '\0';
++            count++;
++        }
++    }
++
++    fclose(fp);
++    return count;
++}
++
++int dns_resolv_get_nameservers(char nameservers[][DNS_RESOLV_NAMESERVER_LEN], int max) {
++    return dns_resolv_get_nameservers_from("/etc/resolv.conf", nameservers, max);
++}
++
++int dns_resolv_resolve(const char* hostname, struct in_addr* addr) {
++    if (!hostname || !addr) return -1;
++
++    uint8_t query[DNS_RESOLV_MAX_PACKET_LEN];
++    int query_len = dns_resolv_build_query(hostname, query, sizeof(query));
++    if (query_len < 0) return -1;
++
++    // Get nameservers from resolv.conf
++    char nameservers[DNS_RESOLV_MAX_NAMESERVERS][DNS_RESOLV_NAMESERVER_LEN];
++    int ns_count = dns_resolv_get_nameservers(nameservers, DNS_RESOLV_MAX_NAMESERVERS);
++
++    // Fallback to public DNS
++    if (ns_count == 0) {
++        strncpy(nameservers[0], DNS_RESOLV_FALLBACK_NS, DNS_RESOLV_NAMESERVER_LEN);
++        ns_count = 1;
++    }
++
++    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
++    if (sockfd < 0) return -1;
++
++    so_sndtimeo(sockfd, DNS_RESOLV_TIMEOUT_MS);
++    so_rcvtimeo(sockfd, DNS_RESOLV_TIMEOUT_MS);
++
++    int result = -1;
++
++    for (int i = 0; i < ns_count; i++) {
++        struct sockaddr_in ns_addr;
++        memset(&ns_addr, 0, sizeof(ns_addr));
++        ns_addr.sin_family = AF_INET;
++        ns_addr.sin_port = htons(53);
++        if (inet_pton(AF_INET, nameservers[i], &ns_addr.sin_addr) != 1) {
++            continue;  // Skip invalid nameserver IPs (e.g. IPv6)
++        }
++
++        int sent = sendto(sockfd, (const char*)query, query_len, 0,
++                          (struct sockaddr*)&ns_addr, sizeof(ns_addr));
++        if (sent != query_len) continue;
++
++        uint8_t response[DNS_RESOLV_MAX_PACKET_LEN];
++        int received = recvfrom(sockfd, (char*)response, sizeof(response), 0,
++                                NULL, NULL);
++        if (received <= 0) continue;
++
++        // Verify transaction ID
++        if (received >= 2 && response[0] == query[0] && response[1] == query[1]) {
++            if (dns_resolv_parse_response(response, received, addr) == 0) {
++                result = 0;
++                break;
++            }
++        }
++    }
++
++    closesocket(sockfd);
++    return result;
++}
+diff --git a/base/dns_resolv.h b/base/dns_resolv.h
+new file mode 100644
+index 0000000..e4403a1
+--- /dev/null
++++ b/base/dns_resolv.h
+@@ -0,0 +1,45 @@
++// SPDX-License-Identifier: GPL-3.0-or-later
++//
++// Minimal DNS resolver fallback for statically-linked glibc builds.
++// When getaddrinfo() fails (can't load NSS modules), this provides
++// direct UDP DNS resolution as a fallback.
++
++#ifndef DNS_RESOLV_H_
++#define DNS_RESOLV_H_
++
++#include "hexport.h"
++#include "hplatform.h"
++
++#define DNS_RESOLV_MAX_NAMESERVERS  3
++#define DNS_RESOLV_NAMESERVER_LEN   64
++#define DNS_RESOLV_MAX_PACKET_LEN   512
++#define DNS_RESOLV_TIMEOUT_MS       2000
++#define DNS_RESOLV_FALLBACK_NS      "8.8.8.8"
++
++BEGIN_EXTERN_C
++
++// Build a DNS A-record query packet for the given hostname.
++// Returns packet length on success, -1 on error.
++HV_EXPORT int dns_resolv_build_query(const char* hostname, uint8_t* buf, int buflen);
++
++// Parse a DNS response and extract the first A-record IPv4 address.
++// Returns 0 on success, -1 on error.
++HV_EXPORT int dns_resolv_parse_response(const uint8_t* buf, int len, struct in_addr* addr);
++
++// Parse nameservers from a resolv.conf-format file.
++// Returns number of nameservers found (up to max).
++HV_EXPORT int dns_resolv_get_nameservers_from(const char* path,
++                                              char nameservers[][DNS_RESOLV_NAMESERVER_LEN],
++                                              int max);
++
++// Parse nameservers from /etc/resolv.conf.
++HV_EXPORT int dns_resolv_get_nameservers(char nameservers[][DNS_RESOLV_NAMESERVER_LEN], int max);
++
++// Resolve hostname to IPv4 via direct UDP DNS queries.
++// Tries nameservers from /etc/resolv.conf, falls back to 8.8.8.8.
++// Returns 0 on success, -1 on error.
++HV_EXPORT int dns_resolv_resolve(const char* hostname, struct in_addr* addr);
++
++END_EXTERN_C
++
++#endif // DNS_RESOLV_H_
+diff --git a/base/hsocket.c b/base/hsocket.c
+index ed87a8c..4c13ccd 100644
+--- a/base/hsocket.c
++++ b/base/hsocket.c
+@@ -2,6 +2,10 @@
+
+ #include "hdef.h"
+
++#if defined(__GLIBC__)
++#include "dns_resolv.h"
++#endif
++
+ #ifdef OS_WIN
+ #include "hatomic.h"
+ static hatomic_flag_t s_wsa_initialized = HATOMIC_FLAG_INIT;
+@@ -64,6 +68,21 @@ int ResolveAddr(const char* host, sockaddr_u* addr) {
+         addr->sa.sa_family = AF_INET6; // host is ipv6
+     }
+
++#if defined(__GLIBC__)
++    // Try direct UDP DNS resolution FIRST on glibc builds.
++    // Static glibc can't load NSS modules (libnss_dns.so) at runtime,
++    // so getaddrinfo() can CRASH (SIGSEGV in gaih_inet) on ARM platforms
++    // like AD5M/SonicPad/K1. Avoid calling getaddrinfo() entirely. (#700)
++    {
++        struct in_addr resolved;
++        if (dns_resolv_resolve(host, &resolved) == 0) {
++            memset(addr, 0, sizeof(sockaddr_u));
++            addr->sa.sa_family = AF_INET;
++            addr->sin.sin_addr = resolved;
++            return 0;
++        }
++    }
++#endif
+     struct addrinfo* ais = NULL;
+     int ret = getaddrinfo(host, NULL, NULL, &ais);
+     if (ret != 0 || ais == NULL || ais->ai_addr == NULL || ais->ai_addrlen == 0) {
