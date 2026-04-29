@@ -24,6 +24,9 @@ fi
 # Install firmware
 flash "$SWUFILE"
 
+# Revert stock bootcmd
+fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+
 # Flash stock bootloader
 service klipper stop
 flashtool -d $SERIALPORT_BED -b 250000 -r

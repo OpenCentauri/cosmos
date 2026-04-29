@@ -45,6 +45,9 @@ unzip "$ZIPFILE" -d /user-resource
 # Install firmware
 flash "$SWUFILE"
 
+# Revert stock bootcmd
+fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+
 # Flash stock bootloader
 flashtool -d $SERIALPORT_BED -b 250000 -r
 flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
