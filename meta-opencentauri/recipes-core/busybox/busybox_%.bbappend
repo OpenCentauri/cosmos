@@ -12,5 +12,5 @@ INITSCRIPT_PARAMS:${PN} = "defaults 90"
 do_install:append (){
     install -d ${D}${sysconfdir}/cron
     install -d ${D}${sysconfdir}/cron/crontabs
-    install -m 0600 ${WORKDIR}/crontab ${D}${sysconfdir}/cron/crontabs/root
+    install -m 0600 ${UNPACKDIR}/crontab ${D}${sysconfdir}/cron/crontabs/root
 }

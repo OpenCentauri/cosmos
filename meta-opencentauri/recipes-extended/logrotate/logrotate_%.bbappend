@@ -4,5 +4,5 @@ SRC_URI += " \
 "
 
 do_install:append (){
-    install -p -m 644 ${WORKDIR}/klipper ${D}${sysconfdir}/logrotate.d/klipper
+    install -p -m 644 ${UNPACKDIR}/klipper ${D}${sysconfdir}/logrotate.d/klipper
 }

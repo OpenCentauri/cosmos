@@ -12,7 +12,7 @@ SRC_URI = "https://github.com/mainsail-crew/mainsail/releases/download/v${PV}/ma
 "
 SRC_URI[sha256sum] = "d010f4df25557d520ccdbb8e42fc381df2288e6a5c72d3838a5a2433c7a31d4e"
 
-S = "${WORKDIR}/mainsail"
+S = "${UNPACKDIR}/mainsail"
 
 RDEPENDS:${PN} = " \
     moonraker \
@@ -35,7 +35,7 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/mainsail.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
+    install -m 0644 ${UNPACKDIR}/mainsail.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
 }
 
 FILES:${PN} = " \

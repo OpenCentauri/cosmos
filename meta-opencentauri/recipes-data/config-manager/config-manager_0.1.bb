@@ -7,15 +7,17 @@ SRC_URI = " \
     file://default.conf \
 "
 
+S = "${UNPACKDIR}"
+
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/config_manager.py ${D}${bindir}/config-manager
+    install -m 0755 ${S}/config_manager.py ${D}${bindir}/config-manager
 
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/default.conf ${D}${sysconfdir}/klipper/config/cosmos.conf
+    install -m 0644 ${S}/default.conf ${D}${sysconfdir}/klipper/config/cosmos.conf
 
     install -d ${D}${datadir}/config-manager
-    install -m 0644 ${WORKDIR}/default.conf ${D}${datadir}/config-manager/default.conf
+    install -m 0644 ${S}/default.conf ${D}${datadir}/config-manager/default.conf
 }
 
 FILES:${PN} = " \

@@ -32,7 +32,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp ${WORKDIR}/klipper-firmware-bed-init-d ${D}${sysconfdir}/init.d/klipper-firmware-bed
+    cp ${UNPACKDIR}/klipper-firmware-bed-init-d ${D}${sysconfdir}/init.d/klipper-firmware-bed
     chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-bed
 }
 

@@ -17,8 +17,6 @@ SRC_URI = "gitsm://github.com/jamesturton/grumpyscreen.git;protocol=https;branch
 SRCREV = "b085d2e00bc3dcb068b7fe98ec9dff59489acc77"
 PR = "r4"
 
-S = "${WORKDIR}/git"
-
 RDEPENDS:${PN} = " \
     klipper \
     moonraker \
@@ -70,10 +68,10 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${UNPACKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/grumpyscreen.init ${D}${sysconfdir}/init.d/grumpyscreen
+    install -m 0755 ${UNPACKDIR}/grumpyscreen.init ${D}${sysconfdir}/init.d/grumpyscreen
 }
 
 FILES:${PN} = " \

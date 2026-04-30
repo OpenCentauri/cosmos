@@ -32,7 +32,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp ${WORKDIR}/klipper-firmware-toolhead-init-d ${D}${sysconfdir}/init.d/klipper-firmware-toolhead
+    cp ${UNPACKDIR}/klipper-firmware-toolhead-init-d ${D}${sysconfdir}/init.d/klipper-firmware-toolhead
     chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-toolhead
 }
 

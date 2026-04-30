@@ -10,8 +10,6 @@ SRC_URI = "git://github.com/Klipper3d/klipper.git;protocol=https;branch=master \
     file://klipper-init-d"
 SRCREV = "61c0c8d2ef40340781835dd53fb04cc7a454e37a"
 
-S = "${WORKDIR}/git"
-
 inherit python3-dir update-rc.d
 
 DEPENDS = " \
@@ -77,7 +75,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp -r ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+    cp -r ${UNPACKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
     chmod 0755 ${D}${sysconfdir}/init.d/klipper
 }
 

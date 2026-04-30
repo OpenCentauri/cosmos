@@ -13,7 +13,7 @@ SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd
 "
 SRC_URI[sha256sum] = "3f9dbe9ac5db51d1025a5737b207d83558c07cb0d7af34d3c5832c868fa72454"
 
-S = "${WORKDIR}/fluidd"
+S = "${UNPACKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
     moonraker \
@@ -36,7 +36,7 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
+    install -m 0644 ${UNPACKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
 }
 
 FILES:${PN} = " \

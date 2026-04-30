@@ -12,9 +12,9 @@ RDEPENDS:${PN} += "allwinner-ota-burnboot"
 
 do_install:append() {
     install -d ${D}${sysconfdir}
-    install -m 0644 ${WORKDIR}/swupdate.cfg ${D}${sysconfdir}/swupdate.cfg
-    install -m 0644 ${WORKDIR}/hwrevision ${D}${sysconfdir}/hwrevision
-    install -m 0644 ${WORKDIR}/swupdate_public.pem ${D}${sysconfdir}/swupdate_public.pem
+    install -m 0644 ${UNPACKDIR}/swupdate.cfg ${D}${sysconfdir}/swupdate.cfg
+    install -m 0644 ${UNPACKDIR}/hwrevision ${D}${sysconfdir}/hwrevision
+    install -m 0644 ${UNPACKDIR}/swupdate_public.pem ${D}${sysconfdir}/swupdate_public.pem
 
     rm -rf ${D}${sysconfdir}/init.d
 }

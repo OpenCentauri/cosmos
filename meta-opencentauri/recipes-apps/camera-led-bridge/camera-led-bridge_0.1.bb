@@ -144,7 +144,7 @@ SRC_URI[zerovec-0.11.5.sha256sum] = "6c28719294829477f525be0186d13efa9a3c602f7ec
 SRC_URI[zerovec-derive-0.11.2.sha256sum] = "eadce39539ca5cb3985590102671f2567e659fca9666581ad3411d59207951f3"
 SRC_URI[zmij-1.0.21.sha256sum] = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
 
-S = "${WORKDIR}/git/camera-led-bridge"
+S = "${UNPACKDIR}/git/camera-led-bridge"
 
 INITSCRIPT_NAME = "camera-led-bridge"
 INITSCRIPT_PARAMS = "defaults 96 4"
@@ -153,5 +153,5 @@ INSANE_SKIP:${PN} += "already-stripped"
 
 do_install:append() {
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/camera-led-bridge.init ${D}${sysconfdir}/init.d/camera-led-bridge
+    install -m 0755 ${UNPACKDIR}/camera-led-bridge.init ${D}${sysconfdir}/init.d/camera-led-bridge
 }

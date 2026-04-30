@@ -10,6 +10,8 @@ SRC_URI = " \
     file://swu-decrypt.py \
 "
 
+S = "${UNPACKDIR}"
+
 RDEPENDS:${PN} = " \
     curl \
     swu-flasher \
@@ -21,17 +23,17 @@ RDEPENDS:${PN} = " \
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/factory-reset ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/update-cosmos ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/switch-to-stock ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/switch-to-oc-patched ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/swu-decrypt.py ${D}${bindir}/
+    install -m 0755 ${S}/factory-reset ${D}${bindir}/
+    install -m 0755 ${S}/update-cosmos ${D}${bindir}/
+    install -m 0755 ${S}/switch-to-stock ${D}${bindir}/
+    install -m 0755 ${S}/switch-to-oc-patched ${D}${bindir}/
+    install -m 0755 ${S}/swu-decrypt.py ${D}${bindir}/
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
 }
 
-FILES_${PN} += " \
+FILES:${PN} += " \
     ${bindir}/factory-reset \
     ${bindir}/update-cosmos \
     ${bindir}/switch-to-stock \
