@@ -8,5 +8,3 @@ SRC_URI = "gitsm://github.com/prestonbrown/helixscreen.git;protocol=https;branch
 SRCREV = "3aa8d5f6d904e7e66bfd0d647802a85f49317e02"
 
 inherit pkgconfig
-
-S = "${WORKDIR}/git"

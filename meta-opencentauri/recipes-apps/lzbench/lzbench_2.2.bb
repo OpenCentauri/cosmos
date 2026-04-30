@@ -9,8 +9,6 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=d328bcd7c6004f4f7adae0842ed19146"
 SRCREV = "74d7438dbfc8119055796053b24abd29e65617a0"
 SRC_URI = "git://github.com/inikep/lzbench.git;protocol=https;branch=master"
 
-S = "${WORKDIR}/git"
-
 DEPENDS = ""
 
 do_configure[noexec] = "1"

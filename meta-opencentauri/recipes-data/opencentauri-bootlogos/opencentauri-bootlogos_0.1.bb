@@ -13,16 +13,18 @@ SRC_URI = " \
     file://swap.sh \
 "
 
+S = "${UNPACKDIR}"
+
 do_install() {
     install -d ${D}/boot-resource
-    install -m 0644 ${WORKDIR}/bootlogo.bmp ${D}/boot-resource/bootlogo.bmp
-    install -m 0644 ${WORKDIR}/gradient.bmp ${D}/boot-resource/gradient.bmp
-    install -m 0644 ${WORKDIR}/hackerinside.bmp ${D}/boot-resource/hackerinside.bmp
-    install -m 0644 ${WORKDIR}/lines2.bmp ${D}/boot-resource/lines2.bmp
-    install -m 0644 ${WORKDIR}/lines3.bmp ${D}/boot-resource/lines3.bmp
-    install -m 0644 ${WORKDIR}/magic.bin ${D}/boot-resource/magic.bin
-    install -m 0644 ${WORKDIR}/official.bmp ${D}/boot-resource/official.bmp
-    install -m 0755 ${WORKDIR}/swap.sh ${D}/boot-resource/swap.sh
+    install -m 0644 ${S}/bootlogo.bmp ${D}/boot-resource/bootlogo.bmp
+    install -m 0644 ${S}/gradient.bmp ${D}/boot-resource/gradient.bmp
+    install -m 0644 ${S}/hackerinside.bmp ${D}/boot-resource/hackerinside.bmp
+    install -m 0644 ${S}/lines2.bmp ${D}/boot-resource/lines2.bmp
+    install -m 0644 ${S}/lines3.bmp ${D}/boot-resource/lines3.bmp
+    install -m 0644 ${S}/magic.bin ${D}/boot-resource/magic.bin
+    install -m 0644 ${S}/official.bmp ${D}/boot-resource/official.bmp
+    install -m 0755 ${S}/swap.sh ${D}/boot-resource/swap.sh
 }
 
 FILES:${PN} = " \
