@@ -14,10 +14,10 @@ INITSCRIPT_PARAMS = "defaults 96 4"
 
 do_install() {
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/gui-switcher.init ${D}${sysconfdir}/init.d/gui-switcher
+    install -m 0755 ${UNPACKDIR}/gui-switcher.init ${D}${sysconfdir}/init.d/gui-switcher
 
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/brightness ${D}${bindir}/brightness
+    install -m 0755 ${UNPACKDIR}/brightness ${D}${bindir}/brightness
 }
 
 FILES_${PN} += " \

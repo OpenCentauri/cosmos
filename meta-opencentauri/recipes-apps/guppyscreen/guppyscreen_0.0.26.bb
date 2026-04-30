@@ -19,8 +19,6 @@ SRC_URI = "gitsm://github.com/ballaswag/guppyscreen.git;protocol=https;branch=ma
 "
 SRCREV = "cf5c6d7539a2dca090ca71c177f57a2d96df443a"
 
-S = "${WORKDIR}/git"
-
 DEPENDS = "cmake-native"
 
 RDEPENDS:${PN} = " \
@@ -102,10 +100,10 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/guppyconfig.json ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${UNPACKDIR}/guppyconfig.json ${D}${sysconfdir}/klipper/config/
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/guppyscreen.init ${D}${sysconfdir}/init.d/guppyscreen
+    install -m 0755 ${UNPACKDIR}/guppyscreen.init ${D}${sysconfdir}/init.d/guppyscreen
 }
 
 FILES:${PN} = " \
