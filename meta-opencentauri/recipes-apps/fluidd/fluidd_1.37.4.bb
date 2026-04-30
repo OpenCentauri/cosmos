@@ -15,7 +15,7 @@ SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd
 "
 SRC_URI[sha256sum] = "df4502c53e25e8b030e1fc5314f5eccac3de1872fce0216092ea94178432423e"
 
-S = "${WORKDIR}/fluidd"
+S = "${UNPACKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
     klipper \
@@ -35,12 +35,12 @@ do_install() {
     install -d ${D}/var/www/fluidd
     cp -r ${S}/* ${D}/var/www/fluidd/
     install -m 0644 \
-        ${WORKDIR}/opencentauri-fluidd-theme/logo_opencentauri.svg \
-        ${WORKDIR}/opencentauri-fluidd-theme/carbon-logo-red.webp \
-        ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-logo-small.png \
-        ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-theme.css \
+        ${UNPACKDIR}/opencentauri-fluidd-theme/logo_opencentauri.svg \
+        ${UNPACKDIR}/opencentauri-fluidd-theme/carbon-logo-red.webp \
+        ${UNPACKDIR}/opencentauri-fluidd-theme/opencentauri-logo-small.png \
+        ${UNPACKDIR}/opencentauri-fluidd-theme/opencentauri-theme.css \
         ${D}/var/www/fluidd/
-    ${PYTHON} ${WORKDIR}/opencentauri-fluidd-theme/apply-opencentauri-fluidd-theme.py ${D}/var/www/fluidd
+    ${PYTHON} ${UNPACKDIR}/opencentauri-fluidd-theme/apply-opencentauri-fluidd-theme.py ${D}/var/www/fluidd
 
 }
 

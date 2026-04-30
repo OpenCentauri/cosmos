@@ -1,23 +1,26 @@
-From 618c5a97497dd5934dc5e8a5b6861bdaa6af5916 Mon Sep 17 00:00:00 2001
+From 50447591f5f73e649410b9de49ebdd0893c6b028 Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
-Date: Mon, 16 Feb 2026 21:36:45 +0100
+Date: Thu, 30 Apr 2026 14:12:09 +0200
 Subject: [PATCH] Add elegoo-centauri-carbon1.dts
 
 Signed-off-by: James Turton <james.turton@gmx.com>
 Upstream-Status: Pending [Not submitted to upstream yet]
 ---
- arch/arm/dts/Makefile | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm/dts/Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
-index 04b9863b5d5..b28ed796445 100644
+index e54213f9599..d0ceb213c12 100644
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -810,6 +810,7 @@ dtb-$(CONFIG_MACH_SUN8I_V3S) += \
- 	sun8i-v3-sl631-imx179.dtb \
- 	sun8i-v3s-licheepi-zero.dtb
- dtb-$(CONFIG_MACH_SUN8I_R528) += \
-+	elegoo-centauri-carbon1.dtb \
- 	sun8i-t113s-mangopi-mq-r-t113.dtb
- dtb-$(CONFIG_MACH_SUN50I_H5) += \
- 	sun50i-h5-bananapi-m2-plus.dtb \
+@@ -1199,6 +1199,8 @@ dtb-$(CONFIG_TARGET_SC594_SOM_EZLITE) += sc594-som-ezlite.dtb
+ dtb-$(CONFIG_TARGET_SC598_SOM_EZKIT) += sc598-som-ezkit.dtb
+ dtb-$(CONFIG_TARGET_SC598_SOM_EZLITE) += sc598-som-ezlite.dtb
+ 
++dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon1.dtb
++
+ ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
+ dtb-y += imx8mp-rsb3720-a1.dtb
+ endif
+-- 
+2.51.0

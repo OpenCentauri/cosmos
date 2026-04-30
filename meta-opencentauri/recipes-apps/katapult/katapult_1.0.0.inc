@@ -11,8 +11,6 @@ SRC_URI = " \
 "
 SRCREV = "ec59b9bb9ad6c2ec8d4dc6831fbc77f0b308e29e"
 
-S = "${WORKDIR}/git"
-
 DEPENDS = " \
     python3-native \
 "
