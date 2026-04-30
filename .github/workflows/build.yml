@@ -64,7 +64,7 @@ jobs:
 
       - name: Build image
         run: |
-          source poky/oe-init-build-env build
+          source openembedded-core/oe-init-build-env build
           bitbake opencentauri-upgrade
 
       - name: Upload build artifacts (SWU only)
