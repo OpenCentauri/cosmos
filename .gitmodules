@@ -1,32 +1,28 @@
 [submodule "meta-sunxi"]
 	path = meta-sunxi
-	url = https://github.com/linux-sunxi/meta-sunxi
-	branch = scarthgap
+	url = https://github.com/jamesturton/meta-sunxi
+	branch = wrynose
 [submodule "meta-openembedded"]
 	path = meta-openembedded
 	url = https://git.openembedded.org/meta-openembedded
-	branch = scarthgap
+	branch = wrynose
 [submodule "meta-arm"]
 	path = meta-arm
 	url = https://git.yoctoproject.org/meta-arm
-	branch = scarthgap
+	branch = wrynose
 [submodule "meta-swupdate"]
 	path = meta-swupdate
 	url = https://github.com/sbabic/meta-swupdate.git
-	branch = scarthgap
-[submodule "meta-lts-mixins"]
-	path = meta-lts-mixins
-	url = https://git.yoctoproject.org/meta-lts-mixins
-	branch = scarthgap/rust
+	branch = wrynose
 [submodule "meta-yocto"]
 	path = meta-yocto
 	url = https://git.yoctoproject.org/meta-yocto
-	branch = scarthgap
+	branch = wrynose
 [submodule "bitbake"]
 	path = bitbake
 	url = https://git.openembedded.org/bitbake
-	branch = 2.8
+	branch = 2.18
 [submodule "openembedded-core"]
 	path = openembedded-core
 	url = https://git.openembedded.org/openembedded-core
-	branch = scarthgap
+	branch = wrynose

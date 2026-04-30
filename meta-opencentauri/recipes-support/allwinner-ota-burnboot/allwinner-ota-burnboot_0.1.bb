@@ -7,14 +7,12 @@ SRC_URI = "git://github.com/jamesturton/allwinner-ota-burnboot.git;protocol=http
 SRCREV = "abb7920b78ce6616cef9e4bf8fce32d8edcdd45f"
 PR = "r1"
 
-S = "${WORKDIR}/git"
-
 do_install() {
     install -d ${D}${libdir}
-    install -m 0755 libota-burnboot.so ${D}${libdir}/
+    install -m 0755 ${S}/libota-burnboot.so ${D}${libdir}/
 
     install -d ${D}${includedir}
-    install -m 0644 OTA_BurnBoot.h ${D}${includedir}/
+    install -m 0644 ${S}/OTA_BurnBoot.h ${D}${includedir}/
 }
 
 FILES:${PN} += "${libdir}/libota-burnboot.so"

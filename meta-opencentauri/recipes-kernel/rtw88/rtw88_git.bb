@@ -11,8 +11,6 @@ SRC_URI = "git://github.com/lwfinger/rtw88.git;protocol=https;branch=master \
            file://0001-disable-led-support.patch \
            "
 
-S = "${WORKDIR}/git"
-
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}"
 
 # Disable deep power save (RTL8821CU firmware crashes in LPS deep mode)

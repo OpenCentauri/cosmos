@@ -16,8 +16,6 @@ SRCREV = "afe7178d0859f3cbc80e591473f86ee64183122b"
 
 PR = "r5"
 
-S = "${WORKDIR}/git"
-
 DEPENDS = " \
     python3-native \
 "
