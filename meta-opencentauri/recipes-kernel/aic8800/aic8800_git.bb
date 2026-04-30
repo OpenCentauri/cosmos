@@ -8,8 +8,6 @@ inherit module
 SRCREV = "05710dff05dabce66ab3ee80f40484892c512b3c"
 SRC_URI = "git://github.com/shenmintao/aic8800d80.git;protocol=https;branch=main"
 
-S = "${WORKDIR}/git"
-
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}/drivers/aic8800 \
     CONFIG_PREALLOC_RX_SKB=n CONFIG_PREALLOC_TXQ=n"
 

@@ -19,8 +19,6 @@ SRC_URI = " \
 
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
 
-S = "${WORKDIR}/git"
-
 PR = "r1"
 
 inherit python3-dir update-rc.d
@@ -74,11 +72,11 @@ do_install() {
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/moonraker.conf ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${UNPACKDIR}/moonraker.conf ${D}${sysconfdir}/klipper/config/
 
     # Copy readonly config file to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
-    install -m 0644 ${WORKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
+    install -m 0644 ${UNPACKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
 
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
@@ -87,7 +85,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/moonraker-init-d ${D}${sysconfdir}/init.d/moonraker
+    install -m 0755 ${UNPACKDIR}/moonraker-init-d ${D}${sysconfdir}/init.d/moonraker
 }
 
 FILES:${PN} = " \

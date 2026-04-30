@@ -7,12 +7,14 @@ SRC_URI = " \
     file://uiclear \
 "
 
+S = "${UNPACKDIR}"
+
 RDEPENDS:${PN} = "curl"
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/uiprompt ${D}${bindir}/uiprompt
-    install -m 0755 ${WORKDIR}/uiclear ${D}${bindir}/uiclear
+    install -m 0755 ${S}/uiprompt ${D}${bindir}/uiprompt
+    install -m 0755 ${S}/uiclear ${D}${bindir}/uiclear
 }
 
 FILES:${PN} = " \

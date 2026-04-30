@@ -21,7 +21,7 @@ INHIBIT_PACKAGE_STRIP = "1"
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_SYSROOT_STRIP = "1"
 
-INSANE_SKIP:${PN} = "arch"
+INSANE_SKIP:${PN} = "arch buildpaths"
 
 do_install() {
     install -d ${D}/lib/firmware
@@ -29,7 +29,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp ${WORKDIR}/klipper-firmware-dsp-init-d ${D}${sysconfdir}/init.d/klipper-firmware-dsp
+    cp ${UNPACKDIR}/klipper-firmware-dsp-init-d ${D}${sysconfdir}/init.d/klipper-firmware-dsp
     chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-dsp
 }
 

@@ -6,11 +6,13 @@ SRC_URI = "\
     file://99-dev-by-id.rules \
 "
 
+S = "${UNPACKDIR}"
+
 RDEPENDS:${PN} = "udev"
 
 do_install() {
     install -d ${D}${sysconfdir}/udev/rules.d
-    install -m 0644 ${WORKDIR}/99-dev-by-id.rules \
+    install -m 0644 ${S}/99-dev-by-id.rules \
         ${D}${sysconfdir}/udev/rules.d/99-dev-by-id.rules
 }
 
