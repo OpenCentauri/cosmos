@@ -16,8 +16,6 @@ SRC_URI = " \
 SRC_URI[sha256sum] = "c1d1f430e623b5b02693a2ab42988f951fb66ae3bd3add06e557bdf36af0e24f"
 SRCREV = "6c599f50e9e8e9436a5c064f42836eb48ff6bde0"
 
-S = "${WORKDIR}/git"
-
 EXTRA_OEMAKE = " \
     'CC=${CC}' \
     NOSDL=1 \
@@ -36,10 +34,10 @@ do_install() {
 
     # Install wad
     install -d ${D}${datadir}/doom
-    install -m 0644 ${WORKDIR}/DOOM1.WAD ${D}${datadir}/doom/doom1.wad
+    install -m 0644 ${UNPACKDIR}/DOOM1.WAD ${D}${datadir}/doom/doom1.wad
 
     # Install play-doom script
-    install -m 0755 ${WORKDIR}/play-doom.sh ${D}${bindir}/play-doom
+    install -m 0755 ${UNPACKDIR}/play-doom.sh ${D}${bindir}/play-doom
 }
 
 FILES:${PN} = " \

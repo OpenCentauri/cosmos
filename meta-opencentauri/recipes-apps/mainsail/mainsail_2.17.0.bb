@@ -10,7 +10,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = "https://github.com/mainsail-crew/mainsail/releases/download/v${PV}/mainsail.zip;subdir=mainsail"
 SRC_URI[sha256sum] = "d010f4df25557d520ccdbb8e42fc381df2288e6a5c72d3838a5a2433c7a31d4e"
 
-S = "${WORKDIR}/mainsail"
+S = "${UNPACKDIR}/mainsail"
 
 RDEPENDS:${PN} = " \
     klipper \

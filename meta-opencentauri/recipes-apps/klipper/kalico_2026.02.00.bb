@@ -94,15 +94,15 @@ do_install() {
     # Install default kalico config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/printer.cfg ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${UNPACKDIR}/printer.cfg ${D}${sysconfdir}/klipper/config/
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/client.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${WORKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+    install -m 0755 ${UNPACKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
 }
 
 FILES:${PN} = " \

@@ -7,12 +7,15 @@ HOMEPAGE = "https://github.com/OpenCentauri/atomscreen"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 
-S = "${WORKDIR}/git"
-
 DEPENDS += "fontconfig openssl pkgconfig-native"
 RDEPENDS:${PN} += "fontconfig gui-switcher"
 
 INSANE_SKIP:${PN} = "already-stripped"
+
+do_compile:prepend() {
+    export OPENSSL_LIB_DIR="${STAGING_LIBDIR}"
+    export OPENSSL_INCLUDE_DIR="${STAGING_INCDIR}"
+}
 
 INITSCRIPT_NAME = "atomscreen"
 INITSCRIPT_PARAMS = "disable"
@@ -20,10 +23,10 @@ INITSCRIPT_PARAMS = "disable"
 do_install:append() {
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/atomscreen.toml ${D}${sysconfdir}/klipper/config/
+    install -m 0644 ${UNPACKDIR}/atomscreen.toml ${D}${sysconfdir}/klipper/config/
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/atomscreen.init ${D}${sysconfdir}/init.d/atomscreen
+    install -m 0755 ${UNPACKDIR}/atomscreen.init ${D}${sysconfdir}/init.d/atomscreen
 }
 
 FILES:${PN} += " \

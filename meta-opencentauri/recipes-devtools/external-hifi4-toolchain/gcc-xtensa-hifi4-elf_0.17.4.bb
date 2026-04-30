@@ -26,7 +26,7 @@ BBCLASSEXTEND = "native nativesdk"
 # Skipping file deps - we don't control the dependencies for prebuilt libraries, resulting in
 # nothing provides libcrypt.so.1()(64bit) needed by nativesdk-gcc-xtensa-hifi4-elf
 # when packaged as RPM for SDK.
-SKIP_FILEDEPS="1"
+SKIP_FILEDEPS = "1"
 
 COMPATIBLE_HOST = "(x86_64|aarch64).*-linux"
 
@@ -40,4 +40,4 @@ SRC_URI = "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${PV}
 SRC_URI[gcc-aarch64.sha256sum] = "857ffd120af6fee573afbc7f29ec0519d2643a9613588c70eb9f6f3488bad1b9"
 SRC_URI[gcc-x86_64.sha256sum] = "8dbd260061e3fb05696bb19f026f6eeeb965eb37c0113a63bbfc040836b612c5"
 
-S = "${WORKDIR}/xtensa-nxp_rt700_hifi4_zephyr-elf"
+S = "${UNPACKDIR}/xtensa-nxp_rt700_hifi4_zephyr-elf"
