@@ -1,7 +1,3 @@
-[submodule "poky"]
-	path = poky
-	url = https://git.yoctoproject.org/poky
-	branch = scarthgap
 [submodule "meta-sunxi"]
 	path = meta-sunxi
 	url = https://github.com/linux-sunxi/meta-sunxi
@@ -22,3 +18,15 @@
 	path = meta-lts-mixins
 	url = https://git.yoctoproject.org/meta-lts-mixins
 	branch = scarthgap/rust
+[submodule "meta-yocto"]
+	path = meta-yocto
+	url = https://git.yoctoproject.org/meta-yocto
+	branch = scarthgap
+[submodule "bitbake"]
+	path = bitbake
+	url = https://git.openembedded.org/bitbake
+	branch = 2.8
+[submodule "openembedded-core"]
+	path = openembedded-core
+	url = https://git.openembedded.org/openembedded-core
+	branch = scarthgap
