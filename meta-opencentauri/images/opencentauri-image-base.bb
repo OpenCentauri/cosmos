@@ -1,7 +1,11 @@
 DESCRIPTION = "OpenCentauri Base Image"
 LICENSE = "GPL-3.0-only"
 
-IMAGE_INSTALL = "packagegroup-core-boot ${CORE_IMAGE_EXTRA_INSTALL}"
+IMAGE_INSTALL = " \
+    packagegroup-core-boot \
+    packagegroup-base-wifi \
+    ${CORE_IMAGE_EXTRA_INSTALL} \
+"
 
 IMAGE_LINGUAS = " "
 
@@ -16,8 +20,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     kernel-modules \
     rtw88 \
     aic8800 \
-    wpa-supplicant \
-    iw \
     kalico \
     moonraker \
     mainsail \
