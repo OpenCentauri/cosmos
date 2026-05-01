@@ -1,0 +1,47 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          backlight-off
+# Required-Start:    $local_fs
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Turn off display for headless operation
+# Description:       Turns off display backlight and blanks framebuffer
+#                    after boot for headless MMU setups.
+### END INIT INFO
+
+case "$1" in
+    start)
+        # Wait for system to settle
+        sleep 2
+        
+        # Blank framebuffer (stops display controller)
+        if [ -e /sys/class/graphics/fb0/blank ]; then
+            echo 1 > /sys/class/graphics/fb0/blank
+        fi
+        
+        # Turn off backlight
+        if [ -d /sys/class/backlight/backlight ]; then
+            echo 0 > /sys/class/backlight/backlight/brightness
+        fi
+        ;;
+    stop)
+        # Restore display for clean shutdown
+        if [ -e /sys/class/graphics/fb0/blank ]; then
+            echo 0 > /sys/class/graphics/fb0/blank
+        fi
+        if [ -d /sys/class/backlight/backlight ]; then
+            echo 1 > /sys/class/backlight/backlight/brightness
+        fi
+        ;;
+    restart|force-reload)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
