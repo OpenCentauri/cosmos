@@ -24,16 +24,16 @@ Add a device tree binding for them.
 Signed-off-by: Aleksandr Shubin <privatesub2@gmail.com>
 Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- .../bindings/pwm/allwinner,sun20i-pwm.yaml    | 87 +++++++++++++++++++
- 1 file changed, 87 insertions(+)
+ .../bindings/pwm/allwinner,sun20i-pwm.yaml    | 84 +++++++++++++++++++
+ 1 file changed, 84 insertions(+)
  create mode 100644 Documentation/devicetree/bindings/pwm/allwinner,sun20i-pwm.yaml
 
 diff --git a/Documentation/devicetree/bindings/pwm/allwinner,sun20i-pwm.yaml b/Documentation/devicetree/bindings/pwm/allwinner,sun20i-pwm.yaml
 new file mode 100644
-index 000000000000..a65324e9b138
+index 000000000000..89cebf7841a6
 --- /dev/null
 +++ b/Documentation/devicetree/bindings/pwm/allwinner,sun20i-pwm.yaml
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,84 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
@@ -44,13 +44,14 @@ index 000000000000..a65324e9b138
 +
 +maintainers:
 +  - Aleksandr Shubin <privatesub2@gmail.com>
++  - Brandon Cheo Fusi <fusibrandon13@gmail.com>
 +
 +properties:
 +  compatible:
 +    oneOf:
 +      - const: allwinner,sun20i-d1-pwm
 +      - items:
-+          - const: allwinner,sun20i-r329-pwm
++          - const: allwinner,sun50i-r329-pwm
 +          - const: allwinner,sun20i-d1-pwm
 +
 +  reg:
@@ -63,13 +64,13 @@ index 000000000000..a65324e9b138
 +    items:
 +      - description: Bus clock
 +      - description: 24 MHz oscillator
-+      - description: APB0 clock
++      - description: APB clock
 +
 +  clock-names:
 +    items:
 +      - const: bus
 +      - const: hosc
-+      - const: apb0
++      - const: apb
 +
 +  resets:
 +    maxItems: 1
@@ -86,15 +87,11 @@ index 000000000000..a65324e9b138
 +      properties:
 +        compatible:
 +          contains:
-+            const: allwinner,sun20i-r329-pwm
++            const: allwinner,sun50i-r329-pwm
 +
 +    then:
 +      required:
 +        - allwinner,pwm-channels
-+
-+    else:
-+      properties:
-+        allwinner,pwm-channels: false
 +
 +unevaluatedProperties: false
 +
@@ -115,7 +112,7 @@ index 000000000000..a65324e9b138
 +      compatible = "allwinner,sun20i-d1-pwm";
 +      reg = <0x02000c00 0x400>;
 +      clocks = <&ccu CLK_BUS_PWM>, <&dcxo>, <&ccu CLK_APB0>;
-+      clock-names = "bus", "hosc", "apb0";
++      clock-names = "bus", "hosc", "apb";
 +      resets = <&ccu RST_BUS_PWM>;
 +      #pwm-cells = <0x3>;
 +    };

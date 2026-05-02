@@ -21,7 +21,7 @@ RDEPENDS_${KERNEL_PACKAGE_NAME}-base += "kernel-devicetree"
 
 KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT}"
 
-S = "${WORKDIR}/linux-${PV}"
+S = "${UNPACKDIR}/linux-${PV}"
 
 # get release version 5.x or 6.x based on version
 KRELEASE = "${@d.getVar('PV', True).split('.')[0]}"
