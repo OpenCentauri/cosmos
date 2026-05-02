@@ -50,6 +50,7 @@ RDEPENDS:${PN} = " \
     python3-smart-open \
     python3-msgspec \
     python3-uvloop \
+    python3-aiofiles \
     kalico \
 "
 
