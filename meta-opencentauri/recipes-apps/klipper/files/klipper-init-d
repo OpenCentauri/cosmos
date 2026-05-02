@@ -16,7 +16,9 @@ case "$1" in
     start)
         echo "Starting klipper..."
         start-stop-daemon -S -b -m -p $PIDFILE \
+            --nicelevel -10 \
             -x $KLIPPY_EXEC -- $KLIPPY_ARGS
+        echo -500 > /proc/$(cat $PIDFILE)/oom_score_adj
         ;;
     stop)
         echo "Stopping klipper..."
