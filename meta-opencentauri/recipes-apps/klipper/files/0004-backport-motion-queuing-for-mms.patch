@@ -9,24 +9,28 @@ the toolhead step generation refactor (between Nov 2025 and Apr 2026).
 
 Kalico has not adopted that refactor and lacks the steppersyncmgr_*
 C primitives upstream uses. This patch adds a compatibility shim
-implementing the motion_queuing Python API on top of Kalico's existing
-trapq / itersolve / toolhead primitives. It is loaded on demand via
-printer.load_object("motion_queuing") and only used by extras (MMS)
-that opt into it.
+implementing the subset of the motion_queuing Python API that MMS uses
+on top of Kalico's existing trapq / itersolve / toolhead primitives.
+It is loaded on demand via printer.load_object("motion_queuing") and
+not used by core Kalico.
 
 Behavior:
 - allocate_trapq / lookup_trapq_append / wipe_trapq map directly to
-  the chelper trapq_* functions Kalico already exposes.
+  the chelper trapq_* functions Kalico already exposes. Allocated
+  trapqs are tracked so we can identify which steppers MMS has bound
+  to one of our trapqs.
 - note_mcu_movequeue_activity delegates to the toolhead so its flush
   timer is kicked correctly.
-- flush_all_steps generates steps for every loaded manual_stepper
-  (MMS uses these and they are not registered with the toolhead's
-  step_generators list) then asks the toolhead to flush MCU moves.
+- flush_all_steps calls itersolve_generate_steps only for steppers
+  whose current ._trapq is one we allocated, then notifies the
+  toolhead. Touching unrelated manual_steppers can cause an
+  "Invalid sequence" stepcompress error if their original trapq has
+  stale state from earlier moves the toolhead already flushed.
 - drip_update_time mirrors the upstream segmented-flush loop so
   drip_completion can interrupt mid-move.
 ---
- klippy/extras/motion_queuing.py | 121 ++++++++++++++++++++++++++++++++
- 1 file changed, 121 insertions(+)
+ klippy/extras/motion_queuing.py | 145 ++++++++++++++++++++++++++++++++
+ 1 file changed, 145 insertions(+)
  create mode 100644 klippy/extras/motion_queuing.py
 
 diff --git a/klippy/extras/motion_queuing.py b/klippy/extras/motion_queuing.py
@@ -34,7 +38,7 @@ new file mode 100644
 index 0000000..0000001
 --- /dev/null	1970-01-01 01:00:00.000000000 +0100
 +++ b/klippy/extras/motion_queuing.py	1970-01-01 01:00:00.000000000 +0100
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,145 @@
 +# Compatibility backport of upstream Klipper's motion_queuing module
 +#
 +# Provides the motion_queuing API expected by the BIGTREETECH MMS plugin
@@ -59,12 +63,19 @@ index 0000000..0000001
 +        self._ffi_lib = ffi_lib
 +        self.trapq_finalize_moves = ffi_lib.trapq_finalize_moves
 +        self.last_step_gen_time = 0.0
++        # Trapqs allocated through us. We hold strong refs so the gc
++        # wrappers don't free the underlying C trapq while MMS still
++        # has the stepper bound to it. MMS allocates a small fixed
++        # number (one per MoveDispatch per stepper) so this is bounded.
++        self._our_trapqs = []
 +
 +    # ---- Trapq helpers ----
 +    def allocate_trapq(self):
-+        return self._ffi_main.gc(
++        trapq = self._ffi_main.gc(
 +            self._ffi_lib.trapq_alloc(), self._ffi_lib.trapq_free
 +        )
++        self._our_trapqs.append(trapq)
++        return trapq
 +
 +    def lookup_trapq_append(self):
 +        return self._ffi_lib.trapq_append
@@ -77,10 +88,14 @@ index 0000000..0000001
 +        self.trapq_finalize_moves(trapq, print_time, 0.0)
 +
 +    # ---- Step generation ----
-+    def _iter_manual_steppers(self):
-+        # MMS allocates trapqs and binds them to manual_stepper rails.
-+        # Manual steppers are not in toolhead.step_generators so we have
-+        # to drive their itersolve loop ourselves.
++    def _iter_owned_steppers(self):
++        # MMS binds an MCU_stepper to one of our allocated trapqs by
++        # calling mcu_stepper.set_trapq(<our trapq>). MCU_stepper records
++        # the active trapq as ._trapq, so we can identify steppers we
++        # actually own and skip every other manual_stepper that happens
++        # to share the printer.
++        if not self._our_trapqs:
++            return
 +        for _name, obj in self.printer.lookup_objects(module="manual_stepper"):
 +            steppers = getattr(obj, "steppers", None)
 +            if steppers is None:
@@ -90,10 +105,16 @@ index 0000000..0000001
 +                steppers = rail.get_steppers() \
 +                    if hasattr(rail, "get_steppers") else [rail]
 +            for stepper in steppers:
-+                yield stepper
++                cur = getattr(stepper, "_trapq", None)
++                if cur is None:
++                    continue
++                for tq in self._our_trapqs:
++                    if cur == tq:
++                        yield stepper
++                        break
 +
-+    def _generate_manual_stepper_steps(self, flush_time):
-+        for stepper in self._iter_manual_steppers():
++    def _generate_owned_stepper_steps(self, flush_time):
++        for stepper in self._iter_owned_steppers():
 +            try:
 +                stepper.generate_steps(flush_time)
 +            except Exception:
@@ -111,18 +132,25 @@ index 0000000..0000001
 +
 +    def flush_all_steps(self):
 +        flush_time = self.last_step_gen_time
-+        self._generate_manual_stepper_steps(flush_time)
-+        # Ask the toolhead to flush its own step generators and push
-+        # the accumulated stepcompress data to the MCU(s).
++        # Generate steps only for steppers actively bound to one of our
++        # trapqs. Touching unrelated manual_steppers can produce an
++        # "Invalid sequence" stepcompress error if their original trapq
++        # has stale state from earlier moves the toolhead already
++        # flushed.
++        self._generate_owned_stepper_steps(flush_time)
++        # Notify the toolhead so its background flush_handler pushes
++        # the new stepcompress data to the MCU. Avoid calling
++        # toolhead.flush_step_generation() — that flushes the toolhead's
++        # own lookahead and can race with whatever queued the MMS move.
 +        toolhead = self.printer.lookup_object("toolhead")
-+        toolhead.flush_step_generation()
++        toolhead.note_mcu_movequeue_activity(
++            flush_time, set_step_gen_time=True
++        )
 +
 +    def check_step_generation_scan_windows(self):
-+        # Kalico tracks kin_flush_delay inside the toolhead and updates it
-+        # via note_step_generation_scan_time. A flush is sufficient to
-+        # synchronize state.
-+        toolhead = self.printer.lookup_object("toolhead")
-+        toolhead.flush_step_generation()
++        # Kalico tracks kin_flush_delay inside the toolhead. Nothing we
++        # need to recompute on this side.
++        return
 +
 +    # ---- Drip (homing-style) timing ----
 +    def drip_update_time(self, start_time, end_time, drip_completion):
@@ -142,7 +170,7 @@ index 0000000..0000001
 +            self.last_step_gen_time = max(
 +                self.last_step_gen_time, flush_time
 +            )
-+            self._generate_manual_stepper_steps(flush_time)
++            self._generate_owned_stepper_steps(flush_time)
 +            toolhead.note_mcu_movequeue_activity(
 +                flush_time, set_step_gen_time=True
 +            )
