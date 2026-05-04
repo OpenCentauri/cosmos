@@ -42,6 +42,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     logrotate \
     fbdoom \
     v4l-utils \
+    bigtreetech-mms \
+    bigtreetech-mms-firmware-vivid \
+    bigtreetech-mms-firmware-buffer \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

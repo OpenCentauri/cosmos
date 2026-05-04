@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Anna <anna@enneo.ai>
+Date: Sun, 4 May 2026 00:00:00 +0000
+Subject: [PATCH] Add sense_resistor to TMC2209 stepper configs
+
+Kalico requires sense_resistor to be explicitly set unlike upstream
+Klipper which defaults to 0.110.
+
+---
+ config/bigtreetech-mms/hardware/mms-stepper.cfg | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/config/bigtreetech-mms/hardware/mms-stepper.cfg b/config/bigtreetech-mms/hardware/mms-stepper.cfg
+index 0000000..0000001 100644
+--- a/config/bigtreetech-mms/hardware/mms-stepper.cfg
++++ b/config/bigtreetech-mms/hardware/mms-stepper.cfg
+@@ -14,6 +14,7 @@ accel:             100            # Acceleration (mm/s²)
+ #--------------------------- Selector TMC2209 Driver ---------------------------#
+ [tmc2209 manual_stepper selector_stepper]
+ uart_pin:          vivid:PB3      # UART communication pin
++sense_resistor:    0.110          # Sense resistor value (ohms)
+ run_current:       1.0            # Run current (A)
+ stealthchop_threshold: 0          # 0=spreadCycle, 999999=stealthChop mode
+
+@@ -31,5 +32,6 @@ accel:             100            # Acceleration (mm/s²)
+ #--------------------------- Drive TMC2209 Driver ---------------------------#
+ [tmc2209 manual_stepper drive_stepper]
+ uart_pin:          vivid:PB7      # UART communication pin
++sense_resistor:    0.110          # Sense resistor value (ohms)
+ run_current:       0.7            # Run current (A)
+ stealthchop_threshold: 0          # 0=spreadCycle, 999999=stealthChop mode
