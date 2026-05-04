@@ -75,7 +75,7 @@ do_install() {
 
     # Set our ver
     sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
-    echo "${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
+    echo "Release - ${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
 
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
