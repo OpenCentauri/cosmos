@@ -35,6 +35,19 @@ do_install() {
     install -m 0644 ${S}/config/mcu/*.cfg          ${D}${sysconfdir}/klipper/config/klipper-readonly/AFC/mcu/
     install -m 0644 ${S}/config/macros/*.cfg       ${D}${sysconfdir}/klipper/config/klipper-readonly/AFC/macros/
 
+    # Patch shipped AFC.cfg defaults for the OpenCentauri layout:
+    #   * VarFile: AFC saves to klippy CWD-relative path by default; absolute
+    #     path under /etc/klipper/config keeps state on the rw overlay and
+    #     visible through moonraker's "config" file root.
+    #   * moonraker_port: this image runs moonraker on :80, not the upstream :7125.
+    sed -i \
+        -e 's|^VarFile:.*|VarFile: ${sysconfdir}/klipper/config/AFC/AFC.var|' \
+        -e 's|^#moonraker_port: 7125|moonraker_port: 80|' \
+        ${D}${sysconfdir}/klipper/config/klipper-readonly/AFC/AFC.cfg
+
+    # Writable dir for AFC.var / AFC.var.unit (created on overlay at runtime).
+    install -d ${D}${sysconfdir}/klipper/config/AFC
+
     # Pre-wired BTT ViViD config (serial-by-id paths matching BTT firmware).
     install -m 0644 ${WORKDIR}/btt-vivid.cfg       ${D}${sysconfdir}/klipper/config/klipper-readonly/AFC/
 }
@@ -42,6 +55,7 @@ do_install() {
 FILES:${PN} = " \
     ${datadir}/klipper/klippy/extras/AFC*.py \
     ${sysconfdir}/klipper/config/klipper-readonly/AFC \
+    ${sysconfdir}/klipper/config/AFC \
 "
 
 RDEPENDS:${PN} = "kalico"
