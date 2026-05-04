@@ -8,10 +8,11 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=rpmsg-
     file://0001-allow-save-tare.patch \
     file://0002-remove-save-config-subfile-check.patch \
     file://0003-add-aht-family-and-neopixel-mms-support.patch \
+    file://0004-backport-motion-queuing-for-mms.patch \
 "
 SRCREV = "afe7178d0859f3cbc80e591473f86ee64183122b"
 
-PR = "r4"
+PR = "r5"
 
 S = "${WORKDIR}/git"
 

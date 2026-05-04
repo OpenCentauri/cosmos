@@ -1,0 +1,158 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Anna <anna@enneo.ai>
+Date: Sun, 4 May 2026 00:00:00 +0000
+Subject: [PATCH] Backport motion_queuing module for BIGTREETECH MMS support
+
+The BIGTREETECH MMS (Multi-Material System) Klipper plugin requires
+the motion_queuing object that upstream Klipper introduced as part of
+the toolhead step generation refactor (between Nov 2025 and Apr 2026).
+
+Kalico has not adopted that refactor and lacks the steppersyncmgr_*
+C primitives upstream uses. This patch adds a compatibility shim
+implementing the motion_queuing Python API on top of Kalico's existing
+trapq / itersolve / toolhead primitives. It is loaded on demand via
+printer.load_object("motion_queuing") and only used by extras (MMS)
+that opt into it.
+
+Behavior:
+- allocate_trapq / lookup_trapq_append / wipe_trapq map directly to
+  the chelper trapq_* functions Kalico already exposes.
+- note_mcu_movequeue_activity delegates to the toolhead so its flush
+  timer is kicked correctly.
+- flush_all_steps generates steps for every loaded manual_stepper
+  (MMS uses these and they are not registered with the toolhead's
+  step_generators list) then asks the toolhead to flush MCU moves.
+- drip_update_time mirrors the upstream segmented-flush loop so
+  drip_completion can interrupt mid-move.
+---
+ klippy/extras/motion_queuing.py | 121 ++++++++++++++++++++++++++++++++
+ 1 file changed, 121 insertions(+)
+ create mode 100644 klippy/extras/motion_queuing.py
+
+diff --git a/klippy/extras/motion_queuing.py b/klippy/extras/motion_queuing.py
+new file mode 100644
+index 0000000..0000001
+--- /dev/null	1970-01-01 01:00:00.000000000 +0100
++++ b/klippy/extras/motion_queuing.py	1970-01-01 01:00:00.000000000 +0100
+@@ -0,0 +1,121 @@
++# Compatibility backport of upstream Klipper's motion_queuing module
++#
++# Provides the motion_queuing API expected by the BIGTREETECH MMS plugin
++# on top of Kalico's existing toolhead/trapq primitives. Loaded on demand
++# via printer.load_object("motion_queuing"); not used by core Kalico.
++#
++# This file may be distributed under the terms of the GNU GPLv3 license.
++import logging
++
++from klippy import chelper
++
++DRIP_SEGMENT_TIME = 0.050
++DRIP_TIME = 0.100
++
++
++class PrinterMotionQueuing:
++    def __init__(self, config):
++        self.printer = config.get_printer()
++        self.reactor = self.printer.get_reactor()
++        ffi_main, ffi_lib = chelper.get_ffi()
++        self._ffi_main = ffi_main
++        self._ffi_lib = ffi_lib
++        self.trapq_finalize_moves = ffi_lib.trapq_finalize_moves
++        self.last_step_gen_time = 0.0
++
++    # ---- Trapq helpers ----
++    def allocate_trapq(self):
++        return self._ffi_main.gc(
++            self._ffi_lib.trapq_alloc(), self._ffi_lib.trapq_free
++        )
++
++    def lookup_trapq_append(self):
++        return self._ffi_lib.trapq_append
++
++    def wipe_trapq(self, trapq):
++        # Finalize all remaining moves in the trapq
++        self.trapq_finalize_moves(trapq, self.reactor.NEVER, 0.0)
++
++    def expire_trapq(self, trapq, print_time):
++        self.trapq_finalize_moves(trapq, print_time, 0.0)
++
++    # ---- Step generation ----
++    def _iter_manual_steppers(self):
++        # MMS allocates trapqs and binds them to manual_stepper rails.
++        # Manual steppers are not in toolhead.step_generators so we have
++        # to drive their itersolve loop ourselves.
++        for _name, obj in self.printer.lookup_objects(module="manual_stepper"):
++            steppers = getattr(obj, "steppers", None)
++            if steppers is None:
++                rail = getattr(obj, "rail", None)
++                if rail is None:
++                    continue
++                steppers = rail.get_steppers() \
++                    if hasattr(rail, "get_steppers") else [rail]
++            for stepper in steppers:
++                yield stepper
++
++    def _generate_manual_stepper_steps(self, flush_time):
++        for stepper in self._iter_manual_steppers():
++            try:
++                stepper.generate_steps(flush_time)
++            except Exception:
++                logging.exception(
++                    "motion_queuing: generate_steps failed for %s",
++                    stepper.get_name() if hasattr(stepper, "get_name") else "?",
++                )
++
++    def note_mcu_movequeue_activity(self, end_print_time):
++        self.last_step_gen_time = max(self.last_step_gen_time, end_print_time)
++        toolhead = self.printer.lookup_object("toolhead")
++        toolhead.note_mcu_movequeue_activity(
++            end_print_time, set_step_gen_time=True
++        )
++
++    def flush_all_steps(self):
++        flush_time = self.last_step_gen_time
++        self._generate_manual_stepper_steps(flush_time)
++        # Ask the toolhead to flush its own step generators and push
++        # the accumulated stepcompress data to the MCU(s).
++        toolhead = self.printer.lookup_object("toolhead")
++        toolhead.flush_step_generation()
++
++    def check_step_generation_scan_windows(self):
++        # Kalico tracks kin_flush_delay inside the toolhead and updates it
++        # via note_step_generation_scan_time. A flush is sufficient to
++        # synchronize state.
++        toolhead = self.printer.lookup_object("toolhead")
++        toolhead.flush_step_generation()
++
++    # ---- Drip (homing-style) timing ----
++    def drip_update_time(self, start_time, end_time, drip_completion):
++        toolhead = self.printer.lookup_object("toolhead")
++        mcu = toolhead.mcu
++        flush_time = start_time
++        while flush_time < end_time:
++            if drip_completion.test():
++                break
++            curtime = self.reactor.monotonic()
++            est_print_time = mcu.estimated_print_time(curtime)
++            wait_time = flush_time - est_print_time - DRIP_TIME
++            if wait_time > 0.0:
++                drip_completion.wait(curtime + wait_time)
++                continue
++            flush_time = min(flush_time + DRIP_SEGMENT_TIME, end_time)
++            self.last_step_gen_time = max(
++                self.last_step_gen_time, flush_time
++            )
++            self._generate_manual_stepper_steps(flush_time)
++            toolhead.note_mcu_movequeue_activity(
++                flush_time, set_step_gen_time=True
++            )
++        # Final flush so any generated steps are pushed to the MCU
++        self.flush_all_steps()
++
++    # ---- Stats hook (printer calls .stats() on objects that define it) ----
++    def stats(self, eventtime):
++        return False, ""
++
++
++def load_config(config):
++    return PrinterMotionQueuing(config)
