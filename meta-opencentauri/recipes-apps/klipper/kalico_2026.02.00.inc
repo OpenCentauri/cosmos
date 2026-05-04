@@ -7,6 +7,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=rpmsg-with-new-hx71x \
     file://0001-allow-save-tare.patch \
     file://0002-remove-save-config-subfile-check.patch \
+    file://0003-add-aht-family-and-neopixel-mms-support.patch \
 "
 SRCREV = "afe7178d0859f3cbc80e591473f86ee64183122b"
 
