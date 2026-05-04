@@ -1,15 +1,17 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
-    file://psplash-colors.h;subdir=git \
+    file://psplash-colors.h;subdir=${BPN}-${PV} \
     file://psplash-bar.png \
 "
 SPLASH_IMAGES = " \
     file://cosmos_1.png;outsuffix=default \
 "
 
+PR = "r2"
+
 do_compile:prepend() {
     import subprocess
-    workdir = d.getVar('WORKDIR')
+    workdir = d.getVar('UNPACKDIR')
     s = d.getVar('S')
     convertscript = "%s/make-image-header.sh" % s
     if subprocess.call([convertscript, os.path.join(workdir, 'psplash-bar.png'), 'BAR'], cwd=workdir):
