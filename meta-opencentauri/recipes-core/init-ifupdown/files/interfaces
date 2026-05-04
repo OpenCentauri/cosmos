@@ -11,6 +11,7 @@ iface wlan0 inet dhcp
 	wpa-driver nl80211
 	wpa-conf /etc/wpa_supplicant.conf
 	post-up iw dev wlan0 set power_save off
+	udhcpc_opts -F $(hostname)
 
 # Wired or wireless interfaces
 auto eth0

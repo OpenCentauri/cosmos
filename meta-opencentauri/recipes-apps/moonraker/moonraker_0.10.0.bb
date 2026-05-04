@@ -11,7 +11,6 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = " \
     git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
     file://moonraker-init-d \
-    file://ip \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
     file://0001-Serve-static-files.patch \
@@ -88,9 +87,6 @@ do_install() {
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/moonraker-init-d ${D}${sysconfdir}/init.d/moonraker
-
-    # Install BusyBox-compatible ip shim used by Moonraker network probing
-    install -m 0755 ${WORKDIR}/ip ${D}${datadir}/moonraker/ip
 }
 
 FILES:${PN} = " \
