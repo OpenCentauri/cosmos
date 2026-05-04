@@ -25,7 +25,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     mainsail \
     fluidd \
     atomscreen \
-    guppyscreen \
     grumpyscreen \
     htop \
     i2c-tools \
@@ -42,7 +41,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     swu-flasher \
     update-scripts \
     logrotate \
-    fbdoom \
     v4l-utils \
 "
 
