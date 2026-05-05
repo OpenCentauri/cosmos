@@ -12,6 +12,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0001-implement-pulldown-resistor-in-thermistor-calc.patch \
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
+    file://0003-drv8833-motor-control.patch \
 "
 SRCREV = "3f166182f82f95584112571b4f7b2258922be60d"
 
