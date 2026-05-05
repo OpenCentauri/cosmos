@@ -7,8 +7,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = " \
     git://github.com/Arksine/katapult.git;protocol=https;branch=master \
     file://0001-Add-DEPLOYER_PAYLOAD-parameter.patch \
-    file://0002-add-support-for-48kib-offset.patch \
-    file://0003-add-support-for-64kib-offset.patch \
+    file://0002-add-support-for-48kib-and-64kib-offset.patch \
 "
 SRCREV = "ec59b9bb9ad6c2ec8d4dc6831fbc77f0b308e29e"
 
