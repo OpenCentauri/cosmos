@@ -32,4 +32,5 @@ do_install() {
 
 FILES:${PN} = " \
     /lib/firmware/klipper-canvas.bin \
+    /lib/firmware/klipper-canvas.bin.ver \
 "
