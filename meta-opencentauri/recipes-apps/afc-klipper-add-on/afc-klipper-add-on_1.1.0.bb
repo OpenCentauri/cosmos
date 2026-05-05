@@ -12,7 +12,7 @@ SRC_URI = "git://github.com/ArmoredTurtle/AFC-Klipper-Add-On.git;protocol=https;
 # Tag 1.1.0
 SRCREV = "68cfe778d013a7f6694c2c6f21ee2cfc1a8f65c9"
 
-PR = "r6"
+PR = "r7"
 
 S = "${WORKDIR}/git"
 
@@ -85,12 +85,11 @@ do_install() {
     #   * pin_loc_xy / cut_direction / cut_move_dist → front-right corner
     #     cutter. Cutter is mounted on the right side of the toolhead at
     #     X=255 and is engaged by pressing the toolhead in -Y against the
-    #     front case. cosmos UNLOAD_FILAMENT goes Y=30 (clearance) → Y=3
-    #     to cut, but the lever needs more travel than that to fully chop
-    #     thicker filament; bump cut_move_dist to 12 so the toolhead
-    #     reaches Y=-1 (full_cut_y = pin_loc_y - cut_move_dist), well
-    #     within Y position_min=-2.5. pin_park_dist stays at the default 6
-    #     (toolhead parks at Y=17 before approaching).
+    #     front case. Measured on hardware: lever just touches at Y=18,
+    #     fully compressed at Y=1. So pin_loc_y=18, cut_move_dist=17
+    #     (full_cut_y = pin_loc_y - cut_move_dist = 1), well inside
+    #     Y position_min=-2.5. pin_park_dist stays at the default 6
+    #     (toolhead parks at Y=24 before approaching).
     sed -i \
         -e 's|^variable_park_loc_xy *: *-99, *-99|variable_park_loc_xy              : 202, 264.5|' \
         -e 's|^variable_purge_loc_xy *: *-99, *-99|variable_purge_loc_xy             : 202, 264.5|' \
@@ -99,9 +98,9 @@ do_install() {
         -e 's|^variable_brush_width *: *30|variable_brush_width              : 14|' \
         -e 's|^variable_brush_depth *: *10|variable_brush_depth              : 2|' \
         -e 's|^variable_brush_count *: *4|variable_brush_count              : 5|' \
-        -e 's|^variable_pin_loc_xy *: *-99, *-99|variable_pin_loc_xy               : 255, 11|' \
+        -e 's|^variable_pin_loc_xy *: *-99, *-99|variable_pin_loc_xy               : 255, 18|' \
         -e 's|^variable_cut_direction *: *"left"|variable_cut_direction            : "front"|' \
-        -e 's|^variable_cut_move_dist *: *8\.5|variable_cut_move_dist            : 10|' \
+        -e 's|^variable_cut_move_dist *: *8\.5|variable_cut_move_dist            : 17|' \
         ${D}${sysconfdir}/klipper/config/klipper-readonly/AFC/AFC_Macro_Vars.cfg
 
     # Writable dir for AFC.var / AFC.var.unit (created on overlay at runtime).
