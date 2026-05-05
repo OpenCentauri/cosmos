@@ -8,6 +8,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=rpmsg-
     file://0001-remove-save-config-subfile-check.patch \
     file://0002-reduce-calibration-difference-tolerance.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
+    file://0003-drv8833-motor-control.patch \
 "
 SRCREV = "afe7178d0859f3cbc80e591473f86ee64183122b"
 
