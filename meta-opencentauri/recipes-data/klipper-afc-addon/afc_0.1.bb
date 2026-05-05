@@ -31,6 +31,7 @@ do_install() {
     # Install klippy extras
     install -d ${D}${datadir}/klipper/extras
     cp -r ${S}/extras/* ${D}${datadir}/klipper/extras/
+    rm ${D}${datadir}/klipper/extras/__init__.py
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
