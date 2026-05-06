@@ -1,5 +1,5 @@
 require kalico_${PV}.inc
-inherit update-rc.d
+#inherit update-rc.d
 
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
@@ -21,8 +21,8 @@ RPROVIDES:${PN} += "klipper-firmware-canvas"
 
 EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.canvas"
 
-INITSCRIPT_NAME = "klipper-firmware-canvas"
-INITSCRIPT_PARAMS = "defaults 94 4"
+#INITSCRIPT_NAME = "klipper-firmware-canvas"
+#INITSCRIPT_PARAMS = "defaults 94 4"
 
 do_install() {
     install -d ${D}/lib/firmware
