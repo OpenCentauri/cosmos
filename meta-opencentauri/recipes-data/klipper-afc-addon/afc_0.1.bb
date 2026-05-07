@@ -29,9 +29,9 @@ do_compile[noexec] = "1"
 
 do_install() {
     # Install klippy extras
-    install -d ${D}${datadir}/klipper/extras
-    cp -r ${S}/extras/* ${D}${datadir}/klipper/extras/
-    rm ${D}${datadir}/klipper/extras/__init__.py
+    install -d ${D}${datadir}/klipper/klippy/extras
+    cp -r ${S}/extras/* ${D}${datadir}/klipper/klippy/extras/
+    rm ${D}${datadir}/klipper/klippy/extras/__init__.py
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
@@ -39,36 +39,36 @@ do_install() {
 }
 
 FILES:${PN} = " \
-    ${datadir}/klipper/extras/AFC_buffer.py \
-    ${datadir}/klipper/extras/AFC_stats.py \
-    ${datadir}/klipper/extras/AFC_Toolchanger.py \
-    ${datadir}/klipper/extras/AFC_respond.py \
-    ${datadir}/klipper/extras/AFC_extruder.py \
-    ${datadir}/klipper/extras/AFC_unit.py \
-    ${datadir}/klipper/extras/AFC_prep.py \
-    ${datadir}/klipper/extras/AFC_led.py \
-    ${datadir}/klipper/extras/AFC_button.py \
-    ${datadir}/klipper/extras/AFC_vivid.py \
-    ${datadir}/klipper/extras/AFC_logger.py \
-    ${datadir}/klipper/extras/AFC_spool.py \
-    ${datadir}/klipper/extras/AFC_BoxTurtle.py \
-    ${datadir}/klipper/extras/AFC_lane.py \
-    ${datadir}/klipper/extras/AFC_canvas.py \
-    ${datadir}/klipper/extras/AFC_hub.py \
-    ${datadir}/klipper/extras/AFC_canvas_lane.py \
-    ${datadir}/klipper/extras/openams_integration.py \
-    ${datadir}/klipper/extras/AFC_poop.py \
-    ${datadir}/klipper/extras/AFC_stepper.py \
-    ${datadir}/klipper/extras/AFC_QuattroBox.py \
-    ${datadir}/klipper/extras/AFC_utils.py \
-    ${datadir}/klipper/extras/AFC_HTLF.py \
-    ${datadir}/klipper/extras/AFC_form_tip.py \
-    ${datadir}/klipper/extras/AFC_assist.py \
-    ${datadir}/klipper/extras/AFC.py \
-    ${datadir}/klipper/extras/AFC_OpenAMS.py \
-    ${datadir}/klipper/extras/AFC_functions.py \
-    ${datadir}/klipper/extras/AFC_NightOwl.py \
-    ${datadir}/klipper/extras/AFC_error.py \
+    ${datadir}/klipper/klippy/extras/AFC_buffer.py \
+    ${datadir}/klipper/klippy/extras/AFC_stats.py \
+    ${datadir}/klipper/klippy/extras/AFC_Toolchanger.py \
+    ${datadir}/klipper/klippy/extras/AFC_respond.py \
+    ${datadir}/klipper/klippy/extras/AFC_extruder.py \
+    ${datadir}/klipper/klippy/extras/AFC_unit.py \
+    ${datadir}/klipper/klippy/extras/AFC_prep.py \
+    ${datadir}/klipper/klippy/extras/AFC_led.py \
+    ${datadir}/klipper/klippy/extras/AFC_button.py \
+    ${datadir}/klipper/klippy/extras/AFC_vivid.py \
+    ${datadir}/klipper/klippy/extras/AFC_logger.py \
+    ${datadir}/klipper/klippy/extras/AFC_spool.py \
+    ${datadir}/klipper/klippy/extras/AFC_BoxTurtle.py \
+    ${datadir}/klipper/klippy/extras/AFC_lane.py \
+    ${datadir}/klipper/klippy/extras/AFC_canvas.py \
+    ${datadir}/klipper/klippy/extras/AFC_hub.py \
+    ${datadir}/klipper/klippy/extras/AFC_canvas_lane.py \
+    ${datadir}/klipper/klippy/extras/openams_integration.py \
+    ${datadir}/klipper/klippy/extras/AFC_poop.py \
+    ${datadir}/klipper/klippy/extras/AFC_stepper.py \
+    ${datadir}/klipper/klippy/extras/AFC_QuattroBox.py \
+    ${datadir}/klipper/klippy/extras/AFC_utils.py \
+    ${datadir}/klipper/klippy/extras/AFC_HTLF.py \
+    ${datadir}/klipper/klippy/extras/AFC_form_tip.py \
+    ${datadir}/klipper/klippy/extras/AFC_assist.py \
+    ${datadir}/klipper/klippy/extras/AFC.py \
+    ${datadir}/klipper/klippy/extras/AFC_OpenAMS.py \
+    ${datadir}/klipper/klippy/extras/AFC_functions.py \
+    ${datadir}/klipper/klippy/extras/AFC_NightOwl.py \
+    ${datadir}/klipper/klippy/extras/AFC_error.py \
     ${sysconfdir}/klipper/config/extras-readonly/afc.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas.cfg \
 "
