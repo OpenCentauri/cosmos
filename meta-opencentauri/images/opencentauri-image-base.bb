@@ -39,7 +39,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     opencentauri-bootlogos \
     swu-flasher \
     update-scripts \
-    logrotate \
     fbdoom \
     v4l-utils \
     iproute2 \
