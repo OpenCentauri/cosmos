@@ -11,10 +11,17 @@
 KLIPPY_EXEC="/usr/bin/python3"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py /etc/klipper/config/printer.cfg -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
+KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
 
 case "$1" in
     start)
         echo "Starting klipper..."
+        if [ -x "$KLIPPER_VAR_CONFIG_BUILDER" ]; then
+            if ! "$KLIPPER_VAR_CONFIG_BUILDER"; then
+                echo "Failed to generate Klipper variable config"
+                exit 1
+            fi
+        fi
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $KLIPPY_EXEC -- $KLIPPY_ARGS
         ;;

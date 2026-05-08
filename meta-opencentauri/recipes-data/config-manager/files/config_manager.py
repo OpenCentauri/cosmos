@@ -10,6 +10,10 @@ VALIDATORS = {
     'update': {
         'release': ['stable', 'nightly'],
     },
+    'klipper': {
+        'sync_camera_led_to_chamber_led': ['True', 'False'],
+        'camera_led_default_on': ['True', 'False'],
+    },
 }
 
 VARIABLE_CONFIG_PATH = '/etc/klipper/config/cosmos.conf'
@@ -36,6 +40,14 @@ def load_config(path : str) -> dict:
 
     return {str(section): dict(parser.items(section)) for section in parser.sections()}
 
+def save_config(path : str, config : dict):
+    parser = configparser.ConfigParser()
+    parser.read_dict(config)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as config_file:
+        parser.write(config_file)
+
 def merge_configs(default_config : dict, user_config : dict) -> dict:
     for section, options in user_config.items():
         if section not in default_config:
@@ -48,6 +60,9 @@ def main(section : str, option : str):
     user_config = load_config(VARIABLE_CONFIG_PATH)
     validate_config(user_config)
     merged_config = merge_configs(default_config, user_config)
+
+    if user_config != merged_config:
+        save_config(VARIABLE_CONFIG_PATH, merged_config)
 
     if section not in merged_config or option not in merged_config[section]:
         raise ValueError(f"Option '{option}' not found in section '{section}'")
@@ -67,4 +82,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-    
+

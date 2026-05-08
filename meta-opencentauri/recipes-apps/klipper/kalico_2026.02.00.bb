@@ -26,6 +26,7 @@ RDEPENDS:${PN} = " \
     python3-numpy \
     python3-can \
     python3-msgspec \
+    config-manager \
     kalico-firmware-dsp \
     kalico-firmware-toolhead \
     kalico-firmware-bed \
