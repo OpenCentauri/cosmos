@@ -42,6 +42,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     fbdoom \
     v4l-utils \
     iproute2 \
+    chrony \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
