@@ -9,13 +9,41 @@
 ### END INIT INFO
 
 KLIPPY_EXEC="/usr/bin/python3"
-KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py /etc/klipper/config/printer.cfg -l /board-resource/klippy.log -a /run/klippy.sock"
+KLIPPER_PRINTER_CONFIG="/etc/klipper/config/printer.cfg"
+KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
+KLIPPER_CONFIG_VERSION="1"
+KLIPPER_CONFIG_VERSION_FILE="/etc/config.ver"
+
+ensure_klipper_config_version() {
+    current_version=""
+
+    if [ -f "$KLIPPER_CONFIG_VERSION_FILE" ]; then
+        current_version="$(tr -d '[:space:]' < "$KLIPPER_CONFIG_VERSION_FILE" 2>/dev/null)"
+    else
+        current_version="1"
+        echo "$current_version" > "$KLIPPER_CONFIG_VERSION_FILE" || return 1
+    fi
+
+    if [ "$current_version" = "$KLIPPER_CONFIG_VERSION" ]; then
+        return 0
+    fi
+
+    if [ -f "$KLIPPER_PRINTER_CONFIG" ]; then
+        sed -i '/^#\*#/d' "$KLIPPER_PRINTER_CONFIG" || return 1
+    fi
+
+    printf '%s\n' "$KLIPPER_CONFIG_VERSION" > "$KLIPPER_CONFIG_VERSION_FILE" || return 1
+}
 
 case "$1" in
     start)
         echo "Starting klipper..."
+        if ! ensure_klipper_config_version; then
+            echo "Failed to update Klipper config version state"
+            exit 1
+        fi
         if [ -x "$KLIPPER_VAR_CONFIG_BUILDER" ]; then
             if ! "$KLIPPER_VAR_CONFIG_BUILDER"; then
                 echo "Failed to generate Klipper variable config"
