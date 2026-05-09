@@ -13,6 +13,7 @@ VALIDATORS = {
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
         'camera_led_default_on': ['True', 'False'],
+        'bypass_calibration': ['True', 'False'],
     },
 }
 
