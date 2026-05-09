@@ -15,7 +15,7 @@ PIDFILE="/var/run/ustreamer.pid"
 case "$1" in
     start)
         if [ "$(config-manager ui disable_camera)" = "True" ]; then
-            echo "Camera disabled in cosmos.conf; skipping ustreamer startup."
+            echo "Camera disabled in configuration; skipping ustreamer startup."
             exit 0
         fi
 
