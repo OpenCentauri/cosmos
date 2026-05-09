@@ -3,7 +3,7 @@ import os, configparser, sys
 
 VALIDATORS = {
     'ui': {
-        'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen'],
+        'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen', 'none'],
         'web_ui': ['mainsail', 'fluidd'],
         'screen_brightness': [str(i) for i in range(101)],
     },
@@ -82,4 +82,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
