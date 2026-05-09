@@ -21,9 +21,9 @@ case "$1" in
             brightness 0
         else
             brightness $BRIGHTNESS
-        fi
-        if [ "$GUI" != "none" ] && [ -x "/etc/init.d/${GUI}" ]; then
-            /etc/init.d/${GUI} start
+            if [ -x "/etc/init.d/${GUI}" ]; then
+                /etc/init.d/${GUI} start
+            fi
         fi
         ;;
     stop)
