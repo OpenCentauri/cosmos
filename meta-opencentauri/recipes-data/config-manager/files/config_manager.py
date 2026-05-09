@@ -6,6 +6,7 @@ VALIDATORS = {
         'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen'],
         'web_ui': ['mainsail', 'fluidd'],
         'screen_brightness': [str(i) for i in range(101)],
+        'disable_camera': ['True', 'False'],
     },
     'update': {
         'release': ['stable', 'nightly'],
@@ -82,4 +83,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
