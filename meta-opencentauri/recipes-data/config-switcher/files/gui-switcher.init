@@ -18,9 +18,10 @@ case "$1" in
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "PROGRESS 100"
         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "QUIT"
         if [ "$GUI" = "none" ]; then
-            BRIGHTNESS=0
+            brightness 0
+        else
+            brightness $BRIGHTNESS
         fi
-        brightness $BRIGHTNESS
         if [ "$GUI" != "none" ] && [ -x "/etc/init.d/${GUI}" ]; then
             /etc/init.d/${GUI} start
         fi
