@@ -44,11 +44,20 @@ install_firmware_update() {
 
     mv "$SWU_FILE" "$SRC_DIR/emergency.swu.installed" || return 1
 
+    if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
+        # Flash stock bootloader
+        service klipper stop
+        flashtool -d $SERIALPORT_BED -b 250000 -r
+        flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
+        flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
+    fi
+
     uiprompt "Installing firmware" "A firmware update is being installed, please wait..."
 
     flash "$SRC_DIR/emergency.swu.installed"
 
     uiprompt "Firmware update complete" "Please reboot the printer to finalize the update."
+    touch "$SRC_DIR/emergency.swu.installed.success"
 }
 
 case "$1" in

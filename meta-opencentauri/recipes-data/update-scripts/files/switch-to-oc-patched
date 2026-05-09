@@ -21,17 +21,17 @@ if [ ! -s "$SWUFILE" ]; then
     exit 1
 fi
 
-# Install firmware
-flash "$SWUFILE"
-
-# Revert stock bootcmd
-fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
-
 # Flash stock bootloader
 service klipper stop
 flashtool -d $SERIALPORT_BED -b 250000 -r
 flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
 flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
+
+# Install firmware
+flash "$SWUFILE"
+
+# Revert stock bootcmd
+fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
 
 # Clean up firmware file
 rm "$SWUFILE"
