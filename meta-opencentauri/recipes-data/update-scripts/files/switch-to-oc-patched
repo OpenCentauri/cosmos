@@ -5,12 +5,6 @@ set -e
 FW_URL="https://github.com/OpenCentauri/cc-fw-tools/releases/latest/download/update.swu"
 SWUFILE="/user-resource/update.swu"
 
-SERIALPORT_BED="/dev/ttyS4"
-STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
-
-SERIALPORT_TOOLHEAD="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
-STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
-
 # Download firmware
 curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
 
@@ -22,10 +16,7 @@ if [ ! -s "$SWUFILE" ]; then
 fi
 
 # Flash stock bootloader
-service klipper stop
-flashtool -d $SERIALPORT_BED -b 250000 -r
-flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
-flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
+restore-mcu-firmware
 
 # Install firmware
 flash "$SWUFILE"
