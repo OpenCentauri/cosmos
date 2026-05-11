@@ -15,6 +15,7 @@ PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
 KLIPPER_CONFIG_VERSION="1"
 KLIPPER_CONFIG_VERSION_FILE="/etc/config.ver"
+KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config_backups"
 
 ensure_klipper_config_version() {
     current_version=""
@@ -31,6 +32,11 @@ ensure_klipper_config_version() {
     fi
 
     if [ -f "$KLIPPER_PRINTER_CONFIG" ]; then
+        backup_timestamp="$(date +%Y%m%d_%H%M%S)" || return 1
+        backup_file="$KLIPPER_CONFIG_BACKUP_DIR/printer-$backup_timestamp.cfg"
+
+        mkdir -p "$KLIPPER_CONFIG_BACKUP_DIR" || return 1
+        cp "$KLIPPER_PRINTER_CONFIG" "$backup_file" || return 1
         sed -i '/^#\*#/d' "$KLIPPER_PRINTER_CONFIG" || return 1
     fi
 
