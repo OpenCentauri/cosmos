@@ -1,2 +1,0 @@
-*/5 * * * * /usr/sbin/logrotate /etc/logrotate.conf
-*/15 * * * * /usr/sbin/ntpd -nq -p pool.ntp.org

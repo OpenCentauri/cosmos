@@ -1,10 +1,11 @@
 # /etc/network/interfaces -- configuration file for ifup(8), ifdown(8)
  
 # The loopback interface
-auto wlan0 lo
+auto lo
 iface lo inet loopback
 
 # Wireless interfaces
+auto wlan0
 iface wlan0 inet dhcp
 	wireless_mode managed
 	wireless_essid any
@@ -13,12 +14,10 @@ iface wlan0 inet dhcp
 	post-up iw dev wlan0 set power_save off
 	udhcpc_opts -F $(hostname)
 
-# Wired or wireless interfaces
+# Wired interfaces
 auto eth0
-# Juno has 2 ethernet (front and back)
-auto eth1
 iface eth0 inet dhcp
-iface eth1 inet dhcp
+	udhcpc_opts -F $(hostname)
 
 # Ethernet/RNDIS gadget (g_ether)
 # ... or on host side, usbnet and random hwaddr
