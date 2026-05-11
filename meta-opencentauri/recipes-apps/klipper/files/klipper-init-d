@@ -13,8 +13,8 @@ KLIPPER_PRINTER_CONFIG="/etc/klipper/config/printer.cfg"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
-KLIPPER_CONFIG_VERSION="1"
-KLIPPER_CONFIG_VERSION_FILE="/etc/config.ver"
+KLIPPER_CONFIG_VERSION="0.0.7"
+KLIPPER_CONFIG_VERSION_FILE="/etc/klipper-config.ver"
 KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config_backups"
 
 ensure_klipper_config_version() {
@@ -23,7 +23,7 @@ ensure_klipper_config_version() {
     if [ -f "$KLIPPER_CONFIG_VERSION_FILE" ]; then
         current_version="$(tr -d '[:space:]' < "$KLIPPER_CONFIG_VERSION_FILE" 2>/dev/null)"
     else
-        current_version="1"
+        current_version="$KLIPPER_CONFIG_VERSION"
         echo "$current_version" > "$KLIPPER_CONFIG_VERSION_FILE" || return 1
     fi
 
