@@ -14,6 +14,7 @@ SRC_URI = " \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
     file://0001-Serve-static-files.patch \
+    file://0001-Reduce-log-rotate-threshold.patch \
 "
 
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"

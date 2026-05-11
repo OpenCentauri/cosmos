@@ -9,6 +9,7 @@ SRC_URI = " \
     file://switch-to-oc-patched \
     file://swu-decrypt.py \
     file://restore-mcu-firmware \
+    file://flash-artifact.py \
 "
 
 RDEPENDS:${PN} = " \
@@ -28,6 +29,7 @@ do_install() {
     install -m 0755 ${WORKDIR}/switch-to-oc-patched ${D}${bindir}/
     install -m 0755 ${WORKDIR}/swu-decrypt.py ${D}${bindir}/
     install -m 0755 ${WORKDIR}/restore-mcu-firmware ${D}${bindir}/
+    install -m 0755 ${WORKDIR}/flash-artifact.py ${D}${bindir}/flash-artifact
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
@@ -40,4 +42,5 @@ FILES_${PN} += " \
     ${bindir}/switch-to-oc-patched \
     ${bindir}/swu-decrypt.py \
     ${bindir}/restore-mcu-firmware \
+    ${bindir}/flash-artifact \
 "
