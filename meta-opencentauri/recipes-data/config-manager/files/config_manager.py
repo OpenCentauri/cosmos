@@ -13,6 +13,9 @@ VALIDATORS = {
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
         'camera_led_default_on': ['True', 'False'],
+        'bypass_calibration': ['True', 'False'],
+        'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
+        'full_calibrate_bed_temperature': [str(i) for i in range(40, 101)],
     },
 }
 

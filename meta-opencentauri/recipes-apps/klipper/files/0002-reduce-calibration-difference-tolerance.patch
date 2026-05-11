@@ -1,0 +1,16 @@
+diff --git a/klippy/extras/load_cell/load_cell.py b/klippy/extras/load_cell/load_cell.py
+index 1482d8d2..759adcc3 100644
+--- a/klippy/extras/load_cell/load_cell.py
++++ b/klippy/extras/load_cell/load_cell.py
+@@ -309,9 +309,9 @@ class LoadCellGuidedCalibrationHelper:
+                 "ERROR: Tare and Calibration readings are the same!\n"
+                 "Check wiring and validate sensor with READ_LOAD_CELL command."
+             )
+-        if (abs(cal_percent - self.tare_percent)) < 1.0:
++        if (abs(cal_percent - self.tare_percent)) < 0.1:
+             raise self.printer.command_error(
+-                "ERROR: Tare and Calibration readings are less than 1% "
++                "ERROR: Tare and Calibration readings are less than 0.1% "
+                 "different!\n"
+                 "Use more force when calibrating or a higher sensor gain."
+             )

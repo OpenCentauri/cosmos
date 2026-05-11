@@ -24,6 +24,7 @@ case "$1" in
         ;;
     stop)
         echo "Stopping GUI..."
+        brightness 0
         start-stop-daemon -K -p "$PIDFILE" -R 10
         ;;
     restart|force-reload)

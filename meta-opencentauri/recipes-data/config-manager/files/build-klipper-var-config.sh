@@ -12,6 +12,9 @@ get_config_value() {
 
 sync_camera_led_to_chamber_led=$(get_config_value sync_camera_led_to_chamber_led)
 camera_led_default_on=$(get_config_value camera_led_default_on)
+full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_temperature)
+full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
+bypass_calibration=$(get_config_value bypass_calibration)
 
 mkdir -p "${OUTPUT_DIR}"
 
@@ -21,6 +24,9 @@ cat > "${OUTPUT_FILE}" <<EOF
 [gcode_macro _COSMOS_SETTINGS]
 variable_sync_camera_led_to_chamber_led: ${sync_camera_led_to_chamber_led}
 variable_camera_led_default_on: ${camera_led_default_on}
+variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
+variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
+variable_bypass_calibration: ${bypass_calibration}
 gcode:
 
 EOF
