@@ -1,0 +1,22 @@
+From f7509be601c2b965b5c6e5e720d1748f36355179 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Thu, 7 May 2026 23:41:05 +0200
+Subject: [PATCH] Reduce log rotate threshold
+
+---
+ moonraker/loghelper.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/moonraker/loghelper.py b/moonraker/loghelper.py
+index 74435e0..401e33f 100644
+--- a/moonraker/loghelper.py
++++ b/moonraker/loghelper.py
+@@ -137,7 +137,7 @@ class LogManager:
+         if log_file:
+             try:
+                 self.file_hdlr = MoonrakerLoggingHandler(
+-                    app_args, when='midnight', backupCount=2)
++                    app_args, when='H', backupCount=2)
+                 if app_args["structured_logging"]:
+                     formatter: logging.Formatter = StructuredFormatter()
+                 else:
