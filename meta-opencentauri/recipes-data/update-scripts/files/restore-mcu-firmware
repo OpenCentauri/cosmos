@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+SERIALPORT_BED="/dev/ttyS4"
+VERSION_BED="/etc/bed.ver"
+STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
+
+SERIALPORT_TOOLHEAD="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
+VERSION_TOOLHEAD="/etc/toolhead.ver"
+STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
+
+# Flash stock bootloader
+service klipper stop
+flashtool -d $SERIALPORT_BED -b 250000 -r
+flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
+rm -f $VERSION_BED
+flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
+rm -f $VERSION_TOOLHEAD

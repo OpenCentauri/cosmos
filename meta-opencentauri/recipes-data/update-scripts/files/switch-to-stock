@@ -25,12 +25,6 @@ BINFILE="/user-resource/update.bin"
 ZIPFILE="/user-resource/update.zip"
 SWUFILE="/user-resource/update/update.swu"
 
-SERIALPORT_BED="/dev/ttyS4"
-STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
-
-SERIALPORT_TOOLHEAD="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
-STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
-
 service mjpg-streamer stop
 service moonraker stop
 service klipper stop
@@ -42,16 +36,14 @@ curl -k -o "$BINFILE" -L "$FW_URL"
 swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
 unzip "$ZIPFILE" -d /user-resource
 
+# Flash stock bootloader
+restore-mcu-firmware
+
 # Install firmware
 flash "$SWUFILE"
 
 # Revert stock bootcmd
 fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
-
-# Flash stock bootloader
-flashtool -d $SERIALPORT_BED -b 250000 -r
-flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
-flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
 
 # Clean up firmware files
 rm -r "$BINFILE" "$ZIPFILE" /user-resource/update
