@@ -37,24 +37,33 @@ copy_gcode_files() {
 install_firmware_update() {
     SRC_DIR="$1"
     SWU_FILE="$SRC_DIR/emergency.swu"
+    SUCCESS_FILE="$SRC_DIR/emergency.swu.installed.success"
+    FAILED_FILE="$SRC_DIR/emergency.swu.installed.failed"
 
     if [ ! -f "$SWU_FILE" ]; then
         return 0
     fi
 
     mv "$SWU_FILE" "$SRC_DIR/emergency.swu.installed" || return 1
+    rm -f "$FAILED_FILE" "$SUCCESS_FILE"
 
     if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
         # Flash stock bootloader
-        restore-mcu-firmware
+        if ! restore-mcu-firmware; then
+            echo "restore-mcu-firmware failed" > "$FAILED_FILE"
+            return 1
+        fi
     fi
 
     uiprompt "Installing firmware" "A firmware update is being installed, please wait..."
 
-    flash "$SRC_DIR/emergency.swu.installed"
+    if ! flash "$SRC_DIR/emergency.swu.installed"; then
+        echo "flash failed" > "$FAILED_FILE"
+        return 1
+    fi
 
     uiprompt "Firmware update complete" "Please reboot the printer to finalize the update."
-    touch "$SRC_DIR/emergency.swu.installed.success"
+    touch "$SUCCESS_FILE"
 }
 
 case "$1" in
