@@ -1,0 +1,80 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+### BEGIN INIT INFO
+# Provides:          helixscreen
+# Required-Start:    $local_fs $network klipper moonraker
+# Required-Stop:     $local_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Description:       HelixScreen - Touch UI for Klipper
+### END INIT INFO
+
+# Path placeholders are populated by the recipe's do_install via sed.
+HELIX_BIN="@HELIX_BINDIR@/helix-screen"
+HELIX_LAUNCHER="@HELIX_BINDIR@/helix-launcher.sh"
+HELIX_DATA_DIR="@HELIX_DATA_DIR@"
+HELIX_CONFIG_DIR="@HELIX_USER_CONFIG_DIR@"
+
+# gui.pid (not helixscreen.pid): cosmos gui-switcher's stop handler reads
+# /var/run/gui.pid to kill the active UI. Must match guppyscreen/grumpyscreen.
+PIDFILE=/var/run/gui.pid
+
+export HELIX_DATA_DIR HELIX_CONFIG_DIR
+
+# Fallback no-ops — platform hooks override these if present.
+# Must be defined BEFORE sourcing so the source overwrites them.
+platform_pre_start() { :; }
+platform_post_stop() { :; }
+
+# Pull in cosmos-specific platform hooks (e.g. backlight, framebuffer
+# init). Hooks live alongside the read-only data root.
+PLATFORM_HOOKS="${HELIX_DATA_DIR}/assets/config/platform/hooks-cc1.sh"
+if [ -f "$PLATFORM_HOOKS" ]; then
+    # shellcheck disable=SC1090
+    . "$PLATFORM_HOOKS"
+fi
+
+# Make sure the writable user-config dir exists. CONFFILES from the package
+# only creates settings.json; runtime state (telemetry_*.json, tool_spools.json,
+# custom_images/, etc.) lands here too via $HELIX_CONFIG_DIR.
+mkdir -p "$HELIX_CONFIG_DIR"
+
+case "$1" in
+    start)
+        echo "Starting HelixScreen..."
+        platform_pre_start
+        if [ -e /sys/class/graphics/fbcon/cursor_blink ]; then
+            echo 0 > /sys/class/graphics/fbcon/cursor_blink
+        fi
+        if [ -x "$HELIX_LAUNCHER" ]; then
+            start-stop-daemon -S -b -m -p "$PIDFILE" -x "$HELIX_LAUNCHER"
+        else
+            start-stop-daemon -S -b -m -p "$PIDFILE" -x "$HELIX_BIN"
+        fi
+        ;;
+    stop)
+        echo "Stopping HelixScreen..."
+        start-stop-daemon -K -p "$PIDFILE" -R 10
+        rm -f "$PIDFILE"
+        platform_post_stop
+        ;;
+    restart|force-reload)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    status)
+        if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            echo "HelixScreen is running (PID $(cat "$PIDFILE"))"
+        else
+            echo "HelixScreen is not running"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
