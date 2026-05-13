@@ -37,6 +37,7 @@ do_install() {
     install -m 0644 \
         ${WORKDIR}/opencentauri-fluidd-theme/logo_opencentauri.svg \
         ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-icon.webp \
+        ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-icon-gray.webp \
         ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-logo-small.png \
         ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-theme.css \
         ${D}/var/www/fluidd/

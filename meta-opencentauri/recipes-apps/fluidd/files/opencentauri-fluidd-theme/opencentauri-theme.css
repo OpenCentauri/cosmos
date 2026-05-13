@@ -1,7 +1,230 @@
+.theme--dark.v-application {
+    --oc-bg: #050505;
+    --oc-surface: #111111;
+    --oc-surface-raised: #171717;
+    --oc-surface-muted: #1f1f1f;
+    --oc-border: rgba(255, 255, 255, 0.12);
+    --oc-border-strong: rgba(255, 255, 255, 0.2);
+    --oc-text: rgba(255, 255, 255, 0.92);
+    --oc-text-muted: rgba(255, 255, 255, 0.62);
+    --oc-text-disabled: rgba(255, 255, 255, 0.38);
+    --oc-primary: #d8dadc;
+    --oc-primary-muted: #aeb2b6;
+    --oc-success: #8fa392;
+    --oc-info: #8d98a6;
+    --oc-warning: #b9a77a;
+    --oc-error: #b98282;
+    --v-primary-base: var(--oc-primary);
+    --v-primary-lighten1: #eeeeee;
+    --v-primary-darken1: #aeb2b6;
+    --v-primary-offset-base: #aeb2b6;
+    --v-secondary-base: #8d8d8d;
+    --v-card-heading-base: #1b1b1b;
+    --v-btncolor-base: #202020;
+    --v-btncolor-lighten1: #292929;
+    --v-btncolor-lighten2: #333333;
+    --v-btncolor-darken1: #161616;
+    --v-btncolor-darken2: #101010;
+    --v-btncolor-darken4: #050505;
+    --v-drawer-base: #080808;
+    --v-appbar-base: #050505;
+    --v-success-base: var(--oc-success);
+    --v-info-base: var(--oc-info);
+    --v-warning-base: var(--oc-warning);
+    --v-error-base: var(--oc-error);
+    color: var(--oc-text);
+    background: var(--oc-bg) !important;
+}
+
+.theme--dark.v-application .v-main,
+.theme--dark.v-application .v-main__wrap,
+.theme--dark.v-application .v-application--wrap {
+    background: transparent !important;
+}
+
+.theme--dark.v-application .v-app-bar,
+.theme--dark.v-application .v-toolbar,
+.theme--dark.v-application .v-toolbar__content,
+.theme--dark.v-application .v-toolbar__extension {
+    background-color: var(--oc-bg) !important;
+    border-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-navigation-drawer,
+.theme--dark.v-navigation-drawer .v-navigation-drawer__content,
+.theme--dark.v-list {
+    background-color: #080808 !important;
+}
+
+.theme--dark.v-card,
+.theme--dark.v-sheet,
+.theme--dark.v-menu__content,
+.theme--dark.v-dialog,
+.theme--dark.v-expansion-panels .v-expansion-panel,
+.theme--dark.v-data-table,
+.theme--dark.v-tabs-items,
+.theme--dark.v-picker,
+.theme--dark.v-stepper {
+    color: var(--oc-text) !important;
+    background-color: var(--oc-surface) !important;
+    border-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-card,
+.theme--dark.v-sheet,
+.theme--dark.v-menu__content,
+.theme--dark.v-dialog,
+.theme--dark.v-expansion-panels .v-expansion-panel {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+.theme--dark .v-card .v-card__title.collapsable-card-title,
+.theme--dark .card-heading,
+.theme--dark .v-toolbar.card-heading,
+.theme--dark.v-toolbar.card-heading {
+    color: var(--oc-text) !important;
+    background-color: var(--oc-surface-muted) !important;
+    border-bottom: thin solid var(--oc-border) !important;
+}
+
+.theme--dark.v-application .v-card__subtitle,
+.theme--dark.v-application .v-list-item__subtitle,
+.theme--dark.v-application .dim--text,
+.theme--dark.v-application .text--secondary {
+    color: var(--oc-text-muted) !important;
+}
+
+.theme--dark.v-application .v-icon,
+.theme--dark.v-application .v-label,
+.theme--dark.v-application .v-input,
+.theme--dark.v-application .v-select__selection,
+.theme--dark.v-application input,
+.theme--dark.v-application textarea {
+    color: var(--oc-text) !important;
+}
+
+.theme--dark.v-application .v-list-item--disabled,
+.theme--dark.v-application .v-btn--disabled,
+.theme--dark.v-application .v-input--is-disabled,
+.theme--dark.v-application .text--disabled {
+    color: var(--oc-text-disabled) !important;
+}
+
+.theme--dark.v-application .v-list-item:hover:before,
+.theme--dark.v-application .v-list-item--active:before,
+.theme--dark.v-application .v-tab:before,
+.theme--dark.v-application .v-btn:before {
+    background-color: #ffffff !important;
+}
+
+.theme--dark.v-application .v-list-item--active,
+.theme--dark.v-application .v-tab--active,
+.theme--dark.v-application .v-btn.primary,
+.theme--dark.v-application .v-btn.accent {
+    color: #ffffff !important;
+}
+
+.theme--dark.v-application .v-btn.primary,
+.theme--dark.v-application .v-btn.accent {
+    background-color: #2a2a2a !important;
+    border: thin solid var(--oc-border-strong) !important;
+}
+
+.theme--dark.v-application .v-btn:not(.v-btn--text):not(.v-btn--icon):not(.v-btn--plain) {
+    box-shadow: none !important;
+}
+
+.theme--dark.v-application .v-chip,
+.theme--dark.v-application .v-alert,
+.theme--dark.v-application .v-snack__wrapper {
+    color: var(--oc-text) !important;
+    background-color: var(--oc-surface-raised) !important;
+    border-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-application .v-alert.success,
+.theme--dark.v-application .v-chip.success {
+    background-color: rgba(143, 163, 146, 0.18) !important;
+}
+
+.theme--dark.v-application .v-alert.info,
+.theme--dark.v-application .v-chip.info {
+    background-color: rgba(141, 152, 166, 0.18) !important;
+}
+
+.theme--dark.v-application .v-alert.warning,
+.theme--dark.v-application .v-chip.warning {
+    background-color: rgba(185, 167, 122, 0.2) !important;
+}
+
+.theme--dark.v-application .v-alert.error,
+.theme--dark.v-application .v-chip.error {
+    background-color: rgba(185, 130, 130, 0.2) !important;
+}
+
+.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > thead > tr > th,
+.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
+    color: var(--oc-text) !important;
+    border-bottom-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper),
+.theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div {
+    background-color: var(--oc-surface-raised) !important;
+}
+
+.theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div:before {
+    background: linear-gradient(90deg, rgba(23, 23, 23, 0) 0%, var(--oc-surface-raised) 100%) !important;
+}
+
+.theme--dark.v-application .v-text-field > .v-input__control > .v-input__slot,
+.theme--dark.v-application .v-select > .v-input__control > .v-input__slot,
+.theme--dark.v-application .v-input--selection-controls__input,
+.theme--dark.v-application .v-slider__track-background {
+    background-color: #0d0d0d !important;
+    border-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-application .v-input__slot:before,
+.theme--dark.v-application .v-input__slot:after,
+.theme--dark.v-application .v-divider {
+    border-color: var(--oc-border) !important;
+}
+
+.theme--dark.v-application .v-progress-linear__background,
+.theme--dark.v-application .v-slider__track-background {
+    background-color: #2a2a2a !important;
+}
+
+.theme--dark.v-application .v-progress-linear__determinate,
+.theme--dark.v-application .v-slider__track-fill,
+.theme--dark.v-application .v-slider__thumb,
+.theme--dark.v-application .v-tabs-slider {
+    background-color: var(--oc-primary-muted) !important;
+    border-color: var(--oc-primary-muted) !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer__border,
+.theme--dark.v-application .v-toolbar--extended .v-toolbar__content,
+.theme--dark.v-application .v-card:not(.collapsed) .v-card__title.collapsable-card-title {
+    box-shadow: none !important;
+}
+
+.theme--dark.v-application .background-logo {
+    width: min(38vw, 560px) !important;
+    height: auto !important;
+    opacity: 0.3 !important;
+    filter: grayscale(1) invert(1) brightness(1.15) contrast(1.05) !important;
+}
 .toolbar-logo .logo-wrapper,
 .toolbar-logo .logo-wrapper svg {
     width: 56px;
     height: 56px;
+}
+
+.theme--dark .toolbar-logo {
+    background-color: var(--oc-bg) !important;
+    border-right-color: var(--oc-border) !important;
 }
 
 .toolbar-logo .logo-wrapper {
@@ -9,7 +232,7 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: 48px 48px;
-    filter: invert(1) brightness(0.75);
+    filter: grayscale(1) invert(1) brightness(0.82);
 }
 
 .toolbar-logo .logo-wrapper svg {

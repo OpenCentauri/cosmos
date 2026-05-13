@@ -7,9 +7,9 @@ from pathlib import Path
 
 APP_NAME = "OpenCentauri"
 DESCRIPTION = "OpenCentauri web interface for the Elegoo Centauri Carbon"
-PRIMARY_COLOR = "#9EA2A6"
+PRIMARY_COLOR = "#D8DADC"
 LOGO_SRC = "logo_opencentauri.svg"
-ICON_SRC = "opencentauri-icon.webp"
+ICON_SRC = "opencentauri-icon-gray.webp"
 WORDMARK_SRC = "opencentauri-logo-small.png"
 THEME_CSS = "opencentauri-theme.css"
 
@@ -139,6 +139,10 @@ def patch_main_bundle(webroot):
     )
     if count != 1:
         raise RuntimeError(f"{path}: expected defaultIconDataUrl implementation not found")
+    old_logo_src_getter = "get logoSrc(){return`./${this.theme.logo.src}`}"
+    if old_logo_src_getter not in text:
+        raise RuntimeError(f"{path}: expected logoSrc getter not found")
+    text = text.replace(old_logo_src_getter, f"get logoSrc(){{return`./{LOGO_SRC}`}}")
     path.write_text(text)
 
 
