@@ -162,6 +162,14 @@
     background-color: rgba(185, 130, 130, 0.2) !important;
 }
 
+.theme--dark.v-application .v-badge__badge {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+    border-radius: 50% !important;
+    box-sizing: border-box;
+}
+
 .theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > thead > tr > th,
 .theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
     color: var(--oc-text) !important;
