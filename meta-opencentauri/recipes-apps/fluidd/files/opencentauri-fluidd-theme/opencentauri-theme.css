@@ -1,0 +1,50 @@
+.toolbar-logo .logo-wrapper,
+.toolbar-logo .logo-wrapper svg {
+    width: 56px;
+    height: 56px;
+}
+
+.toolbar-logo .logo-wrapper {
+    background-image: url("./logo_opencentauri.svg");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 48px 48px;
+    filter: invert(1) brightness(0.75);
+}
+
+.toolbar-logo .logo-wrapper svg {
+    display: block;
+    opacity: 0;
+}
+
+.printer-title {
+    display: flex;
+    align-items: center;
+    min-width: 128px;
+}
+
+.printer-title > a {
+    display: block;
+    width: min(240px, 42vw);
+    height: 30px;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0;
+    line-height: 0;
+    background-image: url("./opencentauri-logo-small.png");
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: contain;
+}
+
+@media only screen and (max-width: 599px) {
+    .toolbar-title {
+        max-width: 72%;
+        padding-left: 8px;
+    }
+
+    .printer-title > a {
+        width: min(210px, 58vw);
+        height: 24px;
+    }
+}
