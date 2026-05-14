@@ -13,6 +13,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
     file://0003-drv8833-motor-control.patch \
+    file://0004-allow-config-exclude.patch \
 "
 SRCREV = "413e9e3886463d42b5c3fad678969962dac1ab0f"
 

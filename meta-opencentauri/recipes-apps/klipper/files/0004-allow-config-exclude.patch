@@ -1,0 +1,20 @@
+diff --git a/klippy/configfile.py b/klippy/configfile.py
+index 691f1eb8..bb3ef969 100644
+--- a/klippy/configfile.py
++++ b/klippy/configfile.py
+@@ -485,6 +485,15 @@ class PrinterConfig:
+                 self._resolve_include(
+                     filename, include_spec, fileconfig, visited
+                 )
++            elif header and header.startswith("!"):
++                self._parse_config_buffer(buffer, filename, fileconfig)
++                section_name = header[1:].strip()
++                if not fileconfig.has_section(section_name):
++                    raise error(
++                        "Section '%s' does not exist for exclusion"
++                        % (section_name,)
++                    )
++                fileconfig.remove_section(section_name)
+             else:
+                 line = _INCLUDERE.sub(
+                     lambda match: _fix_include_path(filename, match),
