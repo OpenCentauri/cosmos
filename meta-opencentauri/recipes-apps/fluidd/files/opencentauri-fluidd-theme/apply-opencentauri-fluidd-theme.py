@@ -9,7 +9,7 @@ APP_NAME = "OpenCentauri"
 DESCRIPTION = "OpenCentauri web interface for the Elegoo Centauri Carbon"
 PRIMARY_COLOR = "#D8DADC"
 LOGO_SRC = "logo_opencentauri.svg"
-ICON_SRC = "opencentauri-icon-gray.webp"
+ICON_SRC = "carbon-logo-red.webp"
 WORDMARK_SRC = "opencentauri-logo-small.png"
 THEME_CSS = "opencentauri-theme.css"
 
