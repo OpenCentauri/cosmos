@@ -1,4 +1,4 @@
-.theme--dark.v-application {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application {
     --oc-bg: #050505;
     --oc-surface: #111111;
     --oc-surface-raised: #171717;
@@ -36,133 +36,133 @@
     background: var(--oc-bg) !important;
 }
 
-.theme--dark.v-application .v-main,
-.theme--dark.v-application .v-main__wrap,
-.theme--dark.v-application .v-application--wrap {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-main,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-main__wrap,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-application--wrap {
     background: transparent !important;
 }
 
-.theme--dark.v-application .v-app-bar,
-.theme--dark.v-application .v-toolbar,
-.theme--dark.v-application .v-toolbar__content,
-.theme--dark.v-application .v-toolbar__extension {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-app-bar,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-toolbar,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-toolbar__content,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-toolbar__extension {
     background-color: var(--oc-bg) !important;
     border-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-navigation-drawer,
-.theme--dark.v-navigation-drawer .v-navigation-drawer__content,
-.theme--dark.v-list {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-navigation-drawer,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-navigation-drawer .v-navigation-drawer__content,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-list {
     background-color: #080808 !important;
 }
 
-.theme--dark.v-card,
-.theme--dark.v-sheet,
-.theme--dark.v-menu__content,
-.theme--dark.v-dialog,
-.theme--dark.v-expansion-panels .v-expansion-panel,
-.theme--dark.v-data-table,
-.theme--dark.v-tabs-items,
-.theme--dark.v-picker,
-.theme--dark.v-stepper {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-card,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-sheet,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-menu__content,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-dialog,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-expansion-panels .v-expansion-panel,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-data-table,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-tabs-items,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-picker,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-stepper {
     color: var(--oc-text) !important;
     background-color: var(--oc-surface) !important;
     border-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-card,
-.theme--dark.v-sheet,
-.theme--dark.v-menu__content,
-.theme--dark.v-dialog,
-.theme--dark.v-expansion-panels .v-expansion-panel {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-card,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-sheet,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-menu__content,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-dialog,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-expansion-panels .v-expansion-panel {
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
 }
 
-.theme--dark .v-card .v-card__title.collapsable-card-title,
-.theme--dark .card-heading,
-.theme--dark .v-toolbar.card-heading,
-.theme--dark.v-toolbar.card-heading {
+[data-fluidd-theme="OpenCentauri"] .theme--dark .v-card .v-card__title.collapsable-card-title,
+[data-fluidd-theme="OpenCentauri"] .theme--dark .card-heading,
+[data-fluidd-theme="OpenCentauri"] .theme--dark .v-toolbar.card-heading,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-toolbar.card-heading {
     color: var(--oc-text) !important;
     background-color: var(--oc-surface-muted) !important;
     border-bottom: thin solid var(--oc-border) !important;
 }
 
-.theme--dark.v-application .v-card__subtitle,
-.theme--dark.v-application .v-list-item__subtitle,
-.theme--dark.v-application .dim--text,
-.theme--dark.v-application .text--secondary {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-card__subtitle,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-list-item__subtitle,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .dim--text,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .text--secondary {
     color: var(--oc-text-muted) !important;
 }
 
-.theme--dark.v-application .v-icon,
-.theme--dark.v-application .v-label,
-.theme--dark.v-application .v-input,
-.theme--dark.v-application .v-select__selection,
-.theme--dark.v-application input,
-.theme--dark.v-application textarea {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-icon,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-label,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-select__selection,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application input,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application textarea {
     color: var(--oc-text) !important;
 }
 
-.theme--dark.v-application .v-list-item--disabled,
-.theme--dark.v-application .v-btn--disabled,
-.theme--dark.v-application .v-input--is-disabled,
-.theme--dark.v-application .text--disabled {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-list-item--disabled,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn--disabled,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input--is-disabled,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .text--disabled {
     color: var(--oc-text-disabled) !important;
 }
 
-.theme--dark.v-application .v-list-item:hover:before,
-.theme--dark.v-application .v-list-item--active:before,
-.theme--dark.v-application .v-tab:before,
-.theme--dark.v-application .v-btn:before {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-list-item:hover:before,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-list-item--active:before,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-tab:before,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn:before {
     background-color: #ffffff !important;
 }
 
-.theme--dark.v-application .v-list-item--active,
-.theme--dark.v-application .v-tab--active,
-.theme--dark.v-application .v-btn.primary,
-.theme--dark.v-application .v-btn.accent {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-list-item--active,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-tab--active,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn.primary,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn.accent {
     color: #ffffff !important;
 }
 
-.theme--dark.v-application .v-btn.primary,
-.theme--dark.v-application .v-btn.accent {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn.primary,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn.accent {
     background-color: #2a2a2a !important;
     border: thin solid var(--oc-border-strong) !important;
 }
 
-.theme--dark.v-application .v-btn:not(.v-btn--text):not(.v-btn--icon):not(.v-btn--plain) {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-btn:not(.v-btn--text):not(.v-btn--icon):not(.v-btn--plain) {
     box-shadow: none !important;
 }
 
-.theme--dark.v-application .v-chip,
-.theme--dark.v-application .v-alert,
-.theme--dark.v-application .v-snack__wrapper {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-snack__wrapper {
     color: var(--oc-text) !important;
     background-color: var(--oc-surface-raised) !important;
     border-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-application .v-alert.success,
-.theme--dark.v-application .v-chip.success {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert.success,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip.success {
     background-color: rgba(143, 163, 146, 0.18) !important;
 }
 
-.theme--dark.v-application .v-alert.info,
-.theme--dark.v-application .v-chip.info {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert.info,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip.info {
     background-color: rgba(141, 152, 166, 0.18) !important;
 }
 
-.theme--dark.v-application .v-alert.warning,
-.theme--dark.v-application .v-chip.warning {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert.warning,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip.warning {
     background-color: rgba(185, 167, 122, 0.2) !important;
 }
 
-.theme--dark.v-application .v-alert.error,
-.theme--dark.v-application .v-chip.error {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert.error,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip.error {
     background-color: rgba(185, 130, 130, 0.2) !important;
 }
 
-.theme--dark.v-application .v-badge__badge {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-badge__badge {
     background-color: #333333 !important;
     color: #ffffff !important;
     border: 2px solid #ffffff !important;
@@ -170,72 +170,72 @@
     box-sizing: border-box;
 }
 
-.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > thead > tr > th,
-.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > thead > tr > th,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr > td {
     color: var(--oc-text) !important;
     border-bottom-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper),
-.theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-data-table > .v-data-table__wrapper > table > tbody > tr:hover:not(.v-data-table__expanded__content):not(.v-data-table__empty-wrapper),
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div {
     background-color: var(--oc-surface-raised) !important;
 }
 
-.theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div:before {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .file-system .theme--dark.v-data-table tr > td.actions div:before {
     background: linear-gradient(90deg, rgba(23, 23, 23, 0) 0%, var(--oc-surface-raised) 100%) !important;
 }
 
-.theme--dark.v-application .v-text-field > .v-input__control > .v-input__slot,
-.theme--dark.v-application .v-select > .v-input__control > .v-input__slot,
-.theme--dark.v-application .v-input--selection-controls__input,
-.theme--dark.v-application .v-slider__track-background {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-text-field > .v-input__control > .v-input__slot,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-select > .v-input__control > .v-input__slot,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input--selection-controls__input,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-slider__track-background {
     background-color: #0d0d0d !important;
     border-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-application .v-input__slot:before,
-.theme--dark.v-application .v-input__slot:after,
-.theme--dark.v-application .v-divider {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input__slot:before,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input__slot:after,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-divider {
     border-color: var(--oc-border) !important;
 }
 
-.theme--dark.v-application .v-progress-linear__background,
-.theme--dark.v-application .v-slider__track-background {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-progress-linear__background,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-slider__track-background {
     background-color: #2a2a2a !important;
 }
 
-.theme--dark.v-application .v-progress-linear__determinate,
-.theme--dark.v-application .v-slider__track-fill,
-.theme--dark.v-application .v-slider__thumb,
-.theme--dark.v-application .v-tabs-slider {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-progress-linear__determinate,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-slider__track-fill,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-slider__thumb,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-tabs-slider {
     background-color: var(--oc-primary-muted) !important;
     border-color: var(--oc-primary-muted) !important;
 }
 
-.theme--dark.v-application .v-navigation-drawer__border,
-.theme--dark.v-application .v-toolbar--extended .v-toolbar__content,
-.theme--dark.v-application .v-card:not(.collapsed) .v-card__title.collapsable-card-title {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-navigation-drawer__border,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-toolbar--extended .v-toolbar__content,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-card:not(.collapsed) .v-card__title.collapsable-card-title {
     box-shadow: none !important;
 }
 
-.theme--dark.v-application .background-logo {
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .background-logo {
     width: min(38vw, 560px) !important;
     height: auto !important;
     opacity: 0.3 !important;
     filter: grayscale(1) invert(1) brightness(1.15) contrast(1.05) !important;
 }
-.toolbar-logo .logo-wrapper,
-.toolbar-logo .logo-wrapper svg {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper,
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper svg {
     width: 56px;
     height: 56px;
 }
 
-.theme--dark .toolbar-logo {
+[data-fluidd-theme="OpenCentauri"] .theme--dark .toolbar-logo {
     background-color: var(--oc-bg) !important;
     border-right-color: var(--oc-border) !important;
 }
 
-.toolbar-logo .logo-wrapper {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper {
     background-image: url("./logo_opencentauri.svg");
     background-repeat: no-repeat;
     background-position: center;
@@ -243,18 +243,18 @@
     filter: grayscale(1) invert(1) brightness(0.82);
 }
 
-.toolbar-logo .logo-wrapper svg {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper svg {
     display: block;
     opacity: 0;
 }
 
-.printer-title {
+[data-fluidd-theme="OpenCentauri"] .printer-title {
     display: flex;
     align-items: center;
     min-width: 128px;
 }
 
-.printer-title > a {
+[data-fluidd-theme="OpenCentauri"] .printer-title > a {
     display: block;
     width: min(240px, 42vw);
     height: 30px;
@@ -269,12 +269,12 @@
 }
 
 @media only screen and (max-width: 599px) {
-    .toolbar-title {
+    [data-fluidd-theme="OpenCentauri"] .toolbar-title {
         max-width: 72%;
         padding-left: 8px;
     }
 
-    .printer-title > a {
+    [data-fluidd-theme="OpenCentauri"] .printer-title > a {
         width: min(210px, 58vw);
         height: 24px;
     }

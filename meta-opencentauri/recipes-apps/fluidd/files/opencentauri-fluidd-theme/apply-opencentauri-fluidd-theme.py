@@ -24,6 +24,8 @@ def patch_index_html(webroot):
     path = webroot / "index.html"
     text = path.read_text()
     text = re.sub(r"<title>.*?</title>", f"<title>{APP_NAME}</title>", text, count=1)
+    # Add data-fluidd-theme to html tag for immediate CSS scoping (prevents FOUC)
+    text = text.replace("<html lang=\"en\">", f'<html lang="en" data-fluidd-theme="{APP_NAME}">')
     text = re.sub(
         r'<meta name="description" content="[^"]*" />',
         f'<meta name="description" content="{DESCRIPTION}" />',
@@ -115,6 +117,17 @@ def patch_config(webroot):
         },
     )
     config["themePresets"] = presets
+    # Set OpenCentauri as the default active theme for new users
+    config["theme"] = {
+        "name": APP_NAME,
+        "color": PRIMARY_COLOR,
+        "isDark": True,
+        "logo": {
+            "src": LOGO_SRC,
+            "dark": "#232323",
+            "light": "#ffffff",
+        },
+    }
     path.write_text(json.dumps(config, indent=2) + "\n")
 
 
@@ -143,7 +156,30 @@ def patch_main_bundle(webroot):
     if old_logo_src_getter not in text:
         raise RuntimeError(f"{path}: expected logoSrc getter not found")
     text = text.replace(old_logo_src_getter, f"get logoSrc(){{return`./{LOGO_SRC}`}}")
+    # Patch onThemeChange to toggle a data attribute for CSS scoping
+    old_on_theme_change = "async onThemeChange(e,t){let n=Io.framework.theme;n.dark=t.isDark,n.currentTheme.primary=t.color,n.currentTheme[`primary-offset`]=new ft(t.color).desaturate(5).darken(10).toHexString(),n.themes.dark.logo=t.logo.light,n.themes.light.logo=t.logo.dark}"
+    new_on_theme_change = "async onThemeChange(e,t){let n=Io.framework.theme;n.dark=t.isDark,n.currentTheme.primary=t.color,n.currentTheme[`primary-offset`]=new ft(t.color).desaturate(5).darken(10).toHexString(),n.themes.dark.logo=t.logo.light,n.themes.light.logo=t.logo.dark;document.documentElement.dataset.fluiddTheme=t.name||\"\"}"
+    text = replace_once(text, old_on_theme_change, new_on_theme_change, path)
     path.write_text(text)
+
+
+def patch_state_chunk(webroot):
+    """Patch the initial Vuex state so OpenCentauri is the default theme."""
+    chunks = sorted((webroot / "assets").glob("state-*.js"))
+    if not chunks:
+        return  # Not all builds have this chunk
+
+    old_theme = "theme:{isDark:!0,logo:{src:`logo_fluidd.svg`},color:`#2196F3`,backgroundLogo:!0}"
+    new_theme = f"theme:{{name:`{APP_NAME}`,isDark:!0,logo:{{src:`{LOGO_SRC}`}},color:`{PRIMARY_COLOR}`,backgroundLogo:!0}}"
+
+    for path in chunks:
+        text = path.read_text()
+        if old_theme in text:
+            text = text.replace(old_theme, new_theme)
+            path.write_text(text)
+            return  # Patched successfully
+
+    raise RuntimeError(f"{webroot}/assets: expected hardcoded default theme not found in any state chunk")
 
 
 def verify_assets(webroot):
@@ -163,6 +199,7 @@ def main():
     patch_manifest(webroot)
     patch_config(webroot)
     patch_main_bundle(webroot)
+    patch_state_chunk(webroot)
 
 
 if __name__ == "__main__":
