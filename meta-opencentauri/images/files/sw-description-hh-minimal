@@ -1,0 +1,180 @@
+software =
+{
+    version = "@@DISTRO_VERSION@@";
+    description = "Firmware update for OpenCentauri Minimal (Happy Hare ohne Web-Interface)";
+
+    hardware-compatibility: [ "1.0" ];
+
+    stable = {
+
+        /* now in systemA, we need to upgrade systemB(bootB, rootfsB) */
+        now_A_next_B = {
+            images: (
+                {
+                    filename = "bootA.img";
+                    device = "/dev/mmcblk0p7";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(bootA.img)"
+                },
+                {
+                    filename = "opencentauri-image-hh-minimal-mmc-elegoo-centauri-carbon1.rootfs.squashfs";
+                    device = "/dev/mmcblk0p8";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(opencentauri-image-hh-minimal-mmc-elegoo-centauri-carbon1.rootfs.squashfs)"
+                },
+                {
+                    filename = "u-boot-sunxi-with-spl.bin";
+                    device = "/dev/mmcblk0";
+                    type = "raw";
+                    offset = "8K";
+                    sha256 = "$swupdate_get_sha256(u-boot-sunxi-with-spl.bin)"
+                },
+                {
+                    filename = "bootlogos.img";
+                    device = "/dev/mmcblk0p1";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(bootlogos.img)"
+                }
+            );
+            bootenv: (
+                {
+                    name = "boot_part";
+                    value = "7";
+                },
+                {
+                    name = "mmc_root";
+                    value = "/dev/mmcblk0p8";
+                },
+                {
+                    name = "systemAB_next";
+                    value = "B";
+                },
+                {
+                    name = "swu_version";
+                    value = "@@DISTRO_VERSION@@";
+                },
+                {
+                    name = "swu_mode";
+                    value = "mainline";
+                },
+                {
+                    name = "setargs_mainline";
+                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                },
+                {
+                    name = "bootcmd_";
+                    value = "run setargs_mmc boot_dsp0 boot_normal";
+                },
+                {
+                    name = "bootcmd_mainline";
+                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon1.dtb; bootz 43000000 - 43800000";
+                },
+                {
+                    name = "bootcmd";
+                    value = "run bootcmd_${swu_mode}";
+                },
+                {
+                    name = "preboot";
+                    value = "load mmc 0:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                },
+                {
+                    name = "stdin";
+                    value = "serial";
+                },
+                {
+                    name = "stdout";
+                    value = "serial";
+                },
+                {
+                    name = "stderror";
+                    value = "serial";
+                }
+            );
+        };
+
+        /* now in systemB, we need to upgrade systemA(bootA, rootfsA) */
+        now_B_next_A = {
+            images: (
+                {
+                    filename = "bootA.img";
+                    device = "/dev/mmcblk0p4";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(bootA.img)"
+                },
+                {
+                    filename = "opencentauri-image-hh-minimal-mmc-elegoo-centauri-carbon1.rootfs.squashfs";
+                    device = "/dev/mmcblk0p5";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(opencentauri-image-hh-minimal-mmc-elegoo-centauri-carbon1.rootfs.squashfs)"
+                },
+                {
+                    filename = "u-boot-sunxi-with-spl.bin";
+                    device = "/dev/mmcblk0";
+                    type = "raw";
+                    offset = "8K";
+                    sha256 = "$swupdate_get_sha256(u-boot-sunxi-with-spl.bin)"
+                },
+                {
+                    filename = "bootlogos.img";
+                    device = "/dev/mmcblk0p1";
+                    installed-directly = true;
+                    sha256 = "$swupdate_get_sha256(bootlogos.img)"
+                }
+            );
+            bootenv: (
+                {
+                    name = "boot_part";
+                    value = "4";
+                },
+                {
+                    name = "mmc_root";
+                    value = "/dev/mmcblk0p5";
+                },
+                {
+                    name = "systemAB_next";
+                    value = "A";
+                },
+                {
+                    name = "swu_version";
+                    value = "@@DISTRO_VERSION@@";
+                },
+                {
+                    name = "swu_mode";
+                    value = "mainline";
+                },
+                {
+                    name = "setargs_mainline";
+                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                },
+                {
+                    name = "bootcmd_";
+                    value = "run setargs_mmc boot_dsp0 boot_normal";
+                },
+                {
+                    name = "bootcmd_mainline";
+                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 elegoo-centauri-carbon1.dtb; bootz 43000000 - 43800000";
+                },
+                {
+                    name = "bootcmd";
+                    value = "run bootcmd_${swu_mode}";
+                },
+                {
+                    name = "preboot";
+                    value = "load mmc 0:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                },
+                {
+                    name = "stdin";
+                    value = "serial";
+                },
+                {
+                    name = "stdout";
+                    value = "serial";
+                },
+                {
+                    name = "stderror";
+                    value = "serial";
+                }
+            );
+        };
+    };
+}
