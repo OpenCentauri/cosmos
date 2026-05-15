@@ -13,6 +13,7 @@ SRC_URI += " \
     file://shell.cfg \
     file://screen.cfg \
     file://calibration.cfg \
+    file://client.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -96,7 +97,7 @@ do_install() {
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${WORKDIR}/client.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -116,4 +117,5 @@ CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/screen.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/calibration.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/client.cfg \
 "
