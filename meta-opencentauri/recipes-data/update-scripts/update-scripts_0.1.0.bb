@@ -18,6 +18,7 @@ RDEPENDS:${PN} = " \
     flashtool \
     toolhead-bootloader-stock \
     bed-bootloader-stock \
+    canvas-bootloader-stock \
     config-manager \
 "
 
