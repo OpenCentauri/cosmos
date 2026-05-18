@@ -4,14 +4,14 @@ Date: Mon, 23 Mar 2026 21:57:24 +0100
 Subject: [PATCH] Change wording in settings screen
 
 ---
- src/setting_panel.cpp | 43 ++++++++++++++++++++++++-------------------
- 1 file changed, 24 insertions(+), 19 deletions(-)
-
+ src/setting_panel.cpp | 34 +++++++++++++++++++---------------
+ 1 file changed, 19 insertions(+), 15 deletions(-)
+ 
 diff --git a/src/setting_panel.cpp b/src/setting_panel.cpp
 index c5dafcf..2079a7c 100644
 --- a/src/setting_panel.cpp
 +++ b/src/setting_panel.cpp
-@@ -45,28 +45,41 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
+@@ -45,21 +45,23 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
    , wifi_btn(cont, &network_img, "WIFI", &SettingPanel::_handle_callback, this)
    , restart_klipper_btn(cont, &refresh_img, "Restart Klipper", &SettingPanel::_handle_callback, this)
    , restart_firmware_btn(cont, &refresh_img, "Restart\nFirmware", &SettingPanel::_handle_callback, this)
@@ -23,45 +23,16 @@ index c5dafcf..2079a7c 100644
 -    "**WARNING** **WARNING** **WARNING**\n\nAre you sure you want to switch to stock?\n\nThis will temporarily switch the printer to stock creality firmware!",
 +  , guppy_update_btn(cont, &update_img, "Update COSMOS", &SettingPanel::_handle_callback, this,
 +    "Are you sure you want to update COSMOS?\n\nThis will download and update to the latest version of COSMOS!",
-+            [](){
-+              LOG_INFO("update cosmos pressed");
-+              Config *conf = Config::get_instance();
-+              auto switch_to_stock_cmd = conf->get<std::string>("/commands/cosmos_update_cmd");
-+              auto ret = sp::call(switch_to_stock_cmd);
-+              if (ret == 0) {
-+                create_simple_dialog(lv_scr_act(), "Update COSMOS Initiated", "Your printer will restart shortly!", false);
-+              } else {
-+                create_simple_dialog(lv_scr_act(), "Update COSMOS Failed", "Failed to initiate update COSMOS!", true);
-+              }
-+            },
-+            true)
++            ButtonContainer::PromptMode::Destructive)
 +  , switch_to_stock_btn(cont, &emergency, "Switch to OC\nPatched", &SettingPanel::_handle_callback, this,
 +    "**WARNING** **WARNING** **WARNING**\n\nAre you sure you want to switch to OpenCentauri patched firmware?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot.",
-             [](){
-               LOG_INFO("switch to stock pressed");
-               Config *conf = Config::get_instance();
-               auto switch_to_stock_cmd = conf->get<std::string>("/commands/switch_to_stock_cmd");
-               auto ret = sp::call(switch_to_stock_cmd);
-               if (ret == 0) {
--                create_simple_dialog(lv_scr_act(), "Switch to Stock Initiated", "Please power cycle your printer!\nPlease wait for the stock screen to appear!", false);
-+                create_simple_dialog(lv_scr_act(), "Switch to OC Patched Initiated", "Your printer will restart shortly!", false);
-               } else {
--                create_simple_dialog(lv_scr_act(), "Switch to Stock Failed", "Failed to initiate switch to stock!", true);
-+                create_simple_dialog(lv_scr_act(), "Switch to OC Patched Failed", "Failed to initiate switch to OC Patched!", true);
-               }
-             },
-             true)
+             ButtonContainer::PromptMode::Destructive)
    , factory_reset_btn(cont, &emergency, "Factory\nReset", &SettingPanel::_handle_callback, this,
 -    		  "**WARNING** **WARNING** **WARNING**\n\nAre you sure you want to execute an emergency factory reset?\n\nThis will reset the printer to stock creality firmware!",
 +    		  "**WARNING** **WARNING** **WARNING**\n\nAre you sure you want factory reset?\n\nThis will reset all printer setting but it will stay using COSMOS, it will not switch back to stock.",
-           [](){
-             LOG_INFO("factory reset pressed");
--            lv_obj_t *mbox  = create_simple_dialog(lv_scr_act(), "Factory Reset Initiated", "Your printer will restart shortly!\nPlease wait for the stock screen to appear!", false);
-+            lv_obj_t *mbox  = create_simple_dialog(lv_scr_act(), "Factory Reset Initiated", "Your printer will restart shortly!", false);
- 
-             Config *conf = Config::get_instance();
-             auto cmd = conf->get<std::string>("/commands/factory_reset_cmd");
-@@ -83,7 +96,7 @@ SettingPanel::SettingPanel(KWebSocketClient &c, std::mutex &l, lv_obj_t *parent)
+           ButtonContainer::PromptMode::Destructive)
+ {
+   lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
    lv_obj_set_size(cont, LV_PCT(100), LV_PCT(100));
  
    Config *conf = Config::get_instance();
@@ -70,7 +41,7 @@ index c5dafcf..2079a7c 100644
    if (update_script == "") {
      guppy_update_btn.disable();
    }
-@@ -145,18 +158,10 @@ void SettingPanel::handle_callback(lv_event_t *event) {
+@@ -121,18 +123,20 @@ void SettingPanel::handle_callback(lv_event_t *event) {
      } else if (btn == guppy_restart_btn.get_container()) {
        LOG_TRACE("restart grumpy pressed");
        Config *conf = Config::get_instance();
@@ -79,18 +50,42 @@ index c5dafcf..2079a7c 100644
        auto ret = sp::call(restart_command);
        if (ret != 0) {
 -        create_simple_dialog(lv_scr_act(), "Restart GrumpyScreen Failed", "Failed to restart GrumpyScreen!", true);
--      }
--    } else if (btn == guppy_update_btn.get_container()) {
++        create_simple_dialog(lv_scr_act(), "Restart GUI Failed", "Failed to restart GUI!", true);
+       }
+     } else if (btn == guppy_update_btn.get_container()) {
 -      LOG_TRACE("update guppy pressed");
--      Config *conf = Config::get_instance();
++      LOG_INFO("update cosmos pressed");
+       Config *conf = Config::get_instance();
 -      auto update_script = conf->get<std::string>("/commands/guppy_update_cmd");
--      auto ret = sp::call(update_script);
++      auto update_script = conf->get<std::string>("/commands/cosmos_update_cmd");
+       auto ret = sp::call(update_script);
 -      if (ret != 0) {
 -        create_simple_dialog(lv_scr_act(), "Update GrumpyScreen Failed", "Failed to update GrumpyScreen!", true);
-+        create_simple_dialog(lv_scr_act(), "Restart GUI Failed", "Failed to restart GUI!", true);
++      if (ret == 0) {
++        create_simple_dialog(lv_scr_act(), "Update COSMOS Initiated", "Your printer will restart shortly!", false);
++      } else {
++        create_simple_dialog(lv_scr_act(), "Update COSMOS Failed", "Failed to initiate update COSMOS!", true);
        }
      } else if (btn == support_zip_btn.get_container()) {
        Config *conf = Config::get_instance();
+@@ -151,13 +155,13 @@ void SettingPanel::handle_callback(lv_event_t *event) {
+       auto switch_to_stock_cmd = conf->get<std::string>("/commands/switch_to_stock_cmd");
+       auto ret = sp::call(switch_to_stock_cmd);
+       if (ret == 0) {
+-        create_simple_dialog(lv_scr_act(), "Switch to Stock Initiated", "Please power cycle your printer!\nPlease wait for the stock screen to appear!", false);
++        create_simple_dialog(lv_scr_act(), "Switch to OC Patched Initiated", "Your printer will restart shortly!", false);
+       } else {
+-        create_simple_dialog(lv_scr_act(), "Switch to Stock Failed", "Failed to initiate switch to stock!", true);
++        create_simple_dialog(lv_scr_act(), "Switch to OC Patched Failed", "Failed to initiate switch to OC Patched!", true);
+       }
+     } else if (btn == factory_reset_btn.get_container()) {
+       LOG_INFO("factory reset pressed");
+-      lv_obj_t *mbox  = create_simple_dialog(lv_scr_act(), "Factory Reset Initiated", "Your printer will restart shortly!\nPlease wait for the stock screen to appear!", false);
++      lv_obj_t *mbox  = create_simple_dialog(lv_scr_act(), "Factory Reset Initiated", "Your printer will restart shortly!", false);
+ 
+       Config *conf = Config::get_instance();
+       auto cmd = conf->get<std::string>("/commands/factory_reset_cmd");
 -- 
+
 2.43.0
 
