@@ -1,0 +1,72 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          klipper-firmware-canvas
+# Required-Start:    $local_fs $remote_fs $network
+# Required-Stop:     $local_fs $remote_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start OpenCentauri canvas firmware
+### END INIT INFO
+
+FIRMWARE="/lib/firmware/klipper-canvas.bin"
+FIRMWARE_VERSION="/lib/firmware/klipper-canvas.bin.ver"
+KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-canvas.bin"
+INSTALLED_VERSION="/etc/canvas.ver"
+SERIALPORT="/dev/serial/by-path/platform-4200000.usb-usb-0:1.4:1.0"
+FLASH_ENABLED="$(config-manager flash_mcu elegoo_canvas 2>/dev/null)"
+
+update(){
+    if flashtool -d $SERIALPORT -f $FIRMWARE; then
+        cp $FIRMWARE_VERSION $INSTALLED_VERSION
+        sleep 3
+        echo "Firmware flashed and version recorded."
+    else
+        echo "Firmware flash failed, version not updated."
+        return 1
+    fi
+}
+
+case "$1" in
+    start)
+        echo "Starting klipper-firmware-canvas..."
+
+        if [ "$FLASH_ENABLED" != "True" ]; then
+            echo "Skipping canvas firmware flash because flash_mcu.elegoo_canvas is not enabled."
+            exit 0
+        fi
+
+        if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" = "$(cat $FIRMWARE_VERSION)" ]; then
+            echo "Firmware is already up to date."
+            exit 0
+        else
+            echo "Firmware version mismatch or not installed, flashing firmware..."
+            if update; then
+                exit 0
+            else
+                echo "Attempting bootloader upgrade..."
+                if mcu-flasher --canvas --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
+                    sleep 3
+                    echo "Bootloader deployer flashed successfully, clearing installed version."
+                    rm -f $INSTALLED_VERSION
+                    update
+                else
+                    echo "Cannot update bootloader."
+                    exit 1
+                fi
+            fi
+        fi
+        ;;
+    status)
+        if [ "$FLASH_ENABLED" = "True" ]; then
+            echo "klipper-firmware-canvas flashing is enabled"
+        else
+            echo "klipper-firmware-canvas flashing is disabled"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
