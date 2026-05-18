@@ -1,0 +1,16 @@
+# Dependabot for Brofalo/pono-print-cosmos
+# HARDEST QA fleet rollout 2026-05-18
+# Anchor: CLAUDE.md "CI / Bot / Workflow Hygiene" HARD requirement (2026-05-17)
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    groups:
+      root-github-actions-minor-patch:
+        update-types: ["minor", "patch"]
