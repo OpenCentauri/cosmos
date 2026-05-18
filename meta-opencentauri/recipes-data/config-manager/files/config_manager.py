@@ -11,6 +11,9 @@ VALIDATORS = {
         'release': ['stable', 'nightly'],
         'check_for_updates': ['True', 'False'],
     },
+    'flash_mcu': {
+        'elegoo_canvas': ['True', 'False'],
+    },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
         'camera_led_default_on': ['True', 'False'],
