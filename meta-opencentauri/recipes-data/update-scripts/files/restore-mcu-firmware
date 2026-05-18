@@ -2,6 +2,8 @@
 
 set -e
 
+FLASH_CANVAS="$(config-manager flash_mcu elegoo_canvas 2>/dev/null)"
+
 SERIALPORT_BED="/dev/ttyS4"
 VERSION_BED="/etc/bed.ver"
 STOCK_FW_BED="/lib/firmware/katapult-deployer-stock-bed.bin"
@@ -10,6 +12,10 @@ SERIALPORT_TOOLHEAD="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
 VERSION_TOOLHEAD="/etc/toolhead.ver"
 STOCK_FW_TOOLHEAD="/lib/firmware/katapult-deployer-stock-toolhead.bin"
 
+SERIALPORT_CANVAS="/dev/serial/by-path/platform-4200000.usb-usb-0:1.4:1.0"
+VERSION_CANVAS="/etc/canvas.ver"
+STOCK_FW_CANVAS="/lib/firmware/katapult-deployer-stock-canvas.bin"
+
 # Flash stock bootloader
 service klipper stop
 flashtool -d $SERIALPORT_BED -b 250000 -r
@@ -17,3 +23,7 @@ flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
 rm -f $VERSION_BED
 flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
 rm -f $VERSION_TOOLHEAD
+if [ "$FLASH_CANVAS" = "True" ]; then
+	flashtool -d $SERIALPORT_CANVAS -f $STOCK_FW_CANVAS
+	rm -f $VERSION_CANVAS
+fi
