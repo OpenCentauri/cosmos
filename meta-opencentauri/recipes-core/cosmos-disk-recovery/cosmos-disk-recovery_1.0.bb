@@ -38,7 +38,7 @@ SRC_URI = "\
 
 S = "${WORKDIR}"
 
-RDEPENDS:${PN} = "swu-flasher swupdate"
+RDEPENDS:${PN} = "swu-flasher swupdate update-scripts"
 
 inherit update-rc.d
 

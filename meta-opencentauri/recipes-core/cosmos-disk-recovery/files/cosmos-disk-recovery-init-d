@@ -52,7 +52,8 @@ case "$1" in
         if [ -d "${COSMOS_DISK_RECOVERY_DIR}" ]; then
             echo "cosmos-disk-recovery: cache dir present at ${COSMOS_DISK_RECOVERY_DIR}"
             /usr/sbin/cosmos-disk-recovery status
-            exit 0
+            rc=$?
+            exit "${rc}"
         fi
         echo "cosmos-disk-recovery: cache dir ${COSMOS_DISK_RECOVERY_DIR} absent"
         exit 3
