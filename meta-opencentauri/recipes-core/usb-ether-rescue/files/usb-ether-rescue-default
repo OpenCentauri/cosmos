@@ -9,8 +9,14 @@ USB_ETHER_RESCUE_ENABLED=1
 # Where the rescue script logs its actions.
 USB_ETHER_RESCUE_LOG=/var/log/usb-ether-rescue.log
 
-# DHCP-attempt timeout (-T) and retries (-t) for udhcpc. Combined upper
-# bound is ~30s wall time; udhcpc backgrounds after that if no lease.
+# DHCP-attempt timing for udhcpc.
+#   USB_ETHER_RESCUE_UDHCPC_T:       per-try timeout (-T), seconds
+#   USB_ETHER_RESCUE_UDHCPC_RETRIES: retry count (-t)
+# Bare DHCP wall time is T * RETRIES = 3 * 5 = 15s. Real wall time runs
+# closer to ~30s once you fold in udev settle, CARRIER_SETTLE_S below,
+# and udhcpc internal backoff between retries. After RETRIES exhaust
+# udhcpc backgrounds and stops blocking boot. Tune both knobs when
+# adjusting the boot-time DHCP budget.
 USB_ETHER_RESCUE_UDHCPC_T=3
 USB_ETHER_RESCUE_UDHCPC_RETRIES=5
 

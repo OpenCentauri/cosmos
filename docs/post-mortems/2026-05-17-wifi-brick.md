@@ -23,7 +23,7 @@ This produced PR #6 ([`docs/research/aic8800.md`](../research/aic8800.md), 171 l
 
 The printer's actual WiFi radio is a Realtek RTL8821CU, not an AIC8800. UART recovery on 2026-05-18 ran `lsusb` for the first time:
 
-```
+```text
 Bus 001 Device 004: ID 0bda:c811 Realtek Semiconductor Corp. 802.11ac NIC
 ```
 
@@ -37,20 +37,20 @@ Two compounding configuration bugs in `/etc/wpa_supplicant.conf` (operator-provi
 
 1. **`GROUP=netdev` on a busybox image with no `netdev` group.** Cosmos 0.0.6 ships a minimal Yocto rootfs without the `netdev` group that desktop distros use. The conf line:
 
-   ```
+   ```ini
    ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
    ```
 
    caused `wpa_supplicant` to fail control-interface initialization with:
 
-   ```
+   ```text
    CTRL: Invalid group 'netdev'
    Failed to initialize control interface 'DIR=/var/run/wpa_supplicant GROUP=netdev'
    ```
 
    `wpa_supplicant` then exited without attempting any association. `wifi-rescue`'s modprobe-cycle was useless because it does not touch the supplicant.
 
-2. **Literal SSID mismatch.** `wpa_supplicant.conf` carried `ssid="Lee Network"` (capital N, no trailing space). The router actually broadcasts `Lee network ` (lowercase n, trailing space  --  verified via `iw dev wlan0 scan` once the supplicant was up). `wpa_supplicant` is strict on literal SSID match; `netsh wlan show networks` on Spambook had normalized the displayed name and hidden the divergence from the operator.
+2. **Literal SSID mismatch.** `wpa_supplicant.conf` carried `ssid="Lee Network"` (capital N, no trailing space). The router actually broadcasts the string `Lee network` followed by one trailing space character (lowercase n; the trailing space is significant and was verified via `iw dev wlan0 scan` once the supplicant was up). `wpa_supplicant` is strict on literal SSID match; `netsh wlan show networks` on Spambook had normalized the displayed name and hidden the divergence from the operator.
 
 After both were fixed via UART shell (`sed -i` to strip the GROUP= clause + rewrite the SSID line) the supplicant came up, associated on the 5 GHz band (RTL8821CU at signal -23 dBm, 433 Mbit/s VHT-MCS 9 80MHz), and progressed to the DHCP-isolation phase that the recovery thread is still working through.
 

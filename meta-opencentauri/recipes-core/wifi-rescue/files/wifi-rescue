@@ -162,9 +162,15 @@ if iface_present; then
     if iface_has_carrier; then
         log "${iface} present with carrier, no IPv4; running ifup"
         ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
-        exit 0
+        sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+        if iface_has_ipv4; then
+            log "${iface} has IPv4 after ifup; done"
+            exit 0
+        fi
+        log "${iface} no IPv4 after ifup; escalating to wpa_cli soft-rescue"
+    else
+        log "${iface} present without carrier; trying wpa_cli soft-rescue"
     fi
-    log "${iface} present without carrier; trying wpa_cli soft-rescue"
     if wpa_cli_soft_rescue; then
         sleep "${WIFI_RESCUE_POST_RELOAD_S}"
         if iface_has_carrier && iface_has_ipv4; then
@@ -204,11 +210,15 @@ sleep "${WIFI_RESCUE_POST_RELOAD_S}"
 if iface_present; then
     log "${iface} present after driver reload; running ifup"
     ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
-    log "wifi-rescue done"
-    exit 0
+    sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+    if iface_has_ipv4; then
+        log "${iface} has IPv4 after driver reload; done"
+        exit 0
+    fi
+    log "${iface} no IPv4 after driver reload; escalating to USB unbind/rebind"
 fi
 
-log "${iface} absent after driver reload; trying USB unbind/rebind"
+log "${iface} absent or unassociated after driver reload; trying USB unbind/rebind"
 for vid in ${WIFI_RESCUE_USB_VENDORS}; do
     for dev in /sys/bus/usb/devices/*; do
         [ -e "${dev}/idVendor" ] || continue
@@ -231,11 +241,15 @@ sleep "${WIFI_RESCUE_POST_RELOAD_S}"
 if iface_present; then
     log "${iface} present after USB unbind/rebind; running ifup"
     ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
-    log "wifi-rescue done"
-    exit 0
+    sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+    if iface_has_ipv4; then
+        log "${iface} has IPv4 after USB unbind/rebind; done"
+        exit 0
+    fi
+    log "${iface} no IPv4 after USB unbind/rebind; escalating to PCIe rescan"
 fi
 
-log "${iface} absent after USB rebind; trying PCIe rescan"
+log "${iface} absent or unassociated after USB rebind; trying PCIe rescan"
 if [ -w /sys/bus/pci/rescan ]; then
     echo 1 > /sys/bus/pci/rescan 2>&1 || log "  PCIe rescan failed"
 else
@@ -247,11 +261,15 @@ sleep "${WIFI_RESCUE_POST_RELOAD_S}"
 if iface_present; then
     log "${iface} present after PCIe rescan; running ifup"
     ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
-    log "wifi-rescue done"
-    exit 0
+    sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+    if iface_has_ipv4; then
+        log "${iface} has IPv4 after PCIe rescan; done"
+        exit 0
+    fi
+    log "${iface} no IPv4 after PCIe rescan; all recovery stages exhausted"
 fi
 
-log "${iface} still absent after all recovery steps; giving up this boot"
+log "${iface} still absent or unassociated after all recovery steps; giving up this boot"
 log "lsmod (WiFi-relevant):"
 lsmod | grep -iE 'aic|rtw|cfg80211|mac80211' 2>&1 || true
 log "USB devices:"

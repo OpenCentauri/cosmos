@@ -132,8 +132,13 @@ log "boot-time scan starting"
 for path in /sys/class/net/*; do
     [ -d "${path}" ] || continue
     name="$(basename "${path}")"
+    # Skip names that can't be USB-Ethernet. We deliberately do NOT skip
+    # "usb*" here: kernel USB CDC drivers commonly assign names like
+    # "usb0", which is exactly the interface we need to bring up.
+    # is_usb_ethernet() does the real check via /sys; the name filter
+    # only weeds out loopback, WiFi, tunnels, virtual bridges, and veth.
     case "${name}" in
-        lo|wlan*|usb*|bnep*|sit*|tun*|tap*|docker*|br-*|veth*) continue ;;
+        lo|wlan*|bnep*|sit*|tun*|tap*|docker*|br-*|veth*) continue ;;
     esac
     bring_up_one "${name}"
 done
