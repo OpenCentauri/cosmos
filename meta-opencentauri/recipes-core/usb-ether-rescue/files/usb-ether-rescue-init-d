@@ -13,14 +13,16 @@ case "$1" in
         /usr/sbin/usb-ether-rescue
         rc=$?
         if [ "${rc}" -ne 0 ]; then
-            logger -t usb-ether-rescue "boot-time scan exited with code ${rc}" \
+            logger -t usb-ether-rescue "scan exited with code ${rc}" \
                 2>/dev/null || \
-                echo "usb-ether-rescue: boot-time scan exited with code ${rc}" >&2
+                echo "usb-ether-rescue: scan exited with code ${rc}" >&2
         fi
-        # Boot must not block on rescue-script failure; mask non-zero rc
-        # so init does not flag the boot stage broken. The logger line
-        # above keeps the diagnostic visible in syslog.
-        exit 0
+        # Propagate the rescue-script exit code so LSB-aware callers
+        # (service foo start, monitoring tools, operators) can detect
+        # probe failures. Busybox sysv-init at boot tolerates non-zero
+        # rc from a start script (logs + continues to the next script),
+        # so this does not block boot. Symmetric with hardware-scan.
+        exit "${rc}"
         ;;
     status)
         if [ -r /var/log/usb-ether-rescue.log ]; then
