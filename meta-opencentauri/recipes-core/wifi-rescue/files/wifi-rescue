@@ -1,0 +1,262 @@
+#!/bin/sh
+# wifi-rescue: boot-time wlan0 recovery for OpenCentauri/cosmos#184.
+#
+# Recovers wlan0 across four failure classes:
+#   - no IPv4 with carrier: rerun ifup (DHCP path).
+#   - no carrier (association failed): restart wpa_supplicant then ifup.
+#   - interface absent: reload driver modules, USB unbind/rebind, PCIe rescan.
+# Each step skipped once wlan0 returns. Overridable via /etc/default/wifi-rescue.
+
+set -u
+
+WIFI_RESCUE_ENABLED="${WIFI_RESCUE_ENABLED:-1}"
+WIFI_RESCUE_SETTLE_S="${WIFI_RESCUE_SETTLE_S:-5}"
+WIFI_RESCUE_POST_RELOAD_S="${WIFI_RESCUE_POST_RELOAD_S:-3}"
+WIFI_RESCUE_INTERFACE="${WIFI_RESCUE_INTERFACE:-wlan0}"
+WIFI_RESCUE_LOG="${WIFI_RESCUE_LOG:-/var/log/wifi-rescue.log}"
+WIFI_RESCUE_DRIVERS="${WIFI_RESCUE_DRIVERS:-aic8800_fdrv rtw_8821ce rtw_8821cu rtw_8821cs rtw_8821c rtw_core}"
+# USB VIDs eligible for unbind/rebind. Defaults cover:
+#   a69c = AIC Semiconductor (aic8800 family)
+#   0bda = Realtek (RTL8821CU and friends; e.g. RTL8821CU 0bda:c811 found on
+#          2026-05-17 brick recovery despite aic8800_fdrv also loading)
+# Add more space-separated VIDs as new Centauri Carbon SKUs ship different radios.
+WIFI_RESCUE_USB_VENDORS="${WIFI_RESCUE_USB_VENDORS-a69c 0bda}"
+
+if [ -r /run/hardware-scan.env ]; then
+    . /run/hardware-scan.env
+    [ -n "${WIFI_INTERFACE:-}" ] && WIFI_RESCUE_INTERFACE="${WIFI_INTERFACE}"
+    [ -n "${WIFI_DRIVERS_LOADED:-}" ] && WIFI_RESCUE_DRIVERS="${WIFI_DRIVERS_LOADED}"
+    if [ -n "${WIFI_CHIP_VID:-}" ]; then
+        case " ${WIFI_RESCUE_USB_VENDORS} " in
+            *" ${WIFI_CHIP_VID} "*) ;;
+            *) WIFI_RESCUE_USB_VENDORS="${WIFI_RESCUE_USB_VENDORS} ${WIFI_CHIP_VID}" ;;
+        esac
+    fi
+fi
+
+if [ -r /etc/default/wifi-rescue ]; then
+    . /etc/default/wifi-rescue
+fi
+
+[ "${WIFI_RESCUE_ENABLED}" = "1" ] || exit 0
+[ -n "${WIFI_RESCUE_INTERFACE}" ] || exit 0
+
+iface="${WIFI_RESCUE_INTERFACE}"
+log_path="${WIFI_RESCUE_LOG}"
+
+mkdir -p "$(dirname "${log_path}")" 2>/dev/null || true
+: > "${log_path}" 2>/dev/null || true
+exec >>"${log_path}" 2>&1
+
+log() {
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"
+}
+
+iface_present() {
+    ip link show "${iface}" >/dev/null 2>&1
+}
+
+iface_has_ipv4() {
+    ip -4 addr show "${iface}" 2>/dev/null | grep -q 'inet '
+}
+
+iface_has_carrier() {
+    [ "$(cat /sys/class/net/${iface}/carrier 2>/dev/null)" = "1" ]
+}
+
+wpa_cli_soft_rescue() {
+    command -v wpa_cli >/dev/null 2>&1 || return 1
+    pidof wpa_supplicant >/dev/null 2>&1 || return 1
+    log "wpa_cli reconfigure + reassociate on ${iface}"
+    wpa_cli -i "${iface}" reconfigure >/dev/null 2>&1 || return 1
+    sleep 1
+    wpa_cli -i "${iface}" reassociate >/dev/null 2>&1 || return 1
+    return 0
+}
+
+restart_wpa() {
+    log "tearing down ${iface} and wpa_supplicant"
+    ifdown "${iface}" >/dev/null 2>&1 || true
+    pkill -x wpa_supplicant >/dev/null 2>&1 || true
+    sleep 1
+}
+
+# Probe whether a group exists. 0 = yes, 1 = no, 2 = can't tell (no
+# getent + no /etc/group). rc=2 must NOT be treated as "no" by the
+# caller; a stripped image that lacks both probes shouldn't have its
+# wpa_supplicant.conf rewritten on a guess.
+_group_exists() {
+    grp="$1"
+    [ -n "${grp}" ] || return 2
+    if command -v getent >/dev/null 2>&1; then
+        if getent group "${grp}" >/dev/null 2>&1; then
+            return 0
+        fi
+        # getent ran, group not in any nsswitch source.
+        return 1
+    fi
+    if [ -r /etc/group ]; then
+        if awk -F: -v g="${grp}" '$1==g {found=1} END {exit !found}' /etc/group; then
+            return 0
+        fi
+        return 1
+    fi
+    return 2
+}
+
+# Self-heal a wpa_supplicant.conf that references a GROUP= the image
+# doesn't have. Cosmos 0.0.6 (busybox Yocto) doesn't ship the netdev
+# group; an operator config carrying
+#   ctrl_interface=DIR=... GROUP=netdev
+# makes wpa_supplicant exit with
+#   CTRL: Invalid group 'netdev'
+#   Failed to initialize control interface
+# before any association attempt. modprobe cycling can't fix it -- the
+# supplicant never starts. Strip the GROUP= clause (with backup) only
+# when we're sure the group is absent. Returns 0 if no change, 1 if
+# the conf was edited. See docs/post-mortems/2026-05-17-wifi-brick.md.
+validate_wpa_group() {
+    conf="${WPA_CONF:-/etc/wpa_supplicant.conf}"
+    [ -r "${conf}" ] || return 0
+    grp="$(sed -n 's/^[[:space:]]*ctrl_interface=.*GROUP=\([^[:space:]]*\).*/\1/p' "${conf}" | head -n1)"
+    [ -n "${grp}" ] || return 0
+    _group_exists "${grp}"
+    case "$?" in
+        0)
+            return 0
+            ;;
+        2)
+            # Can't verify; don't rewrite the conf. Log it so the next
+            # operator sees what happened if the supplicant still fails.
+            log "wpa_supplicant.conf references GROUP='${grp}'; can't verify (no getent, no /etc/group). Leaving conf untouched."
+            return 0
+            ;;
+    esac
+    # Group is absent. Strip the GROUP= clause and back up the original.
+    backup="${conf}.broken-group-${grp}-stripped"
+    log "wpa_supplicant.conf references missing group '${grp}'; stripping (backup: ${backup})"
+    cp -a "${conf}" "${backup}" 2>/dev/null || log "  backup copy failed (continuing)"
+    sed -i -E "s/^([[:space:]]*ctrl_interface=[^[:space:]]*)[[:space:]]+GROUP=${grp}[^[:space:]]*$/\1/" "${conf}"
+    return 1
+}
+
+log "wifi-rescue start (iface=${iface})"
+
+# Class 218 instance #2 substrate fix: catch wpa_supplicant config bugs
+# the modprobe cycle cannot recover from. Run before any rescue step so
+# subsequent ifup / wpa_cli sees a healed config.
+if ! validate_wpa_group; then
+    log "wpa_supplicant.conf was healed; restarting wpa_supplicant"
+    pkill -x wpa_supplicant >/dev/null 2>&1 || true
+    sleep 1
+fi
+
+sleep "${WIFI_RESCUE_SETTLE_S}"
+
+if iface_present && iface_has_ipv4; then
+    log "${iface} present with IPv4; no action"
+    exit 0
+fi
+
+if iface_present; then
+    if iface_has_carrier; then
+        log "${iface} present with carrier, no IPv4; running ifup"
+        ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
+        exit 0
+    fi
+    log "${iface} present without carrier; trying wpa_cli soft-rescue"
+    if wpa_cli_soft_rescue; then
+        sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+        if iface_has_carrier && iface_has_ipv4; then
+            log "${iface} associated with IPv4 after wpa_cli soft-rescue; done"
+            exit 0
+        fi
+        log "${iface} no IPv4 after soft-rescue; escalating to wpa_supplicant restart"
+    fi
+
+    restart_wpa
+    ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
+    sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+    if iface_has_carrier && iface_has_ipv4; then
+        log "${iface} associated with IPv4 after wpa restart; done"
+        exit 0
+    fi
+    log "${iface} did not associate after wpa restart; escalating to driver reload"
+fi
+
+log "${iface} absent or unassociated; reloading drivers"
+for drv in ${WIFI_RESCUE_DRIVERS}; do
+    if lsmod | awk '{print $1}' | grep -qx "${drv}"; then
+        log "modprobe -r ${drv}"
+        modprobe -r "${drv}" 2>&1 || log "  modprobe -r ${drv} failed (continuing)"
+    fi
+done
+
+sleep 1
+
+for drv in ${WIFI_RESCUE_DRIVERS}; do
+    log "modprobe ${drv}"
+    modprobe "${drv}" 2>&1 || log "  modprobe ${drv} failed (driver/chip absent)"
+done
+
+sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+
+if iface_present; then
+    log "${iface} present after driver reload; running ifup"
+    ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
+    log "wifi-rescue done"
+    exit 0
+fi
+
+log "${iface} absent after driver reload; trying USB unbind/rebind"
+for vid in ${WIFI_RESCUE_USB_VENDORS}; do
+    for dev in /sys/bus/usb/devices/*; do
+        [ -e "${dev}/idVendor" ] || continue
+        dev_vid="$(cat "${dev}/idVendor" 2>/dev/null)"
+        if [ "${dev_vid}" = "${vid}" ]; then
+            devname="$(basename "${dev}")"
+            log "  USB ${vid}: unbinding ${devname}"
+            echo "${devname}" > /sys/bus/usb/drivers/usb/unbind 2>&1 \
+                || log "    unbind failed for ${devname}"
+            sleep 1
+            log "  USB ${vid}: rebinding ${devname}"
+            echo "${devname}" > /sys/bus/usb/drivers/usb/bind 2>&1 \
+                || log "    rebind failed for ${devname}"
+        fi
+    done
+done
+
+sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+
+if iface_present; then
+    log "${iface} present after USB unbind/rebind; running ifup"
+    ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
+    log "wifi-rescue done"
+    exit 0
+fi
+
+log "${iface} absent after USB rebind; trying PCIe rescan"
+if [ -w /sys/bus/pci/rescan ]; then
+    echo 1 > /sys/bus/pci/rescan 2>&1 || log "  PCIe rescan failed"
+else
+    log "  /sys/bus/pci/rescan not writable; skipping"
+fi
+
+sleep "${WIFI_RESCUE_POST_RELOAD_S}"
+
+if iface_present; then
+    log "${iface} present after PCIe rescan; running ifup"
+    ifup "${iface}" 2>&1 || log "ifup ${iface} returned non-zero"
+    log "wifi-rescue done"
+    exit 0
+fi
+
+log "${iface} still absent after all recovery steps; giving up this boot"
+log "lsmod (WiFi-relevant):"
+lsmod | grep -iE 'aic|rtw|cfg80211|mac80211' 2>&1 || true
+log "USB devices:"
+ls /sys/bus/usb/devices/ 2>&1 | head -20
+log "PCI WiFi-class devices:"
+lspci 2>/dev/null | grep -iE 'wireless|wifi|802\.11' 2>&1 || log "  (no lspci output or no WiFi PCI device)"
+log "wifi-rescue failed"
+exit 1

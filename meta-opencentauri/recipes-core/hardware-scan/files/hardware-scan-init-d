@@ -1,0 +1,23 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          hardware-scan
+# Required-Start:    $local_fs udev
+# Required-Stop:     $local_fs
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Boot-time hardware probe
+### END INIT INFO
+
+case "$1" in
+    start)
+        /usr/sbin/hardware-scan
+        ;;
+    stop|restart|force-reload|status)
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
