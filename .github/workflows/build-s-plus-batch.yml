@@ -121,7 +121,16 @@ jobs:
           set -e
           SHA=$(git rev-parse --short=7 HEAD)
           ITER=$(cat .brofalo-iteration 2>/dev/null | tr -d '[:space:]' || echo "7")
+          # workflow_dispatch passes inputs.channel; push events have no
+          # inputs context so the expression evaluates to empty. Push builds
+          # are by definition un-bench-validated, so default to 'nightly'
+          # when the channel is empty. Explicit empty channel for stable
+          # cuts requires a workflow_dispatch with channel='' (the empty
+          # choice in the dropdown).
           CHANNEL="${{ github.event.inputs.channel }}"
+          if [ "${{ github.event_name }}" = "push" ] && [ -z "${CHANNEL}" ]; then
+            CHANNEL="nightly"
+          fi
           if [ -z "${CHANNEL}" ]; then
             BASE="cosmos-0.0.7-brofalo.${ITER}+${SHA}"
           else
