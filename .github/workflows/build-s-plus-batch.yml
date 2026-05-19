@@ -123,26 +123,49 @@ jobs:
           ITER=$(cat .brofalo-iteration 2>/dev/null | tr -d '[:space:]' || echo "7")
           # workflow_dispatch passes inputs.channel; push events have no
           # inputs context so the expression evaluates to empty. Push builds
-          # are by definition un-bench-validated, so default to 'nightly'
-          # when the channel is empty. Explicit empty channel for stable
-          # cuts requires a workflow_dispatch with channel='' (the empty
-          # choice in the dropdown).
+          # are by definition un-bench-validated, so default to 'nightly'.
           CHANNEL="${{ github.event.inputs.channel }}"
           if [ "${{ github.event_name }}" = "push" ] && [ -z "${CHANNEL}" ]; then
             CHANNEL="nightly"
           fi
           if [ -z "${CHANNEL}" ]; then
-            BASE="cosmos-0.0.7-brofalo.${ITER}+${SHA}"
+            PREFIX="cosmos-0.0.7-brofalo.${ITER}"
           else
-            BASE="cosmos-0.0.7-brofalo.${ITER}-${CHANNEL}+${SHA}"
+            PREFIX="cosmos-0.0.7-brofalo.${ITER}-${CHANNEL}"
           fi
-          SWU=$(ls -t build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs-*.swu | head -1)
+          # Compute next sequential index N. Glob existing files matching
+          # <PREFIX>.<N>.swu in the firmware-artifacts dir; find max N;
+          # increment. SHA stays in the .sha256 sidecar + the build summary
+          # so it's not lost, just out of the primary filename.
+          NEXT=1
           mkdir -p "${HOME}/firmware-artifacts/cosmos"
+          for f in "${HOME}/firmware-artifacts/cosmos/${PREFIX}".*.swu; do
+            [ -e "$f" ] || continue
+            STEM="${f##*/}"
+            TAIL="${STEM#${PREFIX}.}"
+            N="${TAIL%.swu}"
+            case "$N" in
+              ''|*[!0-9]*) continue ;;
+              *) [ "$N" -ge "$NEXT" ] && NEXT=$((N + 1)) ;;
+            esac
+          done
+          BASE="${PREFIX}.${NEXT}"
+          SWU=$(ls -t build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs-*.swu | head -1)
           cp "${SWU}" "${HOME}/firmware-artifacts/cosmos/${BASE}.swu"
           cd "${HOME}/firmware-artifacts/cosmos"
           sha256sum "${BASE}.swu" | tee -a SHA256SUMS
+          # Forensic sidecar: short SHA + timestamp + run URL for the build.
+          cat > "${BASE}.meta" <<META
+filename: ${BASE}.swu
+git_sha: ${SHA}
+git_ref: ${{ github.ref_name }}
+build_time_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+runner: $(hostname)
+github_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+META
           echo "name=${BASE}" >> "${GITHUB_OUTPUT}"
           echo "path=${HOME}/firmware-artifacts/cosmos/${BASE}.swu" >> "${GITHUB_OUTPUT}"
+          echo "git_sha=${SHA}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload SWU as workflow artifact
         uses: actions/upload-artifact@v4
