@@ -19,6 +19,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     wpa-supplicant \
     iw \
     kalico \
+    klipper-extras-canvas \
     moonraker \
     mainsail \
     fluidd \
