@@ -1,10 +1,23 @@
 name: build-s-plus-batch (cosmos SWU on self-hosted)
 
 # Triggered by push to s-plus-batch OR manual dispatch. Builds the
-# Brofalo cosmos SWU on the pono-prime self-hosted Linux runner, which
-# carries a warm sstate-cache + downloads tree under
-# /home/jack125/cosmos-fork/build/{sstate-cache,downloads}/ that this
-# workflow links into the runner workspace for fast incremental builds.
+# Brofalo cosmos SWU on the pono-prime self-hosted Linux runner.
+#
+# Architecture: the workflow operates on prime's persistent checkout at
+# ~/cosmos-fork/ (NOT the runner's _work/ tree). That checkout has all
+# submodules (poky, meta-sunxi, meta-openembedded, etc) properly
+# initialized AND the warm sstate-cache + downloads tree under
+# build/{sstate-cache,downloads}/. Building against the persistent
+# checkout means:
+#   - Zero submodule fetch overhead per run (vs ~5 GB recursive clone)
+#   - Native warm-cache build, ~5 min incremental
+#   - Same tree manual bitbake builds use, so behavior is identical
+#
+# Class 117 concurrency note: ~/cosmos-fork/ is shared with manual
+# builds + parallel Maui sessions. The workflow's concurrency lock
+# prevents two CI runs from colliding, and Gate 1 detects in-flight
+# manual bitbake. If a manual session is mid-build the workflow waits
+# in queue rather than corrupting state.
 #
 # Starts as workflow_dispatch only; flip to `push:` trigger after the
 # first successful manual run validates the runner + warm-cache wiring.
@@ -45,67 +58,67 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  COSMOS_FORK: /home/jack125/cosmos-fork
+
 jobs:
   build:
     runs-on: [self-hosted, Linux, ARM64, cosmos-build]
     timeout-minutes: 720
 
     steps:
-      - name: Checkout s-plus-batch
-        uses: actions/checkout@v4
-        with:
-          ref: s-plus-batch
-          fetch-depth: 100
-          submodules: false
-
-      - name: Link warm sstate-cache + downloads from persistent location
+      - name: Anchor + sync persistent checkout
+        working-directory: ${{ env.COSMOS_FORK }}
         run: |
-          mkdir -p build
-          if [ -d "${HOME}/cosmos-fork/build/sstate-cache" ]; then
-            ln -sfn "${HOME}/cosmos-fork/build/sstate-cache" build/sstate-cache
-          else
-            echo "::warning::no persistent sstate-cache; cold rebuild expected (8-12h wall)"
-          fi
-          if [ -d "${HOME}/cosmos-fork/build/downloads" ]; then
-            ln -sfn "${HOME}/cosmos-fork/build/downloads" build/downloads
-          else
-            echo "::warning::no persistent downloads; will re-fetch (~5 GB)"
-          fi
-          ls -la build/ | head -10
-
-      - name: Bootstrap poky if absent
-        run: |
-          if [ ! -d poky/meta ]; then
-            git clone --depth 1 --branch scarthgap https://git.yoctoproject.org/poky.git
-          fi
+          set -e
+          echo "::group::pre-sync state"
+          git status --short
+          git log --oneline -1
+          echo "::endgroup::"
+          git fetch origin s-plus-batch
+          git reset --hard origin/s-plus-batch
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth 100
+          echo "::group::post-sync state"
+          git log --oneline -1
+          git submodule status | head -10
+          echo "::endgroup::"
 
       - name: Pre-rebuild sanity (Gate 1)
+        working-directory: ${{ env.COSMOS_FORK }}
         run: bash tools/qa_pre_rebuild_sanity.sh
 
       - name: Recipe lint (Gate 2; soft)
+        working-directory: ${{ env.COSMOS_FORK }}
         run: python3 tools/qa_recipe_lint.py
         continue-on-error: true
 
       - name: Pre-flight Class 94 self-review
+        working-directory: ${{ env.COSMOS_FORK }}
         run: bash tools/pre-flight.sh
 
       - name: Substrate-dep scan (Class 217)
+        working-directory: ${{ env.COSMOS_FORK }}
         run: python3 tools/qa_substrate_dep_scan.py
         continue-on-error: true
 
       - name: bitbake opencentauri-upgrade
+        working-directory: ${{ env.COSMOS_FORK }}
         run: |
           source poky/oe-init-build-env build > /dev/null
           bitbake opencentauri-upgrade
 
       - name: Validate SWU (Gate 3)
+        working-directory: ${{ env.COSMOS_FORK }}
         run: |
           SWU=$(ls -t build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs-*.swu | head -1)
           python3 tools/qa_post_swu_validate.py "${SWU}"
 
-      - name: SemVer-name the artifact
+      - name: SemVer-name + bank to firmware-artifacts
         id: name
+        working-directory: ${{ env.COSMOS_FORK }}
         run: |
+          set -e
           SHA=$(git rev-parse --short=7 HEAD)
           ITER=$(cat .brofalo-iteration 2>/dev/null | tr -d '[:space:]' || echo "7")
           CHANNEL="${{ github.event.inputs.channel }}"
@@ -114,25 +127,19 @@ jobs:
           else
             BASE="cosmos-0.0.7-brofalo.${ITER}-${CHANNEL}+${SHA}"
           fi
-          mkdir -p artifacts
           SWU=$(ls -t build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs-*.swu | head -1)
-          cp "${SWU}" "artifacts/${BASE}.swu"
-          sha256sum "artifacts/${BASE}.swu" > "artifacts/${BASE}.sha256"
-          echo "name=${BASE}" >> "${GITHUB_OUTPUT}"
-          ls -la artifacts/
-
-      - name: Bank to persistent firmware-artifacts
-        run: |
           mkdir -p "${HOME}/firmware-artifacts/cosmos"
-          cp "artifacts/${{ steps.name.outputs.name }}.swu" "${HOME}/firmware-artifacts/cosmos/"
+          cp "${SWU}" "${HOME}/firmware-artifacts/cosmos/${BASE}.swu"
           cd "${HOME}/firmware-artifacts/cosmos"
-          sha256sum "${{ steps.name.outputs.name }}.swu" >> SHA256SUMS
+          sha256sum "${BASE}.swu" | tee -a SHA256SUMS
+          echo "name=${BASE}" >> "${GITHUB_OUTPUT}"
+          echo "path=${HOME}/firmware-artifacts/cosmos/${BASE}.swu" >> "${GITHUB_OUTPUT}"
 
       - name: Upload SWU as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.name.outputs.name }}
-          path: artifacts/*
+          path: ${{ steps.name.outputs.path }}
           retention-days: 30
           if-no-files-found: error
 
@@ -142,9 +149,8 @@ jobs:
             echo "## Cosmos SWU build complete"
             echo ""
             echo "- **SWU:** \`${{ steps.name.outputs.name }}.swu\`"
-            echo "- **Commit:** \`$(git rev-parse --short=7 HEAD)\`"
+            echo "- **Banked:** \`${{ steps.name.outputs.path }}\`"
             echo "- **Runner:** \`$(hostname)\`"
-            echo "- **Wall:** \`$(date +%H:%M:%S) UTC\`"
             echo ""
-            echo "Artifact uploaded under retention 30d. Banked to \`~/firmware-artifacts/cosmos/\` on pono-prime."
+            echo "Artifact uploaded under retention 30d. Also banked persistently to prime."
           } >> "${GITHUB_STEP_SUMMARY}"
