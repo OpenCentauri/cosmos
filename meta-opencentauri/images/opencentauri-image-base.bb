@@ -46,6 +46,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     hardware-scan \
     wifi-rescue \
     usb-ether-rescue \
+    cosmos-disk-recovery \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

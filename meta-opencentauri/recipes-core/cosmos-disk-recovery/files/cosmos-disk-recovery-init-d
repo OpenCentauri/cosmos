@@ -1,0 +1,68 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cosmos-disk-recovery
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Cosmos offline SWU recovery cache + status log
+### END INIT INFO
+
+COSMOS_DISK_RECOVERY_DIR="${COSMOS_DISK_RECOVERY_DIR:-/data/recovery}"
+
+if [ -r /etc/default/cosmos-disk-recovery ]; then
+    # shellcheck disable=SC1091
+    . /etc/default/cosmos-disk-recovery
+fi
+
+ensure_dir() {
+    if [ -d "${COSMOS_DISK_RECOVERY_DIR}" ]; then
+        return 0
+    fi
+    if mkdir -p "${COSMOS_DISK_RECOVERY_DIR}" 2>/dev/null; then
+        chmod 0755 "${COSMOS_DISK_RECOVERY_DIR}" 2>/dev/null || true
+        return 0
+    fi
+    logger -t cosmos-disk-recovery \
+        "failed to create ${COSMOS_DISK_RECOVERY_DIR}; cached restores unavailable" \
+        2>/dev/null || \
+        echo "cosmos-disk-recovery: failed to create ${COSMOS_DISK_RECOVERY_DIR}" >&2
+    return 1
+}
+
+log_status_lines() {
+    /usr/sbin/cosmos-disk-recovery status 2>/dev/null | while IFS= read -r line; do
+        if ! logger -t cosmos-disk-recovery "${line}" 2>/dev/null; then
+            echo "cosmos-disk-recovery: ${line}" >&2
+        fi
+    done
+}
+
+case "$1" in
+    start|restart|force-reload)
+        ensure_dir
+        rc=$?
+        # Log current recovery-cache state so an operator on UART or
+        # SSH can see what is provisioned without having to invoke the
+        # main script explicitly.
+        log_status_lines
+        exit "${rc}"
+        ;;
+    status)
+        if [ -d "${COSMOS_DISK_RECOVERY_DIR}" ]; then
+            echo "cosmos-disk-recovery: cache dir present at ${COSMOS_DISK_RECOVERY_DIR}"
+            /usr/sbin/cosmos-disk-recovery status
+            exit 0
+        fi
+        echo "cosmos-disk-recovery: cache dir ${COSMOS_DISK_RECOVERY_DIR} absent"
+        exit 3
+        ;;
+    stop)
+        # Stateless boot-time setup; nothing to stop.
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 1
+        ;;
+esac
