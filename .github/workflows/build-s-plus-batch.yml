@@ -155,14 +155,16 @@ jobs:
           cd "${HOME}/firmware-artifacts/cosmos"
           sha256sum "${BASE}.swu" | tee -a SHA256SUMS
           # Forensic sidecar: short SHA + timestamp + run URL for the build.
-          cat > "${BASE}.meta" <<META
-filename: ${BASE}.swu
-git_sha: ${SHA}
-git_ref: ${{ github.ref_name }}
-build_time_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-runner: $(hostname)
-github_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-META
+          # Using echo lines instead of a heredoc so YAML block-scalar
+          # indentation stays consistent.
+          {
+            echo "filename: ${BASE}.swu"
+            echo "git_sha: ${SHA}"
+            echo "git_ref: ${{ github.ref_name }}"
+            echo "build_time_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner: $(hostname)"
+            echo "github_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > "${BASE}.meta"
           echo "name=${BASE}" >> "${GITHUB_OUTPUT}"
           echo "path=${HOME}/firmware-artifacts/cosmos/${BASE}.swu" >> "${GITHUB_OUTPUT}"
           echo "git_sha=${SHA}" >> "${GITHUB_OUTPUT}"
