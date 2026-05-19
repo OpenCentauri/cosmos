@@ -1,0 +1,25 @@
+# /etc/default/usb-ether-rescue -- runtime config for usb-ether-rescue.
+#
+# Override defaults here; the rescue script sources this file if present.
+
+# Master switch. Set to 0 to disable both the boot-time scan and the
+# udev hotplug path without removing the package.
+USB_ETHER_RESCUE_ENABLED=1
+
+# Where the rescue script logs its actions.
+USB_ETHER_RESCUE_LOG=/var/log/usb-ether-rescue.log
+
+# DHCP-attempt timing for udhcpc.
+#   USB_ETHER_RESCUE_UDHCPC_T:       per-try timeout (-T), seconds
+#   USB_ETHER_RESCUE_UDHCPC_RETRIES: retry count (-t)
+# Bare DHCP wall time is T * RETRIES = 3 * 5 = 15s. Real wall time runs
+# closer to ~30s once you fold in udev settle, CARRIER_SETTLE_S below,
+# and udhcpc internal backoff between retries. After RETRIES exhaust
+# udhcpc backgrounds and stops blocking boot. Tune both knobs when
+# adjusting the boot-time DHCP budget.
+USB_ETHER_RESCUE_UDHCPC_T=3
+USB_ETHER_RESCUE_UDHCPC_RETRIES=5
+
+# Carrier-settle delay after link-up before launching udhcpc. Some USB
+# dongles take ~1-2s to assert carrier after enumeration.
+USB_ETHER_RESCUE_CARRIER_SETTLE_S=2

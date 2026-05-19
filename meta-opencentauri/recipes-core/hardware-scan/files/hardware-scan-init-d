@@ -1,0 +1,37 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          hardware-scan
+# Required-Start:    $local_fs udev
+# Required-Stop:     $local_fs
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Boot-time hardware probe
+### END INIT INFO
+
+case "$1" in
+    start|restart|force-reload)
+        /usr/sbin/hardware-scan
+        rc=$?
+        if [ "${rc}" -ne 0 ]; then
+            logger -t hardware-scan "exited with code ${rc}" 2>/dev/null || \
+                echo "hardware-scan: exited with code ${rc}" >&2
+        fi
+        exit "${rc}"
+        ;;
+    status)
+        if [ -r /run/hardware-scan.env ]; then
+            echo "hardware-scan: probe results present at /run/hardware-scan.env"
+            exit 0
+        fi
+        echo "hardware-scan: no probe results (rerun with 'start' to populate)"
+        exit 3
+        ;;
+    stop)
+        # Probe is one-shot at boot; no daemon to stop.
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 1
+        ;;
+esac

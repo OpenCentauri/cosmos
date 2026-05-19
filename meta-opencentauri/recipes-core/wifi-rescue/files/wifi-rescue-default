@@ -1,0 +1,9 @@
+# /etc/default/wifi-rescue. Changes take effect at next boot.
+
+WIFI_RESCUE_ENABLED=1
+WIFI_RESCUE_SETTLE_S=5
+WIFI_RESCUE_POST_RELOAD_S=3
+WIFI_RESCUE_INTERFACE="wlan0"
+WIFI_RESCUE_LOG="/var/log/wifi-rescue.log"
+WIFI_RESCUE_DRIVERS="aic8800_fdrv rtw_8821ce rtw_8821cu rtw_8821cs rtw_8821c rtw_core"
+WIFI_RESCUE_USB_VENDORS="a69c 0bda"

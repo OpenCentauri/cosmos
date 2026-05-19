@@ -1,0 +1,352 @@
+#!/bin/sh
+# cosmos-disk-recovery: offline SWU flash from /data/recovery/ or USB.
+#
+# Companion to wifi-rescue + usb-ether-rescue + hardware-scan. When
+# the network surface stays dead, this is the last recovery lane.
+# Reuses cosmos primitives: restore-mcu-firmware, flash, uiprompt,
+# fw_setenv. No network calls, no curl, no DNS lookups.
+#
+# Usage:
+#   cosmos-disk-recovery scan-usb
+#     List SWU candidates on currently-mounted USB drives at /tmp/usb/*.
+#
+#   cosmos-disk-recovery restore-oc [<path>]
+#     Flash an OC-patched SWU. Defaults to /data/recovery/oc-restore.swu;
+#     can take an explicit <path> (e.g. /tmp/usb/sda1/oc-restore.swu)
+#     or fall back to scanning USB drives for the default filename.
+#     Does not touch the bed MCU bootloader unless the SWU embeds
+#     dsp0_partition (the stock-bootloader signature).
+#
+#   cosmos-disk-recovery restore-stock [<path>]
+#     Flash a stock OC SWU. Defaults to /data/recovery/stock-restore.swu.
+#     Always calls restore-mcu-firmware before flash (matches the
+#     upstream switch-to-stock behavior; stock mode wants the bed MCU
+#     reset regardless of the SWU's signature). Resets u-boot bootcmd
+#     to the stock sequence after flash so the printer comes back up
+#     on stock.
+#
+#   cosmos-disk-recovery validate <path>
+#     Sanity-check an SWU without flashing: file present, size above
+#     the 1 MiB floor. Returns 0 if valid, non-zero with a reason if not.
+#
+#   cosmos-disk-recovery status
+#     Print whether /data/recovery/{oc,stock}-restore.swu exist and
+#     pass validation.
+
+set -u
+
+COSMOS_DISK_RECOVERY_ENABLED="${COSMOS_DISK_RECOVERY_ENABLED:-1}"
+COSMOS_DISK_RECOVERY_LOG="${COSMOS_DISK_RECOVERY_LOG:-/var/log/cosmos-disk-recovery.log}"
+COSMOS_DISK_RECOVERY_DIR="${COSMOS_DISK_RECOVERY_DIR:-/data/recovery}"
+COSMOS_DISK_RECOVERY_OC_NAME="${COSMOS_DISK_RECOVERY_OC_NAME:-oc-restore.swu}"
+COSMOS_DISK_RECOVERY_STOCK_NAME="${COSMOS_DISK_RECOVERY_STOCK_NAME:-stock-restore.swu}"
+COSMOS_DISK_RECOVERY_MIN_BYTES="${COSMOS_DISK_RECOVERY_MIN_BYTES:-1048576}"
+COSMOS_DISK_RECOVERY_USB_ROOT="${COSMOS_DISK_RECOVERY_USB_ROOT:-/tmp/usb}"
+
+if [ -r /etc/default/cosmos-disk-recovery ]; then
+    # shellcheck disable=SC1091
+    . /etc/default/cosmos-disk-recovery
+fi
+
+if [ "${COSMOS_DISK_RECOVERY_ENABLED}" != "1" ]; then
+    echo "cosmos-disk-recovery: disabled via COSMOS_DISK_RECOVERY_ENABLED=0" >&2
+    exit 0
+fi
+
+mkdir -p "$(dirname "${COSMOS_DISK_RECOVERY_LOG}")" 2>/dev/null || true
+
+log() {
+    msg="[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"
+    if ! echo "${msg}" >>"${COSMOS_DISK_RECOVERY_LOG}" 2>/dev/null; then
+        echo "${msg}" >&2
+    fi
+    echo "${msg}" >&2
+}
+
+ui_say() {
+    # Best-effort touchscreen prompt; the existing usb-mount path uses
+    # uiprompt + uiclear for the same role. Failures are non-fatal so
+    # the operator UART / SSH workflow keeps working when grumpyscreen
+    # is down.
+    if command -v uiprompt >/dev/null 2>&1; then
+        uiprompt "$1" "$2" >/dev/null 2>&1 || true
+    fi
+}
+
+ui_clear() {
+    if command -v uiclear >/dev/null 2>&1; then
+        uiclear >/dev/null 2>&1 || true
+    fi
+}
+
+swu_exists() {
+    [ -n "$1" ] && [ -f "$1" ]
+}
+
+swu_size_ok() {
+    path="$1"
+    [ -f "${path}" ] || return 1
+    size=""
+    if command -v stat >/dev/null 2>&1; then
+        size="$(stat -c %s "${path}" 2>/dev/null || echo 0)"
+    fi
+    if [ -z "${size}" ] || [ "${size}" = "0" ]; then
+        # BusyBox without stat or stat failed: fall back to wc -c.
+        size="$(wc -c < "${path}" 2>/dev/null || echo 0)"
+    fi
+    [ "${size}" -ge "${COSMOS_DISK_RECOVERY_MIN_BYTES}" ]
+}
+
+swu_has_dsp0() {
+    # The cosmos / stock bootloader SWUs embed a "dsp0_partition" string
+    # in their metadata. usb-mount uses the same probe to decide whether
+    # to invoke restore-mcu-firmware before flashing; mirror that here
+    # so the OFFLINE recovery surface treats stock SWUs the same way
+    # the existing USB recovery surface does.
+    path="$1"
+    [ -f "${path}" ] || return 1
+    strings "${path}" 2>/dev/null | grep -qx "dsp0_partition"
+}
+
+validate_swu() {
+    path="$1"
+    if ! swu_exists "${path}"; then
+        log "validate: ${path} not present"
+        return 2
+    fi
+    if ! swu_size_ok "${path}"; then
+        log "validate: ${path} below ${COSMOS_DISK_RECOVERY_MIN_BYTES} byte sanity floor"
+        return 3
+    fi
+    # We do not gate on dsp0_partition here because OC-patched SWUs are
+    # legitimate and do not carry it; that signature only matters at
+    # flash time to decide whether restore-mcu-firmware should run.
+    log "validate: ${path} OK"
+    return 0
+}
+
+flash_swu() {
+    path="$1"
+    mode="$2"
+
+    if ! validate_swu "${path}"; then
+        log "abort: validate failed for ${path}"
+        return 1
+    fi
+
+    has_dsp0=0
+    if swu_has_dsp0 "${path}"; then
+        has_dsp0=1
+    fi
+
+    log "flash: starting (mode=${mode}, has_dsp0=${has_dsp0}, path=${path})"
+    ui_say "Restoring firmware" "Flashing ${path}, do not power off..."
+
+    if [ "${mode}" = "stock" ] || [ "${has_dsp0}" -eq 1 ]; then
+        if command -v restore-mcu-firmware >/dev/null 2>&1; then
+            log "flash: invoking restore-mcu-firmware"
+            if ! restore-mcu-firmware >>"${COSMOS_DISK_RECOVERY_LOG}" 2>&1; then
+                log "flash: restore-mcu-firmware returned non-zero; aborting"
+                ui_say "Restore failed" "restore-mcu-firmware returned non-zero; check logs."
+                return 2
+            fi
+        else
+            log "flash: restore-mcu-firmware not on PATH; cannot proceed with stock flow"
+            ui_say "Restore failed" "restore-mcu-firmware tool missing."
+            return 2
+        fi
+    fi
+
+    if ! command -v flash >/dev/null 2>&1; then
+        log "flash: 'flash' tool not on PATH; cannot proceed"
+        ui_say "Restore failed" "Flash tool missing; check installation."
+        return 3
+    fi
+
+    log "flash: invoking flash ${path}"
+    if ! flash "${path}" >>"${COSMOS_DISK_RECOVERY_LOG}" 2>&1; then
+        log "flash: flash returned non-zero; aborting"
+        ui_say "Restore failed" "Flash returned non-zero; check logs."
+        return 4
+    fi
+
+    if [ "${mode}" = "stock" ]; then
+        # switch-to-stock resets bootcmd back to the stock boot
+        # sequence after flash. Mirror that here so the rebooted
+        # printer comes up on the stock bootloader path.
+        if command -v fw_setenv >/dev/null 2>&1; then
+            log "flash: resetting bootcmd to stock"
+            fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal" \
+                >>"${COSMOS_DISK_RECOVERY_LOG}" 2>&1 || \
+                log "flash: fw_setenv bootcmd failed (continuing)"
+        else
+            log "flash: fw_setenv not on PATH; bootcmd unchanged (operator may need to reset manually)"
+        fi
+    fi
+
+    log "flash: complete (mode=${mode})"
+    ui_clear
+    ui_say "Firmware restored" "Reboot to finalize."
+    return 0
+}
+
+resolve_swu() {
+    explicit="$1"
+    cache_default="$2"
+    if [ -n "${explicit}" ]; then
+        if swu_exists "${explicit}"; then
+            echo "${explicit}"
+            return 0
+        fi
+        # Explicit path given but file is absent. Do not fall back to
+        # cache or USB scan; the operator was explicit, surface the
+        # error.
+        return 1
+    fi
+    if swu_exists "${cache_default}"; then
+        echo "${cache_default}"
+        return 0
+    fi
+    # Fall back to scanning USB drives in mount order. We look for the
+    # exact basename of the cache default so the operator's intent
+    # carries across (oc vs stock is set by the calling subcommand).
+    base="$(basename "${cache_default}")"
+    for dir in "${COSMOS_DISK_RECOVERY_USB_ROOT}"/*; do
+        [ -d "${dir}" ] || continue
+        candidate="${dir}/${base}"
+        if swu_exists "${candidate}"; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+cmd_scan_usb() {
+    found=0
+    for dir in "${COSMOS_DISK_RECOVERY_USB_ROOT}"/*; do
+        [ -d "${dir}" ] || continue
+        log "scan-usb: checking ${dir}"
+        for name in \
+            "${COSMOS_DISK_RECOVERY_OC_NAME}" \
+            "${COSMOS_DISK_RECOVERY_STOCK_NAME}" \
+            cosmos-recovery.swu \
+            recovery.swu
+        do
+            cand="${dir}/${name}"
+            if swu_exists "${cand}"; then
+                if swu_size_ok "${cand}"; then
+                    if swu_has_dsp0 "${cand}"; then
+                        log "  found: ${cand} (size OK, dsp0_partition present, stock flow)"
+                    else
+                        log "  found: ${cand} (size OK, no dsp0_partition, OC flow)"
+                    fi
+                    found=$((found + 1))
+                else
+                    log "  found: ${cand} (size below sanity floor; skipping)"
+                fi
+            fi
+        done
+    done
+    if [ "${found}" -eq 0 ]; then
+        log "scan-usb: no candidates found"
+        return 1
+    fi
+    log "scan-usb: ${found} candidate(s) total"
+    return 0
+}
+
+cmd_restore_oc() {
+    explicit="${1:-}"
+    cache_default="${COSMOS_DISK_RECOVERY_DIR}/${COSMOS_DISK_RECOVERY_OC_NAME}"
+    resolved="$(resolve_swu "${explicit}" "${cache_default}")"
+    if [ -z "${resolved}" ]; then
+        log "restore-oc: no SWU found (cache ${cache_default}, no USB candidates)"
+        ui_say "Restore failed" "No OC SWU at ${cache_default}."
+        return 2
+    fi
+    log "restore-oc: using ${resolved}"
+    flash_swu "${resolved}" "oc"
+}
+
+cmd_restore_stock() {
+    explicit="${1:-}"
+    cache_default="${COSMOS_DISK_RECOVERY_DIR}/${COSMOS_DISK_RECOVERY_STOCK_NAME}"
+    resolved="$(resolve_swu "${explicit}" "${cache_default}")"
+    if [ -z "${resolved}" ]; then
+        log "restore-stock: no SWU found (cache ${cache_default}, no USB candidates)"
+        ui_say "Restore failed" "No stock SWU at ${cache_default}."
+        return 2
+    fi
+    log "restore-stock: using ${resolved}"
+    flash_swu "${resolved}" "stock"
+}
+
+cmd_validate() {
+    if [ -z "${1:-}" ]; then
+        echo "Usage: cosmos-disk-recovery validate <path>" >&2
+        return 1
+    fi
+    validate_swu "$1"
+}
+
+cmd_status() {
+    for tag in oc stock; do
+        case "${tag}" in
+            oc) name="${COSMOS_DISK_RECOVERY_OC_NAME}" ;;
+            stock) name="${COSMOS_DISK_RECOVERY_STOCK_NAME}" ;;
+            *) continue ;;
+        esac
+        path="${COSMOS_DISK_RECOVERY_DIR}/${name}"
+        if swu_exists "${path}"; then
+            if validate_swu "${path}" >/dev/null 2>&1; then
+                echo "${tag}: present, valid (${path})"
+            else
+                echo "${tag}: present, invalid (${path})"
+            fi
+        else
+            echo "${tag}: absent (${path})"
+        fi
+    done
+}
+
+case "${1:-help}" in
+    scan-usb)
+        cmd_scan_usb
+        ;;
+    restore-oc)
+        cmd_restore_oc "${2:-}"
+        ;;
+    restore-stock)
+        cmd_restore_stock "${2:-}"
+        ;;
+    validate)
+        cmd_validate "${2:-}"
+        ;;
+    status)
+        cmd_status
+        ;;
+    help|--help|-h|"")
+        cat <<'USAGE'
+Usage: cosmos-disk-recovery <command> [args]
+
+Commands:
+  scan-usb               List SWU candidates on mounted USB drives.
+  restore-oc [<path>]    Flash an OC-patched SWU. Default source:
+                         /data/recovery/oc-restore.swu.
+  restore-stock [<path>] Flash a stock OC SWU. Default source:
+                         /data/recovery/stock-restore.swu.
+  validate <path>        Sanity-check an SWU without flashing.
+  status                 Report presence + validity of cached SWUs.
+
+Companion to wifi-rescue + usb-ether-rescue. Use when the network
+surface is dead. After flash, reboot to activate. See man-page-style
+header at the top of /usr/sbin/cosmos-disk-recovery for details.
+USAGE
+        ;;
+    *)
+        echo "cosmos-disk-recovery: unknown command '$1'." >&2
+        echo "Run 'cosmos-disk-recovery help' for usage." >&2
+        exit 1
+        ;;
+esac

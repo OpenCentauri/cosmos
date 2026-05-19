@@ -1,0 +1,72 @@
+#!/bin/sh
+# hardware-scan: emit /run/hardware-scan.env for downstream services.
+
+set -u
+
+ENV_FILE="/run/hardware-scan.env"
+LOG_FILE="/var/log/hardware-scan.log"
+
+mkdir -p /run /var/log 2>/dev/null || true
+
+emit() {
+    printf '%s=%s\n' "$1" "$2"
+}
+
+log() {
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >> "$LOG_FILE"
+}
+
+log "hardware-scan start"
+
+WIFI_INTERFACE=""
+for iface in /sys/class/net/wlan*; do
+    [ -e "$iface" ] || continue
+    WIFI_INTERFACE="$(basename "$iface")"
+    break
+done
+
+WIFI_MAC=""
+[ -n "$WIFI_INTERFACE" ] && WIFI_MAC="$(cat /sys/class/net/"$WIFI_INTERFACE"/address 2>/dev/null)"
+
+WIFI_DRIVER=""
+WIFI_CHIP_VID=""
+WIFI_CHIP_PID=""
+if [ -n "$WIFI_INTERFACE" ]; then
+    devpath="$(readlink -f /sys/class/net/"$WIFI_INTERFACE"/device 2>/dev/null)"
+    if [ -n "$devpath" ]; then
+        WIFI_DRIVER="$(basename "$(readlink -f "$devpath"/driver 2>/dev/null)" 2>/dev/null)"
+        usbdev="$devpath"
+        while [ -n "$usbdev" ] && [ "$usbdev" != "/" ]; do
+            if [ -f "$usbdev/idVendor" ] && [ -f "$usbdev/idProduct" ]; then
+                WIFI_CHIP_VID="$(cat "$usbdev/idVendor" 2>/dev/null)"
+                WIFI_CHIP_PID="$(cat "$usbdev/idProduct" 2>/dev/null)"
+                break
+            fi
+            usbdev="$(dirname "$usbdev")"
+        done
+    fi
+fi
+
+WIFI_DRIVERS_LOADED=""
+for mod in $(lsmod 2>/dev/null | awk 'NR>1 {print $1}'); do
+    case "$mod" in
+        rtw*|aic*|brcm*|ath*|iwl*|mt76*|rtl*)
+            WIFI_DRIVERS_LOADED="${WIFI_DRIVERS_LOADED:+$WIFI_DRIVERS_LOADED }$mod"
+            ;;
+    esac
+done
+
+{
+    emit WIFI_INTERFACE "${WIFI_INTERFACE}"
+    emit WIFI_MAC "${WIFI_MAC}"
+    emit WIFI_DRIVER "${WIFI_DRIVER}"
+    emit WIFI_DRIVERS_LOADED "\"${WIFI_DRIVERS_LOADED}\""
+    emit WIFI_CHIP_VID "${WIFI_CHIP_VID}"
+    emit WIFI_CHIP_PID "${WIFI_CHIP_PID}"
+} > "$ENV_FILE"
+
+log "interface=${WIFI_INTERFACE} mac=${WIFI_MAC} driver=${WIFI_DRIVER} vid=${WIFI_CHIP_VID} pid=${WIFI_CHIP_PID}"
+log "drivers_loaded=${WIFI_DRIVERS_LOADED}"
+log "hardware-scan done"
+
+exit 0

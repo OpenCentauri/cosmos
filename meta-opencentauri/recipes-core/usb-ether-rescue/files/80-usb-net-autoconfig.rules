@@ -1,0 +1,19 @@
+# 80-usb-net-autoconfig.rules
+#
+# Class 217 recovery path: any USB-attached Ethernet interface gets a
+# DHCP bring-up via /usr/sbin/usb-ether-rescue when the kernel registers
+# it. This survives WiFi driver bind failure and MCU bootloader
+# corruption: a pre-plugged USB-to-Ethernet dongle is substrate-
+# independent and the only revert path on the Centauri Carbon that does
+# not require curl-over-WiFi or flashtool-against-MCU.
+#
+# Driver list matches CONFIG_USB_NET_* modules baked into the cosmos
+# kernel (see recipes-kernel/linux/linux-mainline/elegoo-centauri-carbon1/
+# usb-net-adapters.cfg).
+#
+# SUBSYSTEMS=="usb" matches when any parent device is on the USB bus -
+# covers RTL8152/RTL8153, SMSC95XX, AX88179, ASIX, DM9601, SR9700,
+# Pegasus, MCS7830 dongles. The /bin/sh -c wrapper detaches the rescue
+# script so udev does not block on udhcpc lease negotiation (udev kills
+# RUN+= scripts after ~30s).
+ACTION=="add", SUBSYSTEM=="net", SUBSYSTEMS=="usb", RUN+="/bin/sh -c '/usr/sbin/usb-ether-rescue %k </dev/null >/dev/null 2>&1 &'"

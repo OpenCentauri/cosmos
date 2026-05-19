@@ -1,0 +1,43 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          usb-ether-rescue
+# Required-Start:    $local_fs $remote_fs $network
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Boot-time USB-Ethernet DHCP bring-up (Class 217 recovery)
+### END INIT INFO
+
+case "$1" in
+    start|restart|force-reload)
+        /usr/sbin/usb-ether-rescue
+        rc=$?
+        if [ "${rc}" -ne 0 ]; then
+            logger -t usb-ether-rescue "scan exited with code ${rc}" \
+                2>/dev/null || \
+                echo "usb-ether-rescue: scan exited with code ${rc}" >&2
+        fi
+        # Propagate the rescue-script exit code so LSB-aware callers
+        # (service foo start, monitoring tools, operators) can detect
+        # probe failures. Busybox sysv-init at boot tolerates non-zero
+        # rc from a start script (logs + continues to the next script),
+        # so this does not block boot. Symmetric with hardware-scan.
+        exit "${rc}"
+        ;;
+    status)
+        if [ -r /var/log/usb-ether-rescue.log ]; then
+            echo "usb-ether-rescue: log present at /var/log/usb-ether-rescue.log"
+            exit 0
+        fi
+        echo "usb-ether-rescue: no log present (rerun with 'start' to scan)"
+        exit 3
+        ;;
+    stop)
+        # Boot-time scan + udev hotplug are stateless one-shots; nothing to stop.
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload|status}"
+        exit 1
+        ;;
+esac
