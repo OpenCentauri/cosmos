@@ -42,14 +42,14 @@ on:
           - rc.2
           - rc.3
           - ''
-  # push:                  # uncomment after first successful manual dispatch
-  #   branches: [s-plus-batch]
-  #   paths:
-  #     - 'meta-opencentauri/**'
-  #     - 'tools/qa_*'
-  #     - 'tools/pre-flight.sh'
-  #     - '.brofalo-iteration'
-  #     - '.github/workflows/build-s-plus-batch.yml'
+  push:
+    branches: [s-plus-batch]
+    paths:
+      - 'meta-opencentauri/**'
+      - 'tools/qa_*'
+      - 'tools/pre-flight.sh'
+      - '.brofalo-iteration'
+      - '.github/workflows/build-s-plus-batch.yml'
 
 concurrency:
   group: cosmos-build-s-plus-batch
