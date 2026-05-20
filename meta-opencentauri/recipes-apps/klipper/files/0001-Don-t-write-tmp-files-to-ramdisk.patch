@@ -1,0 +1,56 @@
+From 5fa49cd66bad8fd2b653c7dc6f820bcd7af10d3a Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Wed, 20 May 2026 22:38:12 +0200
+Subject: [PATCH] Don't write tmp files to ramdisk
+
+---
+ klippy/extras/adxl345.py          | 4 ++--
+ klippy/extras/pid_calibrate.py    | 4 ++--
+ klippy/extras/resonance_tester.py | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/klippy/extras/adxl345.py b/klippy/extras/adxl345.py
+index 7909e04a..c47d5748 100644
+--- a/klippy/extras/adxl345.py
++++ b/klippy/extras/adxl345.py
+@@ -190,9 +190,9 @@ class AccelCommandHelper:
+         bg_client.finish_measurements()
+         # Write data to file
+         if self.base_name == self.name:
+-            filename = "/tmp/%s-%s.csv" % (self.base_name, name)
++            filename = "/user-resource/.tmp/%s-%s.csv" % (self.base_name, name)
+         else:
+-            filename = "/tmp/%s-%s-%s.csv" % (self.base_name, self.name, name)
++            filename = "/user-resource/.tmp/%s-%s-%s.csv" % (self.base_name, self.name, name)
+         bg_client.write_to_file(filename)
+         gcmd.respond_info(
+             "Writing raw accelerometer data to %s file" % (filename,)
+diff --git a/klippy/extras/pid_calibrate.py b/klippy/extras/pid_calibrate.py
+index dd6b0308..d8eeb864 100644
+--- a/klippy/extras/pid_calibrate.py
++++ b/klippy/extras/pid_calibrate.py
+@@ -79,9 +79,9 @@ class PIDCalibrate:
+         heater.set_control(old_control, False)
+ 
+         if write_file:
+-            fname = "/tmp/heattest.csv"
++            fname = "/user-resource/.tmp/heattest.csv"
+             if calibrate_secondary:
+-                fname = "/tmp/heattest_secondary.csv"
++                fname = "/user-resource/.tmp/heattest_secondary.csv"
+             calibrate.write_file(fname)
+ 
+         if calibrate.check_busy(0.0, 0.0, 0.0):
+diff --git a/klippy/extras/resonance_tester.py b/klippy/extras/resonance_tester.py
+index 87948530..f9d621df 100644
+--- a/klippy/extras/resonance_tester.py
++++ b/klippy/extras/resonance_tester.py
+@@ -649,7 +649,7 @@ class ResonanceTester:
+         if point:
+             name += "_%.3f_%.3f_%.3f" % (point[0], point[1], point[2])
+         name += "_" + name_suffix
+-        return os.path.join("/tmp", name + ".csv")
++        return os.path.join("/user-resource/.tmp", name + ".csv")
+ 
+     def save_calibration_data(
+         self,
