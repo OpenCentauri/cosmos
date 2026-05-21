@@ -25,7 +25,7 @@ ensure_klipper_config_version() {
     if [ -f "$KLIPPER_CONFIG_VERSION_FILE" ]; then
         current_version="$(tr -d '[:space:]' < "$KLIPPER_CONFIG_VERSION_FILE" 2>/dev/null)"
     else
-        current_version="$KLIPPER_CONFIG_VERSION"
+        current_version="" #reset configs
         echo "$current_version" > "$KLIPPER_CONFIG_VERSION_FILE" || return 1
     fi
 
