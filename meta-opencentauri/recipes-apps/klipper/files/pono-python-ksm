@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+# pono-python-ksm: Python launcher that opts the process into KSM
+# auto-merge before execv to the real python3.
+#
+# Kernel KSM (CONFIG_KSM=y with `echo 1 > /sys/kernel/mm/ksm/run`)
+# only scans pages that processes have flagged VM_MERGEABLE via
+# madvise(MADV_MERGEABLE) or the process-wide prctl flag
+# PR_SET_MEMORY_MERGE (kernel 6.5+). Without per-process opt-in, ksmd
+# finds zero eligible pages and the kernel-side substrate is a no-op
+# for the workload.
+#
+# PR_SET_MEMORY_MERGE applies to the calling process and survives
+# exec(2) per kernel mm/ksm.c. Sequence:
+#
+#   1. start-stop-daemon invokes /usr/bin/pono-python-ksm
+#   2. prctl(67, 1, 0, 0, 0)  PR_SET_MEMORY_MERGE
+#   3. execv to /usr/bin/python3 with original argv
+#   4. python3 loads klippy.py / moonraker; anonymous mappings
+#      auto-flag VM_MERGEABLE; ksmd scans and dedupes.
+#
+# Falls back silently if PR_SET_MEMORY_MERGE is unsupported (older
+# kernel). The service starts normally; the KSM benefit is just lost.
+import ctypes
+import os
+import sys
+
+PR_SET_MEMORY_MERGE = 67  # include/uapi/linux/prctl.h
+
+try:
+    libc = ctypes.CDLL("libc.so.6", use_errno=True)
+    libc.prctl(PR_SET_MEMORY_MERGE, 1, 0, 0, 0)
+    # No error-check on rc: prctl returning -1 with EINVAL means the
+    # kernel doesn't support PR_SET_MEMORY_MERGE (kernel <6.5). Silent
+    # fallback by design.
+except Exception:
+    pass
+
+os.execv("/usr/bin/python3", ["/usr/bin/python3"] + sys.argv[1:])

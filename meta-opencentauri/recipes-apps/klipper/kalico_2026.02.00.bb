@@ -13,6 +13,7 @@ SRC_URI += " \
     file://shell.cfg \
     file://screen.cfg \
     file://calibration.cfg \
+    file://pono-python-ksm \
 "
 
 inherit python3-dir update-rc.d
@@ -98,6 +99,14 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
     install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
+    # KSM app opt-in helper: pono-python-ksm is a tiny Python wrapper
+    # that sets prctl(PR_SET_MEMORY_MERGE) then execv's into the real
+    # /usr/bin/python3. The klipper-init-d + moonraker-init-d scripts
+    # resolve their *_EXEC dynamically via command -v pono-python-ksm
+    # with silent fallback to /usr/bin/python3 if missing.
+    install -d ${D}${bindir}
+    install -m 0755 ${WORKDIR}/pono-python-ksm ${D}${bindir}/pono-python-ksm
+
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
@@ -107,6 +116,7 @@ FILES:${PN} = " \
     ${datadir}/klipper \
     ${sysconfdir}/init.d/klipper \
     ${sysconfdir}/klipper/config \
+    ${bindir}/pono-python-ksm \
 "
 
 CONFFILES:${PN} = " \

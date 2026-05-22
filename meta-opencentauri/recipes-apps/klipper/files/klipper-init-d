@@ -8,7 +8,14 @@
 # Short-Description: Klipper 3D Printer Firmware
 ### END INIT INFO
 
-KLIPPY_EXEC="/usr/bin/python3"
+# KSM app opt-in: pono-python-ksm sets prctl(PR_SET_MEMORY_MERGE) before
+# execv to /usr/bin/python3, so klippy's anonymous memory pages auto-flag
+# VM_MERGEABLE for the ksmd kthread to scan + dedupe. Without the wrapper,
+# kernel-side CONFIG_KSM=y + `echo 1 > /sys/kernel/mm/ksm/run` is a no-op
+# for the workload because the ksmd kthread has zero eligible pages.
+# Falls back to plain /usr/bin/python3 if pono-python-ksm is missing
+# (e.g. partial install, recipe drift, older image).
+KLIPPY_EXEC="$(command -v pono-python-ksm 2>/dev/null || echo /usr/bin/python3)"
 KLIPPER_PRINTER_CONFIG="/etc/klipper/config/printer.cfg"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
