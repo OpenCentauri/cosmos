@@ -1,0 +1,75 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cosmos-tier-b-sysctl
+# Required-Start:    $local_fs
+# Required-Stop:
+# Default-Start:     S 2 3 4 5
+# Default-Stop:
+# Short-Description: Apply cosmos writeback-tuning sysctls
+### END INIT INFO
+#
+# Reads /etc/sysctl.d/99-cosmos-tier-b.conf and applies each key=value.
+# Use POSIX sh + busybox-compatible sysctl invocation (no procps-ng
+# assumed). Safe under read-only-rootfs: only writes to /proc/sys.
+
+SYSCTL_CONF="/etc/sysctl.d/99-cosmos-tier-b.conf"
+TAG="cosmos-tier-b-sysctl"
+
+case "$1" in
+    start|"")
+        [ -r "$SYSCTL_CONF" ] || {
+            logger -t "$TAG" "no $SYSCTL_CONF; skipping"
+            exit 0
+        }
+
+        applied=0
+        failed=0
+        while IFS= read -r line; do
+            # skip comments + blanks
+            case "$line" in
+                ''|'#'*) continue ;;
+            esac
+            # strip trailing comment
+            key=$(printf '%s' "$line" | sed 's/[[:space:]]*#.*$//' | awk -F= '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')
+            val=$(printf '%s' "$line" | sed 's/[[:space:]]*#.*$//' | awk -F= '{sub(/^[^=]*=[[:space:]]*/, ""); gsub(/[[:space:]]+$/, ""); print}')
+            [ -n "$key" ] && [ -n "$val" ] || continue
+            path=/proc/sys/$(printf '%s' "$key" | tr . /)
+            if [ -w "$path" ]; then
+                if printf '%s' "$val" > "$path" 2>/dev/null; then
+                    applied=$((applied + 1))
+                else
+                    logger -t "$TAG" "WARN: $key=$val write failed"
+                    failed=$((failed + 1))
+                fi
+            else
+                logger -t "$TAG" "WARN: $path not writable; skipping"
+                failed=$((failed + 1))
+            fi
+        done < "$SYSCTL_CONF"
+
+        logger -t "$TAG" "applied=$applied failed=$failed from $SYSCTL_CONF"
+        ;;
+    stop)
+        # Tunables persist in the running kernel; nothing to undo.
+        :
+        ;;
+    status)
+        if [ -r "$SYSCTL_CONF" ]; then
+            echo "tier-b-sysctl: config present at $SYSCTL_CONF"
+            grep -vE '^\s*(#|$)' "$SYSCTL_CONF" | while IFS= read -r line; do
+                key=$(printf '%s' "$line" | awk -F= '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}')
+                path=/proc/sys/$(printf '%s' "$key" | tr . /)
+                [ -r "$path" ] && echo "  $key = $(cat "$path") (target: $(printf '%s' "$line" | awk -F= '{sub(/^[^=]*=[[:space:]]*/, ""); gsub(/[[:space:]]+$/, ""); print}'))"
+            done
+        else
+            echo "tier-b-sysctl: config NOT present"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
