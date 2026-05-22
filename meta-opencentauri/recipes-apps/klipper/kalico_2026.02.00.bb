@@ -14,6 +14,8 @@ SRC_URI += " \
     file://screen.cfg \
     file://calibration.cfg \
     file://pono-python-ksm \
+    file://cosmos-cpu-tuning.cfg \
+    file://cosmos-shell-cpu-governor.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -95,9 +97,14 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper/config
     install -m 0644 ${WORKDIR}/printer.cfg ${D}${sysconfdir}/klipper/config/
 
-    # Copy non-printer .cfg files to readonly folder
+    # Copy non-printer .cfg files to readonly folder. cosmos-cpu-tuning.cfg
+    # and cosmos-shell-cpu-governor.cfg ship installed but are opt-in:
+    # users enable by adding [include klipper-readonly/cosmos-cpu-tuning.cfg]
+    # and [include klipper-readonly/cosmos-shell-cpu-governor.cfg] to
+    # printer.cfg. Default printer.cfg does not include them so existing
+    # prints are not affected by the upgrade.
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${WORKDIR}/machine.cfg ${WORKDIR}/shell.cfg ${WORKDIR}/macros.cfg ${WORKDIR}/calibration.cfg ${WORKDIR}/screen.cfg ${WORKDIR}/cosmos-cpu-tuning.cfg ${WORKDIR}/cosmos-shell-cpu-governor.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # KSM app opt-in helper: pono-python-ksm is a tiny Python wrapper
     # that sets prctl(PR_SET_MEMORY_MERGE) then execv's into the real
@@ -126,4 +133,6 @@ CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/screen.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/calibration.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/cosmos-cpu-tuning.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/cosmos-shell-cpu-governor.cfg \
 "
