@@ -65,6 +65,18 @@ case "$1" in
         fi
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $KLIPPY_EXEC -- $KLIPPY_ARGS
+
+        # Protect klipper from the OOM killer on 128MB-RAM boards.
+        # ustreamer is preferentially killed first (oom_score_adj=1000 in
+        # ustreamer-init-d); klipper at -100 is well below the default 0
+        # so it survives memory pressure unless ustreamer alone cannot
+        # satisfy the kernel's reclaim need.
+        if [ -f "$PIDFILE" ]; then
+            klipper_pid=$(cat "$PIDFILE" 2>/dev/null)
+            if [ -n "$klipper_pid" ] && [ -d "/proc/$klipper_pid" ]; then
+                echo -100 > "/proc/$klipper_pid/oom_score_adj" 2>/dev/null || true
+            fi
+        fi
         ;;
     stop)
         echo "Stopping klipper..."

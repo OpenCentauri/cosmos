@@ -39,6 +39,15 @@ case "$1" in
 
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
+
+        # Protect moonraker from the OOM killer on 128MB-RAM boards.
+        # See klipper-init-d for the rationale.
+        if [ -f "$PIDFILE" ]; then
+            moonraker_pid=$(cat "$PIDFILE" 2>/dev/null)
+            if [ -n "$moonraker_pid" ] && [ -d "/proc/$moonraker_pid" ]; then
+                echo -100 > "/proc/$moonraker_pid/oom_score_adj" 2>/dev/null || true
+            fi
+        fi
         ;;
     stop)
         echo "Stopping moonraker..."
