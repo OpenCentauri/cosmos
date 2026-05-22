@@ -9,6 +9,11 @@ inherit core-image
 
 IMAGE_FEATURES += "ssh-server-dropbear"
 
+# Optional, non-essential packages. Off by default; enable on a per-image
+# basis with:  IMAGE_FEATURES:append = " image-extras"
+# (currently scoped to opencentauri-image-usb.bb for tinkerer builds.)
+FEATURE_PACKAGES_image-extras = "fbdoom"
+
 CORE_IMAGE_EXTRA_INSTALL += "\
     usbutils \
     libgpiod \
@@ -41,7 +46,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     opencentauri-bootlogos \
     swu-flasher \
     update-scripts \
-    fbdoom \
     v4l-utils \
     iproute2 \
     chrony \
