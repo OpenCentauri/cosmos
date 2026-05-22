@@ -3,6 +3,11 @@ proc                 /proc                proc       defaults              0  0
 devpts               /dev/pts             devpts     mode=0620,ptmxmode=0666,gid=5      0  0
 tmpfs                /run                 tmpfs      mode=0755,nodev,nosuid,strictatime 0  0
 tmpfs                /var/volatile        tmpfs      defaults              0  0
-/dev/mmcblk0p13      /user-resource       auto       defaults              0  0
-/dev/mmcblk0p1       /boot-resource       auto       defaults              0  0
-/dev/mmcblk0p11      /board-resource      auto       defaults              0  0
+# noatime + nodiratime suppress atime updates on every read; commit=60 batches
+# ext4 journal commits at 60s instead of the kernel default 5s. Together these
+# cut eMMC writes from cached-read patterns and journal traffic without
+# affecting data durability for active-write workloads (klippy and moonraker
+# fsync explicit writes; the commit interval covers metadata only).
+/dev/mmcblk0p13      /user-resource       auto       defaults,noatime,nodiratime,commit=60  0  0
+/dev/mmcblk0p1       /boot-resource       auto       defaults,noatime,nodiratime            0  0
+/dev/mmcblk0p11      /board-resource      auto       defaults,noatime,nodiratime            0  0
