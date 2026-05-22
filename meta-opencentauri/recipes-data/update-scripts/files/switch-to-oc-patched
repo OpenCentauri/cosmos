@@ -1,16 +1,34 @@
 #!/bin/sh
+# switch-to-oc-patched - revert from a forked cosmos build to upstream
+# OpenCentauri's officially-patched cosmos SWU.
+#
+# Tries pre-staged copies on USB and /user-resource before falling back
+# to curl, so a printer with broken WiFi can still be reverted by
+# dropping the SWU on a USB stick.
 
 set -e
 
 FW_URL="https://github.com/OpenCentauri/cc-fw-tools/releases/latest/download/update.swu"
 SWUFILE="/user-resource/update.swu"
 
-# Download firmware
-curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+# Source the SWU. Accepted shapes in priority order:
+#   (a) operator placed update.swu directly at /user-resource/update.swu
+#   (b) update.swu (or oc-patched.swu) on USB stick or in /user-resource
+#   (c) curl from GitHub releases (requires working network)
+if [ -s "$SWUFILE" ]; then
+    echo "switch-to-oc-patched: using pre-staged SWU at $SWUFILE (no download)"
+elif LOCAL_SWU="$(find-local-firmware oc-patched.swu update.swu cosmos-oc-patched.swu 2>/dev/null)" \
+        && [ -n "$LOCAL_SWU" ]; then
+    echo "switch-to-oc-patched: using local SWU at $LOCAL_SWU"
+    cp "$LOCAL_SWU" "$SWUFILE"
+else
+    echo "switch-to-oc-patched: no local firmware; falling back to network download"
+    curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+fi
 
 # Check file exists and is not empty, clean up and exit if not
 if [ ! -s "$SWUFILE" ]; then
-    echo "Failed to download update.swu - Aborting."
+    echo "Failed to obtain update.swu - Aborting."
     rm -f "$SWUFILE"
     exit 1
 fi

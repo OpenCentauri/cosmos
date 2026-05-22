@@ -1,4 +1,9 @@
 #!/bin/sh
+# update-cosmos - in-place update from a running cosmos to a newer cosmos.
+#
+# Tries pre-staged local files first (USB stick or /user-resource),
+# then falls back to curl. A printer with a broken network stack can
+# still be updated by dropping the SWU on a USB stick.
 
 set -e
 
@@ -14,8 +19,20 @@ esac
 
 SWUFILE="/user-resource/update.swu"
 
-# Download firmware
-curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+# Source the SWU. Accepted shapes in priority order:
+#   (a) operator placed update.swu directly at /user-resource/update.swu
+#   (b) update.swu or cosmos-update.swu on USB stick or in /user-resource
+#   (c) curl from GitHub releases (requires working network)
+if [ -s "$SWUFILE" ]; then
+    echo "update-cosmos: using pre-staged SWU at $SWUFILE (no download)"
+elif LOCAL_SWU="$(find-local-firmware cosmos-update.swu update.swu 2>/dev/null)" \
+        && [ -n "$LOCAL_SWU" ]; then
+    echo "update-cosmos: using local SWU at $LOCAL_SWU"
+    cp "$LOCAL_SWU" "$SWUFILE"
+else
+    echo "update-cosmos: no local firmware; falling back to network download"
+    curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+fi
 
 # Install firmware
 flash "$SWUFILE"

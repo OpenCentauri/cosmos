@@ -1,0 +1,64 @@
+#!/bin/sh
+# find-local-firmware - locate a firmware file from a local source (USB
+# stick or persistent on-disk dir) before falling back to a network
+# download. Network-dependent revert paths cannot recover from a state
+# where the printer's network stack is broken; this helper lets the
+# revert paths consume a pre-staged file on USB or in /user-resource
+# without requiring a working WiFi.
+#
+# Usage: find-local-firmware <filename> [<filename> ...]
+#
+#   Prints the absolute path of the first matching file. Exits 0 if a
+#   match is found, 1 if none. Stderr carries a one-line note describing
+#   what was searched.
+#
+# Search order:
+#   1. /user-resource/   (persistent on-disk, written by switch-to-* or
+#                         by the operator via SCP/SSH; first because it
+#                         survives reboots)
+#   2. /board-resource/  (printer-side resource dir; same survives-reboot
+#                         property)
+#   3. /tmp/usb/*/       (USB stick mount points, per usb-automount; one
+#                         level deep; covers FAT32 sticks auto-mounted by
+#                         the udev rule on /dev/sd[a-z][0-9])
+
+set -u
+
+if [ "$#" -lt 1 ]; then
+    echo "find-local-firmware: at least one filename required" >&2
+    echo "usage: $0 <filename> [<filename> ...]" >&2
+    exit 2
+fi
+
+note() {
+    echo "find-local-firmware: $*" >&2
+}
+
+for name in "$@"; do
+    # Persistent on-disk locations first.
+    for dir in /user-resource /board-resource; do
+        candidate="${dir}/${name}"
+        if [ -s "${candidate}" ]; then
+            note "found ${candidate}"
+            echo "${candidate}"
+            exit 0
+        fi
+    done
+
+    # USB stick mounts (per recipes-core/usb-automount; mount points
+    # land at /tmp/usb/<device>).
+    if [ -d /tmp/usb ]; then
+        for mp in /tmp/usb/*/; do
+            [ -d "${mp}" ] || continue
+            candidate="${mp%/}/${name}"
+            if [ -s "${candidate}" ]; then
+                note "found ${candidate}"
+                echo "${candidate}"
+                exit 0
+            fi
+        done
+    fi
+done
+
+note "no local match in /user-resource /board-resource /tmp/usb/*/ for: $*"
+exit 1

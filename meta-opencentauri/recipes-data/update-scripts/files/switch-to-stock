@@ -1,4 +1,10 @@
 #!/bin/sh
+# switch-to-stock - revert from cosmos back to stock Elegoo firmware.
+#
+# Tries pre-staged local files first (USB stick or /user-resource),
+# then falls back to curl against the ChituBox CDN. A printer with a
+# broken network stack can still be reverted by dropping the encrypted
+# update.bin on a USB stick.
 
 set -e
 
@@ -6,7 +12,7 @@ cleanup() {
     echo "Failed to switch to stock"
 
     # Clean up firmware files
-    rm -r "$BINFILE" "$ZIPFILE" /user-resource/update
+    rm -r "$BINFILE" "$ZIPFILE" /user-resource/update 2>/dev/null || true
 
     # Restart services
     service klipper start
@@ -17,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ver 1.1.46
+# ver 1.1.46 (stock Elegoo firmware-update package; encrypted bin)
 FW_URL="https://download.chitubox.com/chitusystems/chitusystems/public/printer/firmware/release/1/ca8e1d9a20974a5896f8f744e780a8a7/1/01.01.46/2025-10-22/f9bd2b9b1926408ca238de8e7eac69b6.bin"
 KEY="78B6A614B6B6E361DC84D705B7FDDA33C967DDF2970A689F8156F78EFE0B1FCE"
 IV="54E37626B9A699403064111F77858049"
@@ -29,12 +35,25 @@ service mjpg-streamer stop
 service moonraker stop
 service klipper stop
 
-# Download firmware
-curl -k -o "$BINFILE" -L "$FW_URL"
-
-# Decrypt firmware
-swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
-unzip "$ZIPFILE" -d /user-resource
+# Source the firmware. Three accepted shapes, in priority order:
+#   (a) pre-decrypted /user-resource/update/update.swu already in place
+#       (operator dropped it via SCP, or a previous run staged it)
+#   (b) pre-staged encrypted update.bin on USB / /user-resource
+#   (c) curl against the ChituBox CDN (requires working network)
+if [ -s "$SWUFILE" ]; then
+    echo "switch-to-stock: using pre-decrypted SWU at $SWUFILE (no download)"
+elif LOCAL_BIN="$(find-local-firmware stock-elegoo.bin elegoo-stock.bin update.bin 2>/dev/null)" \
+        && [ -n "$LOCAL_BIN" ]; then
+    echo "switch-to-stock: using local encrypted bin at $LOCAL_BIN"
+    cp "$LOCAL_BIN" "$BINFILE"
+    swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
+    unzip "$ZIPFILE" -d /user-resource
+else
+    echo "switch-to-stock: no local firmware; falling back to network download"
+    curl -k -o "$BINFILE" -L "$FW_URL"
+    swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
+    unzip "$ZIPFILE" -d /user-resource
+fi
 
 # Flash stock bootloader
 restore-mcu-firmware
@@ -46,7 +65,7 @@ flash "$SWUFILE"
 fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
 
 # Clean up firmware files
-rm -r "$BINFILE" "$ZIPFILE" /user-resource/update
+rm -r "$BINFILE" "$ZIPFILE" /user-resource/update 2>/dev/null || true
 
 sleep 3
 
