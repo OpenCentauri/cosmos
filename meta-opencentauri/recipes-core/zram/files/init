@@ -8,7 +8,24 @@
 # Short-Description: Increased Performance In Linux With zRam (Virtual Swap Compressed in RAM)
 # Description: Adapted from zram init script in meta-openembedded
 ### END INIT INFO
-set -e
+#
+# Removed `set -e` brittleness and added structured logger output so
+# silent failures are diagnosable. The previous script aborted at the
+# first non-zero status with no log output, so a broken modprobe or a
+# missing /sys/block/zram0 just produced `Swap: 0/0/0` at boot with
+# no breadcrumb.
+#
+# Each step now logs success or failure with tag `zram-init` (visible
+# via `logread | grep zram-init` or `journalctl -t zram-init`). Failures
+# past modprobe are non-fatal so partial swap can come up (e.g.,
+# disksize set but mkswap fails) rather than rolling back entirely.
+# The exit code is the count of failed sub-steps so update-rc.d /
+# sysvinit can still see something went wrong.
+
+TAG="zram-init"
+RETVAL=0
+log()  { logger -t "$TAG" -s "$1" 2>&1; }
+warn() { logger -t "$TAG" -s -p user.warn "$1" 2>&1; RETVAL=$((RETVAL + 1)); }
 
 start() {
     #default Factor % = 200 change this value here or create /etc/default/zram
@@ -19,38 +36,72 @@ start() {
 
     # get the amount of memory in the machine
     memtotal=$(grep MemTotal /proc/meminfo | awk ' { print $2 } ')
+    if [ -z "$memtotal" ] || [ "$memtotal" -le 0 ] 2>/dev/null; then
+        warn "MemTotal lookup failed (got '$memtotal'); aborting"
+        return 1
+    fi
     disksize=$(($memtotal*$factor/100*1024))
+    log "MemTotal=${memtotal}kB factor=${factor}% disksize=${disksize}B"
 
     # load dependency modules
-    modprobe zram num_devices=1
-    echo "zram devices probed successfully"
+    if ! modprobe zram num_devices=1 2>&1; then
+        warn "modprobe zram failed; CONFIG_ZRAM=m may be missing or the .ko isn't shipped in /lib/modules/\$(uname -r)/"
+        return 1
+    fi
+    log "zram module loaded"
 
-    echo 1 > /sys/block/zram0/reset
-    echo lz4 > /sys/block/zram0/comp_algorithm
-    echo $disksize > /sys/block/zram0/disksize
+    # Wait for sysfs node. udev populates /sys/block/zram0 asynchronously
+    # on slower boards; without this we race the kernel and the `echo 1
+    # > /sys/block/zram0/reset` line fails with ENOENT.
+    for i in 1 2 3 4 5; do
+        [ -e /sys/block/zram0/reset ] && break
+        sleep 1
+    done
+    if [ ! -e /sys/block/zram0/reset ]; then
+        warn "/sys/block/zram0 did not appear after 5s; zram device not created"
+        return 1
+    fi
+
+    echo 1 > /sys/block/zram0/reset 2>&1 || warn "zram0 reset failed"
+    echo lz4 > /sys/block/zram0/comp_algorithm 2>&1 || warn "comp_algorithm=lz4 failed"
+    echo $disksize > /sys/block/zram0/disksize 2>&1 || warn "disksize=$disksize failed"
 
     # Creating swap filesystems
-    mkswap /dev/zram0
+    if ! mkswap /dev/zram0 >/dev/null 2>&1; then
+        warn "mkswap /dev/zram0 failed"
+        return $RETVAL
+    fi
 
     # zram tuning
-    echo 150 > /proc/sys/vm/swappiness
-    echo 0   > /proc/sys/vm/watermark_boost_factor
-    echo 125 > /proc/sys/vm/watermark_scale_factor
-    echo 0   > /proc/sys/vm/page-cluster
-    echo 500 > /proc/sys/vm/vfs_cache_pressure
+    echo 150 > /proc/sys/vm/swappiness               2>/dev/null || true
+    echo 0   > /proc/sys/vm/watermark_boost_factor   2>/dev/null || true
+    echo 125 > /proc/sys/vm/watermark_scale_factor   2>/dev/null || true
+    echo 0   > /proc/sys/vm/page-cluster             2>/dev/null || true
+    echo 500 > /proc/sys/vm/vfs_cache_pressure       2>/dev/null || true
 
     # Switch the swaps on
-    swapon -p 100 /dev/zram0
+    if ! swapon -p 100 /dev/zram0 >/dev/null 2>&1; then
+        warn "swapon /dev/zram0 failed; check disksize and kernel zram support"
+        return $RETVAL
+    fi
+
+    # Confirm activation (paranoia + audit trail)
+    if grep -q "/dev/zram0" /proc/swaps; then
+        sz=$(awk '/\/dev\/zram0/ {print $3}' /proc/swaps)
+        log "ACTIVE /dev/zram0 size=${sz}kB priority=100 comp=lz4"
+    else
+        warn "swapon returned success but /dev/zram0 not in /proc/swaps"
+    fi
 }
 
 stop() {
     # Switching off swap
     if [ "$(grep /dev/zram0 /proc/swaps)" != "" ]; then
-        swapoff /dev/zram0
+        swapoff /dev/zram0 2>&1 || warn "swapoff /dev/zram0 failed"
         sleep 1
     fi
     sleep 1
-    rmmod zram
+    rmmod zram 2>&1 || warn "rmmod zram failed (in use?)"
 }
 
 case "$1" in
@@ -65,8 +116,22 @@ case "$1" in
         sleep 3
         start
         ;;
+    status)
+        if grep -q "/dev/zram0" /proc/swaps; then
+            echo "zram: active"
+            grep "/dev/zram0" /proc/swaps
+            if [ -f /sys/block/zram0/comp_algorithm ]; then
+                echo "comp_algorithm: $(cat /sys/block/zram0/comp_algorithm)"
+                echo "disksize:       $(cat /sys/block/zram0/disksize) B"
+                [ -f /sys/block/zram0/mm_stat ] && echo "mm_stat:        $(cat /sys/block/zram0/mm_stat)"
+            fi
+        else
+            echo "zram: INACTIVE"
+            RETVAL=1
+        fi
+        ;;
     *)
-        echo "Usage: $0 {start|stop|restart}"
+        echo "Usage: $0 {start|stop|restart|status}"
         RETVAL=1
 esac
 exit $RETVAL
