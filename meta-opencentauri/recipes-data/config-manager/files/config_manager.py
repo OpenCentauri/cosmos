@@ -48,8 +48,17 @@ def save_config(path : str, config : dict):
     parser.read_dict(config)
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as config_file:
+    tmp_path = path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as config_file:
         parser.write(config_file)
+        config_file.flush()
+        os.fsync(config_file.fileno())
+    os.replace(tmp_path, path)
+    dir_fd = os.open(os.path.dirname(path), os.O_DIRECTORY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
 
 def merge_configs(default_config : dict, user_config : dict) -> dict:
     for section, options in user_config.items():
