@@ -45,6 +45,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     v4l-utils \
     iproute2 \
     chrony \
+    usb-ether-rescue \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

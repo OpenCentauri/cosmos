@@ -1,0 +1,147 @@
+#!/bin/sh
+# usb-ether-rescue - Class 217 recovery path: substrate-independent wired LAN.
+#
+# Modes:
+#   /usr/sbin/usb-ether-rescue          - boot-time scan, brings up every
+#                                          USB-Ethernet iface lacking IPv4.
+#   /usr/sbin/usb-ether-rescue <iface>  - hotplug, brings up the named iface.
+#
+# Invocation surfaces:
+#   - /etc/init.d/usb-ether-rescue at boot (no arg)
+#   - /etc/udev/rules.d/80-usb-net-autoconfig.rules on add events (with iface)
+#
+# Why not just rely on /etc/network/interfaces?
+#   "auto eth0" in interfaces triggers only at boot, only if the iface
+#   is named eth0. USB dongles plugged in after boot, or named enxNNNN
+#   instead of eth0, never get brought up. This script catches both gaps.
+
+set -u
+
+# --- config -----------------------------------------------------------------
+
+USB_ETHER_RESCUE_ENABLED="${USB_ETHER_RESCUE_ENABLED:-1}"
+USB_ETHER_RESCUE_LOG="${USB_ETHER_RESCUE_LOG:-/var/log/usb-ether-rescue.log}"
+USB_ETHER_RESCUE_UDHCPC_T="${USB_ETHER_RESCUE_UDHCPC_T:-3}"
+USB_ETHER_RESCUE_UDHCPC_RETRIES="${USB_ETHER_RESCUE_UDHCPC_RETRIES:-5}"
+USB_ETHER_RESCUE_CARRIER_SETTLE_S="${USB_ETHER_RESCUE_CARRIER_SETTLE_S:-2}"
+
+if [ -r /etc/default/usb-ether-rescue ]; then
+    # shellcheck disable=SC1091
+    . /etc/default/usb-ether-rescue
+fi
+
+[ "${USB_ETHER_RESCUE_ENABLED}" = "1" ] || exit 0
+
+mkdir -p "$(dirname "${USB_ETHER_RESCUE_LOG}")" 2>/dev/null || true
+
+log() {
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" >>"${USB_ETHER_RESCUE_LOG}" 2>/dev/null
+}
+
+# --- helpers ----------------------------------------------------------------
+
+is_usb_ethernet() {
+    # $1 = interface name. True if sysfs reports it as ethernet (type 1) and
+    # any parent device sits on the usb bus.
+    iface="$1"
+    [ -d "/sys/class/net/${iface}" ] || return 1
+    iftype="$(cat "/sys/class/net/${iface}/type" 2>/dev/null || echo 0)"
+    [ "${iftype}" = "1" ] || return 1
+
+    # Walk up the device tree looking for usb subsystem.
+    dev_link="/sys/class/net/${iface}/device"
+    [ -L "${dev_link}" ] || return 1
+    abs="$(readlink -f "${dev_link}" 2>/dev/null)"
+    case "${abs}" in
+        */usb*) return 0 ;;
+    esac
+    # Fall back: any parent with subsystem=usb.
+    cur="${abs}"
+    while [ -n "${cur}" ] && [ "${cur}" != "/" ]; do
+        sub="${cur}/subsystem"
+        if [ -L "${sub}" ] && [ "$(readlink -f "${sub}")" = "/sys/bus/usb" ]; then
+            return 0
+        fi
+        cur="$(dirname "${cur}")"
+    done
+    return 1
+}
+
+iface_has_ipv4() {
+    ip -4 addr show "$1" 2>/dev/null | grep -q "inet "
+}
+
+iface_named_in_interfaces() {
+    # True if /etc/network/interfaces has an "iface $1" or "auto $1" stanza.
+    # If yes, defer to ifupdown.
+    name="$1"
+    [ -r /etc/network/interfaces ] || return 1
+    grep -qE "^[[:space:]]*(auto|iface)[[:space:]]+${name}([[:space:]]|$)" \
+        /etc/network/interfaces 2>/dev/null
+}
+
+bring_up_one() {
+    iface="$1"
+
+    if ! is_usb_ethernet "${iface}"; then
+        log "skip ${iface}: not a USB ethernet device"
+        return 0
+    fi
+
+    if iface_has_ipv4 "${iface}"; then
+        log "skip ${iface}: already has IPv4"
+        return 0
+    fi
+
+    if iface_named_in_interfaces "${iface}"; then
+        log "ifup ${iface} (declared in /etc/network/interfaces)"
+        ifup "${iface}" >>"${USB_ETHER_RESCUE_LOG}" 2>&1 || \
+            log "ifup ${iface} failed (rc=$?)"
+        return 0
+    fi
+
+    log "direct DHCP bring-up for ${iface}"
+    ip link set "${iface}" up 2>>"${USB_ETHER_RESCUE_LOG}" || {
+        log "ip link set ${iface} up failed"
+        return 1
+    }
+
+    sleep "${USB_ETHER_RESCUE_CARRIER_SETTLE_S}"
+
+    # -b: background after initial dhcp attempt; -F: send hostname;
+    # -t/-T: retries/per-try timeout (bounds total wait so udev does not stall).
+    udhcpc -i "${iface}" \
+        -t "${USB_ETHER_RESCUE_UDHCPC_RETRIES}" \
+        -T "${USB_ETHER_RESCUE_UDHCPC_T}" \
+        -b \
+        -F "$(hostname 2>/dev/null || echo centauri)" \
+        >>"${USB_ETHER_RESCUE_LOG}" 2>&1 \
+        && log "udhcpc launched for ${iface}" \
+        || log "udhcpc launch for ${iface} returned non-zero"
+}
+
+# --- main -------------------------------------------------------------------
+
+if [ "$#" -ge 1 ] && [ -n "$1" ]; then
+    log "hotplug bring-up for $1"
+    bring_up_one "$1"
+    exit 0
+fi
+
+log "boot-time scan starting"
+for path in /sys/class/net/*; do
+    [ -d "${path}" ] || continue
+    name="$(basename "${path}")"
+    # Skip names that can't be USB-Ethernet. We deliberately do NOT skip
+    # "usb*" here: kernel USB CDC drivers commonly assign names like
+    # "usb0", which is exactly the interface we need to bring up.
+    # is_usb_ethernet() does the real check via /sys; the name filter
+    # only weeds out loopback, WiFi, tunnels, virtual bridges, and veth.
+    case "${name}" in
+        lo|wlan*|bnep*|sit*|tun*|tap*|docker*|br-*|veth*) continue ;;
+    esac
+    bring_up_one "${name}"
+done
+log "boot-time scan done"
+
+exit 0
