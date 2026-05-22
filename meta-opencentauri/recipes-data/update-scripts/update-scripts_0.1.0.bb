@@ -23,14 +23,16 @@ RDEPENDS:${PN} = " \
 "
 
 do_install() {
+    install -d ${D}${sbindir}
+    install -m 0755 ${WORKDIR}/factory-reset ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/update-cosmos ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/switch-to-stock ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/switch-to-oc-patched ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/swu-decrypt.py ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/restore-mcu-firmware ${D}${sbindir}/
+    install -m 0755 ${WORKDIR}/flash-artifact.py ${D}${sbindir}/flash-artifact
+
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/factory-reset ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/update-cosmos ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/switch-to-stock ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/switch-to-oc-patched ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/swu-decrypt.py ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/restore-mcu-firmware ${D}${bindir}/
-    install -m 0755 ${WORKDIR}/flash-artifact.py ${D}${bindir}/flash-artifact
     install -m 0755 ${WORKDIR}/find-local-firmware ${D}${bindir}/
 
     install -d ${D}${sysconfdir}/klipper
@@ -38,12 +40,12 @@ do_install() {
 }
 
 FILES_${PN} += " \
-    ${bindir}/factory-reset \
-    ${bindir}/update-cosmos \
-    ${bindir}/switch-to-stock \
-    ${bindir}/switch-to-oc-patched \
-    ${bindir}/swu-decrypt.py \
-    ${bindir}/restore-mcu-firmware \
-    ${bindir}/flash-artifact \
+    ${sbindir}/factory-reset \
+    ${sbindir}/update-cosmos \
+    ${sbindir}/switch-to-stock \
+    ${sbindir}/switch-to-oc-patched \
+    ${sbindir}/swu-decrypt.py \
+    ${sbindir}/restore-mcu-firmware \
+    ${sbindir}/flash-artifact \
     ${bindir}/find-local-firmware \
 "
