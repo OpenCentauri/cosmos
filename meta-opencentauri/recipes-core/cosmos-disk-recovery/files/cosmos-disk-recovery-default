@@ -1,0 +1,36 @@
+# /etc/default/cosmos-disk-recovery -- runtime config for the offline
+# SWU recovery surface.
+#
+# Override defaults here; cosmos-disk-recovery sources this file at
+# startup if present.
+
+# Master switch. Set to 0 to disable; the cosmos-disk-recovery script
+# exits cleanly without scanning or flashing. Useful when reproducing
+# a defect against the stock recovery surface only.
+COSMOS_DISK_RECOVERY_ENABLED=1
+
+# Where to log actions.
+COSMOS_DISK_RECOVERY_LOG=/var/log/cosmos-disk-recovery.log
+
+# Where cached recovery SWUs live. The init.d script creates this
+# directory at boot if missing.
+COSMOS_DISK_RECOVERY_DIR=/data/recovery
+
+# Default SWU filenames. The OC variant is the OC-patched / cosmos
+# build the operator wants to return to; the stock variant is the
+# Elegoo-shipped firmware. scan-usb also probes a couple of generic
+# fallback names (cosmos-recovery.swu, recovery.swu) so an operator
+# with a non-standard naming convention still gets a hit.
+COSMOS_DISK_RECOVERY_OC_NAME=oc-restore.swu
+COSMOS_DISK_RECOVERY_STOCK_NAME=stock-restore.swu
+
+# Minimum SWU size in bytes. Anything below this is rejected as
+# truncated or wrong-file-type. 1 MiB is well under any real cosmos
+# SWU (about 150 to 300 MiB typical) and well above empty / tiny
+# garbage. Lower if you intentionally ship a tiny test SWU.
+COSMOS_DISK_RECOVERY_MIN_BYTES=1048576
+
+# Where USB drives are mounted by the existing usb-automount recipe.
+# We never mount or unmount here; we only read from already-mounted
+# partitions to avoid racing usb-mount's own emergency.swu path.
+COSMOS_DISK_RECOVERY_USB_ROOT=/tmp/usb

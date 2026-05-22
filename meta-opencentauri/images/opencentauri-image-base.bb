@@ -50,6 +50,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     iproute2 \
     chrony \
     usb-ether-rescue \
+    cosmos-disk-recovery \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
