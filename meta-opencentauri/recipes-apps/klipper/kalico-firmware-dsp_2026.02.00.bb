@@ -12,6 +12,15 @@ DEPENDS += " gcc-xtensa-hifi4-elf-native"
 
 RPROVIDES:${PN} += "klipper-firmware-dsp"
 
+# Foundation plan H4 fix (2026-05-23): DSP recipe gains a .sha256
+# sidecar parallel to bed/toolhead. Closes Class 244 (content-hash
+# markers not metadata markers) gap discovered in the foundation-plan
+# audit. PR bump forces ipk reinstall on upgrade so the new sidecar
+# lands on existing devices. init.d-side verification before remoteproc
+# load lands as a follow-up; the sidecar itself is the load-bearing
+# tamper-detect substrate.
+PR = "r1"
+
 EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.mainboard"
 
 # Remap absolute paths embedded in the DSP firmware ELF so the blob does
@@ -35,6 +44,15 @@ do_install() {
     install -d ${D}/lib/firmware
     cp -r ${S}/out/klipper.elf ${D}/lib/firmware/rproc-1700000.dsp-fw
 
+    # .sha256 sidecar: defense-in-depth against on-disk corruption
+    # between SWU apply and the next remoteproc load event. Parallel
+    # to bed/toolhead pattern. init.d-side verification lands as a
+    # follow-up; the sidecar itself is the load-bearing tamper-detect
+    # substrate. Closes Class 244 violation per foundation-plan-
+    # ensemble-audit 2026-05-23 (H4).
+    sha256sum ${D}/lib/firmware/rproc-1700000.dsp-fw \
+        | awk '{print $1}' > ${D}/lib/firmware/rproc-1700000.dsp-fw.sha256
+
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     cp ${WORKDIR}/klipper-firmware-dsp-init-d ${D}${sysconfdir}/init.d/klipper-firmware-dsp
@@ -43,5 +61,6 @@ do_install() {
 
 FILES:${PN} = " \
     /lib/firmware/rproc-1700000.dsp-fw \
+    /lib/firmware/rproc-1700000.dsp-fw.sha256 \
     ${sysconfdir}/init.d/klipper-firmware-dsp \
 "
