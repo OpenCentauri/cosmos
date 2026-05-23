@@ -19,7 +19,7 @@ RPROVIDES:${PN} += "klipper-firmware-dsp"
 # lands on existing devices. init.d-side verification before remoteproc
 # load lands as a follow-up; the sidecar itself is the load-bearing
 # tamper-detect substrate.
-PR = "r1"
+PR = "r2"
 
 EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.mainboard"
 
@@ -51,6 +51,19 @@ INSANE_SKIP:${PN} = "arch"
 
 do_install() {
     install -d ${D}/lib/firmware
+
+    # FQ2 v2 (Jack-checkpoint 2026-05-23): strip Xtensa debug symbols.
+    # Yocto's default do_package debug-split pipeline uses arm-poky-linux-
+    # gnueabi-objcopy which cannot read Xtensa ELF; FQ2 v1 attempt
+    # (remove INHIBITs, let Yocto strip) fails. INHIBIT_PACKAGE_STRIP +
+    # INHIBIT_PACKAGE_DEBUG_SPLIT stay enabled; we strip manually using
+    # the matching Xtensa cross-tool from gcc-xtensa-hifi4-elf-native.
+    # --strip-debug removes DWARF (verified ~81.7% size reduction in
+    # bench probe 2026-05-23: 428228 -> 78396 bytes) but keeps the
+    # symbol table intact so remoteproc symbol resolution at firmware
+    # load still works.
+    xtensa-nxp_rt700_hifi4_zephyr-elf-strip --strip-debug ${S}/out/klipper.elf
+
     cp -r ${S}/out/klipper.elf ${D}/lib/firmware/rproc-1700000.dsp-fw
 
     # .sha256 sidecar: defense-in-depth against on-disk corruption
