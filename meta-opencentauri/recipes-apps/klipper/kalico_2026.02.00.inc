@@ -30,7 +30,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = "git://github.com/Brofalo/pono-kalico.git;protocol=https;branch=rpmsg-with-new-hx71x \
     file://0002-reduce-calibration-difference-tolerance.patch \
 "
-SRCREV = "a30ddf63"
+SRCREV = "a30ddf630a602042935138ce27abb6645f8120db"
 
 # PR bump r4 -> r5: SRC_URI change (URL + patch count) + SRCREV change
 # both require explicit ipk invalidation. Mirrors the bed/toolhead/dsp
