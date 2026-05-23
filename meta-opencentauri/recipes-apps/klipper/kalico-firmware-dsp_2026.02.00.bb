@@ -34,6 +34,15 @@ export EXTRA_CFLAGS = "-ffile-prefix-map=${WORKDIR}=/build -ffile-prefix-map=${R
 INITSCRIPT_NAME = "klipper-firmware-dsp"
 INITSCRIPT_PARAMS = "defaults 94 4"
 
+# FQ2 deferred (2026-05-23): removing INHIBIT_PACKAGE_STRIP +
+# INHIBIT_PACKAGE_DEBUG_SPLIT caused bitbake do_package to fail with:
+# arm-poky-linux-gnueabi-objcopy: Unable to recognise the format of the
+# input file rproc-1700000.dsp-fw
+# Root cause: Yocto's do_package splits debug symbols using the TARGET
+# toolchain (arm-poky-linux-gnueabi), but rproc-1700000.dsp-fw is Xtensa
+# HiFi4 not ARM. Proper fix requires overriding STRIP / OBJCOPY for this
+# package to xtensa-hifi4-elf-* OR a custom do_package_split that bypasses
+# the per-package debug-info pipeline. Re-deferred until that design lands.
 INHIBIT_PACKAGE_STRIP = "1"
 INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
 INHIBIT_SYSROOT_STRIP = "1"
