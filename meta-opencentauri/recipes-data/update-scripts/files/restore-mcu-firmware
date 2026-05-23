@@ -17,3 +17,8 @@ flashtool -d $SERIALPORT_BED -f $STOCK_FW_BED -b 115200
 rm -f $VERSION_BED
 flashtool -d $SERIALPORT_TOOLHEAD -f $STOCK_FW_TOOLHEAD
 rm -f $VERSION_TOOLHEAD
+
+# Delete board-resource files
+cd /board-resource
+rm -f *.log*
+rm -f printer.cfg
