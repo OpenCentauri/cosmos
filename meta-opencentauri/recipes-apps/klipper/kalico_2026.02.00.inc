@@ -28,7 +28,7 @@ SRC_URI = "git://github.com/Brofalo/pono-kalico.git;protocol=https;branch=rpmsg-
     file://0001-remove-save-config-subfile-check.patch \
     file://0002-reduce-calibration-difference-tolerance.patch \
 "
-SRCREV = "4218e722534da016b91cfceaa6a5eb6b462a7249"
+SRCREV = "299dedefe2ae264e32b7d59c30930e7e0391b94f"
 
 # PR bump r4 -> r5: SRC_URI change (URL + patch count) + SRCREV change
 # both require explicit ipk invalidation. Mirrors the bed/toolhead/dsp
