@@ -21,6 +21,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Security
 - SSH commit signing configured on `Brofalo/pono-print-os` repository. Commits signed by `maui@brofalo` ED25519 key (`SHA256:4+2su7s4+66xaPk/3WZoCRXfQHDfdwqZZGj/iOxEv8M`); GitHub-verified status pending SSH signing key registration (H_FOLLOWUP_1).
 - Branch protection applied to `main`: `required_linear_history=true`, `allow_force_pushes=false`, `allow_deletions=false`, `required_conversation_resolution=true`. `required_signatures` deferred behind H_FOLLOWUP_1.
+- `SECURITY.md` added at repository root. Documents reporting path (GitHub Security advisory until disclosure email locked), pre-1.0 support stance, signing state (SSH commits live; cosign blocking from week 0 per foundation Step 6), key custody, and threat surface. Contains two `TBD JACK-INPUT` markers (disclosure email and key custody plan).
+
+### Documentation
+- README.md pivoted with a `Brofalo/pono-print-os` fork banner prepended above the upstream OC/cosmos README. Banner cross-links DIVERGENCE.md, CHANGELOG.md, SECURITY.md, pono-kalico, the slicer pipeline, and the grumpyscreen UI rewrite. Upstream README content preserved verbatim below the banner separator.
 
 ## Provenance
 

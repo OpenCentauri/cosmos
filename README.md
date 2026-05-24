@@ -1,3 +1,36 @@
+# Brofalo/pono-print-os
+
+Signed Yocto OS layer fork of [OpenCentauri/cosmos](https://github.com/OpenCentauri/cosmos)
+for the [Pono Print](https://github.com/PONOdata/pono-print) firmware track.
+
+| Surface | Pointer |
+|---|---|
+| Live commit divergence | [DIVERGENCE.md](DIVERGENCE.md) |
+| Release history | [CHANGELOG.md](CHANGELOG.md) |
+| Security policy | [SECURITY.md](SECURITY.md) |
+| Klipper host + MCU firmware | [Brofalo/pono-kalico](https://github.com/Brofalo/pono-kalico) |
+| Slicer pipeline | [PONOdata/pono-print](https://github.com/PONOdata/pono-print) |
+| Bench UI rewrite | [Brofalo/grumpyscreen](https://github.com/Brofalo/grumpyscreen) (pono branch) |
+
+Pono Print targets the Elegoo Centauri Carbon (CC1). This repository
+ships the Yocto OS layer (kernel, BSP, system services, klipper recipes)
+that produces the SWU artifact.
+
+**Signing.** SSH commit signing is live. **SWU artifact signing is not
+yet live**; the cosign pipeline is in development per the signed-first
+HARD requirement (foundation Step 6, blocking from week 0). Do not
+trust pre-1.0 SWU artifacts as signed. See [SECURITY.md](SECURITY.md)
+for current state and verification commands.
+
+**Stability.** Pre-1.0. Fix-forward on `main`. The 1.0 tag waits on
+M112 emergency-stop bench-verify, DSP clean flash, cosign pipeline, and
+one week of continuous prints. Do not run pre-1.0 firmware on production
+hardware.
+
+---
+
+# Upstream README (OpenCentauri/cosmos)
+
 <img width="688" height="384" alt="image" src="https://github.com/user-attachments/assets/18686f2d-dab3-4c92-ae3c-e20a10dc7862" />
 
 
