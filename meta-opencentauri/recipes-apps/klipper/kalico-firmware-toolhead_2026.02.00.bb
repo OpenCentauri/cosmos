@@ -9,7 +9,7 @@ SRC_URI += " \
     file://klipper-firmware-toolhead-init-d \
 "
 
-PR = "r3"
+PR = "r4"
 
 DEPENDS += "gcc-arm-none-eabi-native"
 RDEPENDS:${PN} = " \

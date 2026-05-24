@@ -30,12 +30,17 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = "git://github.com/Brofalo/pono-kalico.git;protocol=https;branch=rpmsg-with-new-hx71x \
     file://0002-reduce-calibration-difference-tolerance.patch \
 "
-SRCREV = "a30ddf630a602042935138ce27abb6645f8120db"
+SRCREV = "1f3aee1098e90c6d89513fd1acb5e83a0f56675a"
 
-# PR bump r4 -> r5: SRC_URI change (URL + patch count) + SRCREV change
-# both require explicit ipk invalidation. Mirrors the bed/toolhead/dsp
-# firmware recipes' r5 bump landed on cosmos-fork bridge 212d511.
-PR = "r5"
+# PR bump r5 -> r6: AQ2 KalicoCrew back-merge batch landed on
+# pono-kalico (2026-05-23). 3 new commits absorbed:
+#   32e92f89  Load Cell Tap Analysis (#836)
+#   714764d1  probe: alternating probe direction support (#882)
+#   836dcb27  trapq extract-all-moves default (#872)
+# Plus 4 confirmed no-ops (already in tree via OC PR #760 merge) and
+# DIVERGENCE.md updated. ipk hash changes; mirror the bed/toolhead/dsp
+# firmware recipes' PR bump cadence.
+PR = "r6"
 
 S = "${WORKDIR}/git"
 

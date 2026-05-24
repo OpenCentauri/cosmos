@@ -19,7 +19,7 @@ RPROVIDES:${PN} += "klipper-firmware-dsp"
 # lands on existing devices. init.d-side verification before remoteproc
 # load lands as a follow-up; the sidecar itself is the load-bearing
 # tamper-detect substrate.
-PR = "r2"
+PR = "r3"
 
 EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.mainboard"
 
