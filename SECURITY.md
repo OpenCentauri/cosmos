@@ -6,18 +6,23 @@ This document describes how to report security issues in
 
 ## Reporting a Vulnerability
 
-**TBD JACK-INPUT:** disclosure email address. Pending options:
-- `security@ponodata.com` (would require MX record + mailbox provisioning)
-- Jack personal address with auto-forward + filter
-- Foundry-routed triage (Captain Spot) with Jack-confirmation gate
-
-Until the disclosure email is locked, file a private security advisory
-via GitHub:
-
+Email **security@ponodata.com** (or file a private GitHub Security
+advisory at
 <https://github.com/Brofalo/pono-print-os/security/advisories/new>
+if you prefer the GitHub flow). MX + mailbox provisioning is in
+progress as of 2026-05-24; until DNS propagates, the GitHub advisory
+path is the canonical reporting surface.
+
+Please include:
+
+- The repository + commit SHA where you observed the issue.
+- A minimal reproduction (recipe excerpt, command, log line).
+- Your preferred contact + disclosure timeline expectations.
 
 Do not file public issues for security bugs. Do not post details to
-community Discord, Reddit, or social media before disclosure.
+community Discord, Reddit, or social media before coordinated
+disclosure. We aim for a 90-day default disclosure window with
+acknowledgment within 7 days.
 
 ## Supported Versions
 
@@ -73,18 +78,27 @@ on Node-One from a verified commit you trust.
 
 ## Key Custody
 
-**TBD JACK-INPUT:** key custody plan. Current state:
+Locked 2026-05-24 (Jack approval):
 
-- Jack-only signing authority for SSH commits (per Jack-checkpoint #7)
-- CI bot signing comes online when V2 cosign ships
-- No backup or recovery plan banked yet
-- No rotation cadence banked yet
-
-Pending policy decisions:
-
-- Hardware-token backup (e.g., offline yubikey at known location)
-- Bridge Crew named-recovery (Jack-unavailable fallback)
-- Rotation cadence (annual? on suspected compromise?)
+- **Primary signing authority:** Jack only (per Jack-checkpoint #7). SSH
+  commit signing live; cosign artifact signing follows once foundation
+  Step 6 ships.
+- **CI bot signing:** comes online when V2 cosign ships (foundation
+  Step 6). Identity scope: limited to artifact signing on tagged
+  releases; not commit signing.
+- **Recovery plan (Bridge Crew named-recovery):** if Jack is
+  unavailable for more than 30 calendar days, the named Bridge Crew
+  recovery person (identity tracked separately, not banked here for
+  operational reasons) holds authority to rotate keys + re-issue
+  signing identities. Recovery procedure exercised at least once per
+  year to verify it works.
+- **Rotation cadence:** annual rotation by default; immediate rotation
+  on any suspected key compromise (e.g., laptop loss, suspected supply
+  chain attack on key-management software, unexpected GitHub OAuth
+  activity).
+- **Audit trail:** all key generation, rotation, and recovery events
+  are documented in a Brofalo-internal log (not public; available to
+  Bridge Crew recovery person).
 
 ## Threat Surface
 
