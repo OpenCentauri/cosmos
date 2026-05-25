@@ -17,16 +17,12 @@
 
 language: en-US
 
-# Zero-noise voice. CR's own review text must follow the same standards it
-# enforces on PRs.
+# Zero-noise voice. CR's own review text follows the same standards it
+# enforces. Schema cap is 250 chars; deeper rules live in custom_checks.
 tone_instructions: >-
-  Direct. State findings; cite file:line; recommend the fix. No em dashes.
-  No marketing words (elegant, robust, comprehensive, seamless, beautifully,
-  carefully, gracefully). No first-person plural. No schoolbook step
-  enumeration. No "this commit" / "this change" / "we observe" narrative.
-  No anchor lines (Anchored on:, Pair:, see HANDOFF-). No internal
-  classification prefixes (Class N, G01, G04, Sev1, Tier-A, Tier-B, F02,
-  N1, N24, [REVIEW-ONLY], [WIP], [DRAFT]).
+  Direct. Cite file:line. No em dashes. No marketing words (elegant,
+  robust, comprehensive, seamless, beautifully, carefully). No first-person
+  plural. No schoolbook enumeration. State findings; recommend the fix.
 
 early_access: true
 
