@@ -1,23 +1,32 @@
-# CodeRabbit v2 configuration for the Pono / Brofalo fleet
-# Profile: assertive (HARDEST) + every Pro-tier feature on
+# CodeRabbit v3 configuration for the Pono / Brofalo fleet
+# Posture: max-strict, block-on-defect. pre_merge_checks at error mode.
 # Schema anchor: https://docs.coderabbit.ai/reference/yaml-template (fetched 2026-05-24)
 # Standing-order anchors:
 #   - CLAUDE.md "CI / Bot / Workflow Hygiene" HARD requirement (banked 2026-05-17)
 #   - CLAUDE.md "Zero noise output" standing rule (banked 2026-05-19)
 #   - CLAUDE.md "Foundation-Flawless Before Scope-Addition" (Class 249, banked 2026-05-24)
+#   - CLAUDE.md "Signed-first Supply Chain" HARD requirement (Class 242, 2026-05-23)
+#   - CLAUDE.md "Tier-3 Edit Gate" (Class 226, 2026-05-18)
+#   - CLAUDE.md "Security baseline" + "Purple team posture"
 #   - feedback_pr_standard_zero_noise_2026_05_19.md
-# Substrate evolution: pre_merge_checks ships in `warning` mode (V1 fail-open),
-# escalates to `error` after >=14d dwell + <1/100 FP rate + explicit
-# `escalate-coderabbit-premerge` Jack directive. Same pattern as anchor_gate.py,
-# edit_gate.py, ai_tell_lint.py.
+#   - feedback_docker_timeout_rm_ghost_containers_2026_05_23.md
+# Substrate evolution: v3 escalates v2's warning mode to error after Jack's
+# explicit "Root approval" directive 2026-05-24. Bypass for v1->V2->V3
+# evolution-pattern dwell requirement granted by explicit root approval per
+# the substrate-evolution clause.
 
 language: en-US
 
-# Custom tone: keep CR's voice aligned with Pono zero-noise output discipline.
+# Zero-noise voice. CR's own review text must follow the same standards it
+# enforces on PRs.
 tone_instructions: >-
-  Direct. No em dashes. No marketing words (elegant, robust, comprehensive,
-  seamless, beautifully, carefully). No first-person plural. No schoolbook
-  step enumeration. State findings; cite file:line; recommend the fix.
+  Direct. State findings; cite file:line; recommend the fix. No em dashes.
+  No marketing words (elegant, robust, comprehensive, seamless, beautifully,
+  carefully, gracefully). No first-person plural. No schoolbook step
+  enumeration. No "this commit" / "this change" / "we observe" narrative.
+  No anchor lines (Anchored on:, Pair:, see HANDOFF-). No internal
+  classification prefixes (Class N, G01, G04, Sev1, Tier-A, Tier-B, F02,
+  N1, N24, [REVIEW-ONLY], [WIP], [DRAFT]).
 
 early_access: true
 
@@ -36,11 +45,11 @@ reviews:
   in_progress_fortune: false
   enable_prompt_for_ai_agents: true
 
-  # Pro-tier: gate merge with red/green commit status.
+  # Block merge on findings. With request_changes_workflow: true above, a
+  # failing commit status holds the PR.
   commit_status: true
   fail_commit_status: true
 
-  # Pro-tier: link issues + related PRs + label suggestions.
   assess_linked_issues: true
   related_issues: true
   related_prs: true
@@ -73,6 +82,16 @@ reviews:
       instructions: >-
         Apply when the change lives under scratch/, .tmp/, or is explicitly
         marked WIP / DRAFT / spike in the diff or PR body.
+    - label: foundation-flawless-required
+      instructions: >-
+        Apply when the change is substrate-behavior-changing (new endpoint,
+        new pipeline stage, new container, new config category, new
+        flag-detection class, new egress path, new hook). Triggers smoke
+        matrix requirement per Class 249.
+    - label: signed-supply-chain-required
+      instructions: >-
+        Apply when the change touches a production-class firmware/OS/runtime
+        base. Triggers signed-first scorecard requirement per Class 242.
 
   slop_detection:
     enabled: true
@@ -88,11 +107,11 @@ reviews:
     ignore_title_keywords:
       - "wip:"
       - "draft:"
-      - "[skip review]"
+    # Removed [skip review] (no opt-out at v3). Removed dependabot/renovate
+    # from ignore_usernames (dep PRs need review for CVE exposure). Keep
+    # github-actions[bot] ignored (internal CI commits).
     ignore_usernames:
-      - dependabot[bot]
       - github-actions[bot]
-      - renovate[bot]
 
   path_filters:
     - "!**/__pycache__/**"
@@ -129,123 +148,130 @@ reviews:
   path_instructions:
     - path: "**/*.py"
       instructions: |
-        Python service code. HARDEST review posture.
-        Verify type hints on all public functions and methods. Prefer pathlib
-        over os.path. Reject bare except. Reject print() for logs (use
-        logging). Flag subprocess.* calls without timeout=. Flag em-dashes,
-        schoolbook step enumeration, and first-person pronouns in docstrings
-        or comments. Flag any string-formatted SQL (use parameter binding).
-        Flag hard-coded secrets, API keys, tokens. Verify no eval/exec on
-        untrusted input. Flag missing docstrings on public-API functions.
-        Flag concurrent.futures.as_completed(timeout=N) loops that rely on
-        per-future timeout via fut.result(timeout=M) -- aggregate timeout
-        only (Class candidate banked 2026-05-24).
+        Python service code. Max-strict posture (v3).
+        REQUIRED: type hints on ALL public functions and methods (no Any
+        unless justified inline). Docstrings on ALL public-API functions.
+        pathlib over os.path.
+        REJECT: bare except (require `except Exception:` minimum). print()
+        outside CLI / tools / bin (use logging). subprocess.* without
+        timeout= kwarg. string-formatted SQL (require parameter binding).
+        hard-coded secrets, API keys, tokens (env vars / keychain only).
+        eval / exec / os.system on any input. requests.* / urllib.* without
+        timeout=. concurrent.futures.as_completed(timeout=N) loops that
+        rely on per-future timeout via fut.result(timeout=M) (aggregate
+        timeout only; banked 2026-05-24).
+        REJECT in docstrings / comments: em dashes, schoolbook step
+        enumeration, first-person plural, marketing words.
     - path: "**/*.sh"
       instructions: |
-        Shell script. POSIX-compatible unless shebang is explicitly bash.
-        Flag unquoted variable expansions, missing set -euo pipefail in bash
-        scripts, curl/wget without --fail or -fsSL, and any rm -rf with
-        variable paths. Flag `docker run --rm` wrapped in `timeout` (ghost
-        containers, Class banked 2026-05-23).
+        Shell script. POSIX-compatible unless shebang explicitly bash.
+        REJECT: unquoted variable expansions, missing `set -euo pipefail`
+        in bash scripts, curl/wget without --fail or -fsSL, rm -rf with
+        variable paths, `docker run --rm` wrapped in `timeout` (ghost
+        container leak; banked 2026-05-23 in
+        feedback_docker_timeout_rm_ghost_containers_2026_05_23.md).
     - path: "**/*.ps1"
       instructions: |
-        PowerShell script. Use pwsh (PS7) idioms. Flag Write-Host (use
-        Write-Output / Write-Information). Flag missing ErrorActionPreference
-        = 'Stop'. Flag Invoke-Expression with interpolated input.
+        PowerShell script. pwsh (PS7) idioms only.
+        REJECT: Write-Host (use Write-Output / Write-Information). Missing
+        $ErrorActionPreference = 'Stop'. Invoke-Expression with
+        interpolated input. powershell.exe invocation (use pwsh.exe per
+        Class 158 baseline).
     - path: "**/*.go"
       instructions: |
-        Go code. Verify error wrap (fmt.Errorf with %w). Flag goroutine leaks
-        (missing context cancellation). Flag panics in library code. Flag
+        Go. Verify error wrap (`fmt.Errorf` with %w). REJECT: goroutine
+        leaks (missing context cancellation). Panics in library code.
         time.Sleep in production paths (use context.WithTimeout).
     - path: "**/*.{cpp,hpp,cc,hh,h,cxx}"
       instructions: |
-        C++17/20 code (PonoPrint slicer scope). PascalCase classes,
-        snake_case functions/variables. #pragma once for headers. Prefer
-        smart pointers and RAII. Flag raw new/delete outside RAII wrappers.
-        TBB parallelization: flag shared mutable state without lock.
-    - path: "**/*.{swift}"
+        C++17/20 (PonoPrint slicer scope). PascalCase classes, snake_case
+        functions/variables. `#pragma once` for headers. Smart pointers
+        and RAII preferred. REJECT: raw new/delete outside RAII wrappers.
+        TBB shared mutable state without lock.
+    - path: "**/*.swift"
       instructions: |
-        Swift. iOS / Swift latest. Flag SwiftData @Model classes missing the
-        @Model decorator (instant crash). Flag SwiftData mutations
-        (insert/delete/save) in SwiftUI view body evaluation chain (must be
-        in explicit user actions / timer-based flushPendingData). Flag
-        force-unwraps in production code.
+        Swift. iOS / Swift latest.
+        REJECT: SwiftData @Model classes missing the @Model decorator
+        (instant crash). SwiftData mutations (insert/delete/save) in
+        SwiftUI view body evaluation chain. Force-unwraps in production.
     - path: "**/*.{kt,kts}"
       instructions: |
-        Kotlin. Coroutine-safe: flag GlobalScope.launch in production code
-        (use structured concurrency). Flag !! force-unwraps. Flag missing
-        Dispatchers.IO / Dispatchers.Default for blocking work.
+        Kotlin. Coroutine-safe.
+        REJECT: GlobalScope.launch in production. !! force-unwraps.
+        Missing Dispatchers.IO / Dispatchers.Default for blocking work.
     - path: "**/*.{js,jsx,ts,tsx}"
       instructions: |
-        JavaScript / TypeScript. Latest Node. Flag any (TypeScript). Flag
-        eval / new Function. Flag innerHTML with user input (XSS). Flag
-        fetch without timeout (use AbortController).
+        JavaScript / TypeScript. Latest Node.
+        REJECT: `any` in TypeScript (require explicit type). eval / new
+        Function. innerHTML with user input (XSS). fetch without timeout
+        (use AbortController).
     - path: "**/*.rs"
       instructions: |
-        Rust. Flag .unwrap() / .expect() in library code (return Result).
-        Flag unsafe blocks without a SAFETY: comment.
+        Rust.
+        REJECT: .unwrap() / .expect() in library code (return Result).
+        unsafe blocks without a `// SAFETY:` comment.
     - path: ".github/workflows/*.yml"
       instructions: &workflow_review_instructions |
-        GitHub Actions workflow. Verify minimal permissions: block, pinned
-        action versions (SHA preferred, tag minimum), timeout-minutes on
-        every job, concurrency group to prevent runaway parallel runs. Flag
-        any usage of ${{ github.event.pull_request.* }} without is_owner
-        check (script-injection vector). Flag actions/checkout without
-        persist-credentials: false unless write access is required. Verify
-        any windows-* runner is converted to [self-hosted, Windows, X64,
-        pono-build] per node-one topology (Class 181/220, 2026-05-18).
+        GitHub Actions workflow.
+        REQUIRED: permissions: block (minimal), pinned action versions
+        (SHA preferred, tag minimum), timeout-minutes on every job,
+        concurrency group to prevent runaway parallel runs.
+        REJECT: `${{ github.event.pull_request.* }}` without is_owner
+        check (script-injection vector). actions/checkout without
+        persist-credentials: false unless write access is required.
+        Any `runs-on: windows-*` that is not converted to `[self-hosted,
+        Windows, X64, pono-build]` per Class 181/220 node-one topology.
     - path: ".github/workflows/*.yaml"
       instructions: *workflow_review_instructions
     - path: "**/Dockerfile*"
       instructions: |
-        Dockerfile. Verify pinned base image (digest preferred, tag minimum).
-        Flag RUN apt-get install without rm -rf /var/lib/apt/lists/*. Flag
-        any ADD that should be COPY. Flag USER root at end of file. Flag
-        HEALTHCHECK absent. Verify multi-stage build for compiled language
-        outputs. Default Python image is python:3.14-slim per CLAUDE.md.
+        Dockerfile.
+        REQUIRED: pinned base image (digest preferred, tag minimum),
+        multi-stage build for compiled outputs, HEALTHCHECK.
+        REJECT: RUN apt-get install without rm -rf /var/lib/apt/lists/*.
+        ADD that should be COPY. USER root at end of file.
+        Default Python image is python:3.14-slim per CLAUDE.md.
     - path: "**/requirements*.txt"
       instructions: |
-        Pinned Python deps. Flag any unpinned or range-pinned entries
-        (==X.Y.Z preferred over >=). Flag any package not on PyPI or
-        unsigned-source. Flag known-vuln packages (osv-scanner cross-check).
+        Pinned Python deps.
+        REJECT: unpinned or range-pinned entries (==X.Y.Z preferred over
+        >=). Packages not on PyPI or unsigned-source. Known-vuln packages
+        (osv-scanner cross-check).
     - path: "**/pyproject.toml"
       instructions: |
-        Python project manifest. Verify requires-python is set, dependencies
-        are version-pinned (>= acceptable, == preferred), no abandoned
-        packages.
+        Python project manifest.
+        REQUIRED: requires-python set. Dependencies version-pinned (>=
+        acceptable, == preferred).
+        REJECT: abandoned packages.
     - path: "**/*.{service,timer,target,socket}"
       instructions: |
-        systemd unit. Production. Verify Restart=, RestartSec=, User=,
-        Group=, WorkingDirectory=, ExecStart= absolute paths. Flag
-        ProtectSystem=full or strict where viable. Flag missing
-        TimeoutStartSec / TimeoutStopSec. Cross-check the systemd state-file
-        pattern (Class 79 silent-failure if docker direct kills compose).
+        systemd unit. Production.
+        REQUIRED: Restart=, RestartSec=, User=, Group=, WorkingDirectory=,
+        ExecStart= absolute paths, TimeoutStartSec=, TimeoutStopSec=.
+        Cross-check Class 79 silent-failure (docker direct kills compose).
+        Prefer ProtectSystem=full or strict where viable.
     - path: "CLAUDE.md"
       instructions: |
-        Tier-3 path. Edits to CLAUDE.md change every session's substrate.
-        Flag rule additions without anchor (date + reason + cross-ref).
-        Flag standing-order conflicts with existing rules (call out the
-        conflict explicitly, do not let the new rule shadow the old).
-        Flag rules added without a recognition signal.
+        Tier-3 path (Class 226). Edits change every session's substrate.
+        REQUIRED: new rules carry anchor (date + reason + cross-ref).
+        Standing-order conflicts called out explicitly. Recognition
+        signal for new rules.
     - path: "skill_pono_*.md"
       instructions: |
-        Tier-3 catalog (Class library / meta-analyst). Edits change
-        cross-session behavior. Verify new Class entries have all 8
-        sections (Symptom, Mechanism, Why naive fails, Correct pattern,
-        Recognition signal, Cross-refs, Date, Originating instance). Flag
-        duplicate Class IDs. Flag Class entries without an originating
-        instance.
+        Tier-3 catalog (Class library / meta-analyst).
+        REQUIRED: new Class entries have all 8 sections (Symptom,
+        Mechanism, Why naive fails, Correct pattern, Recognition signal,
+        Cross-refs, Date, Originating instance). No duplicate Class IDs.
     - path: "maui-wall/*.py"
       instructions: |
-        Tier-3 hook code. Edit changes substrate for every Maui session.
-        Verify fail-open behavior (V1 substrate evolution pattern). Verify
-        JSONL audit log per Class 224 contract. Verify the hook self-fires
-        when applicable (substrate enforcement).
+        Tier-3 hook code (Class 226).
+        REQUIRED: fail-open behavior on V1 ships (Class 224 contract).
+        JSONL audit log per Class 224 contract.
     - path: "docs/plans/*.md"
       instructions: |
-        Planning / handoff governance doc. Drives future-session entry
-        points. Flag stale anchors (dates older than 2 weeks without
-        re-anchor). Flag missing smoke matrix on substrate-behavior changes
+        Tier-3 planning / handoff governance doc (Class 226).
+        REJECT: stale anchors (dates older than 2 weeks without
+        re-anchor). Missing smoke matrix on substrate-behavior changes
         per Class 249.
 
   finishing_touches:
@@ -257,30 +283,163 @@ reviews:
       enabled: true
 
   pre_merge_checks:
-    # V1 posture: warning-mode fail-open. Escalates to `error` after >=14d
-    # dwell + <1/100 FP rate + explicit `escalate-coderabbit-premerge` Jack
-    # directive. Same evolution pattern as anchor_gate.py.
+    # v3 max-strict: every check at error mode. With
+    # request_changes_workflow: true above, failing checks block merge via
+    # commit status. override_requested_reviewers_only restricts override
+    # to designated reviewers (not the PR author).
+    override_requested_reviewers_only: true
     docstrings:
-      mode: warning
-      threshold: 80
+      mode: error
+      threshold: 100
     title:
-      mode: warning
-      requirements: >-
-        Title under 70 chars. No em dashes. No AI-tell prefixes (Class N,
-        G01, Sev1, Tier-A, [REVIEW-ONLY], [WIP], [DRAFT]). Imperative mood
-        ("add X", "fix Y", "remove Z"). Scope prefix optional but if used
-        must match an existing path in the repo.
+      mode: error
+      requirements: |
+        MUST be under 70 characters. MUST be imperative mood ("add X",
+        "fix Y", "remove Z").
+        MUST NOT contain em dashes (U+2014).
+        MUST NOT contain internal classification prefixes: Class N, G01,
+        G04, Sev1, Tier-A, Tier-B, F02, N1, N24.
+        MUST NOT contain tags: [REVIEW-ONLY], [WIP], [DRAFT].
+        MUST NOT contain marketing words: elegant, robust, comprehensive,
+        seamless, beautifully, carefully, gracefully.
+        SHOULD start with a scope prefix (component:, area/) OR a verb.
     description:
-      mode: warning
+      mode: error
     issue_assessment:
-      mode: warning
+      mode: error
+    custom_checks:
+      - name: no-em-dashes
+        mode: error
+        instructions: |
+          Reject the PR if the title or body contains em dashes (U+2014,
+          rendered as the long dash). Em dashes are a documented AI-tell
+          per CLAUDE.md "No em dashes" standing rule (line 145). Use
+          commas, periods, or hyphens instead. Scope: PR title + PR body
+          + new comments/docs added in the diff. Do not flag em dashes
+          inside upstream/vendor code or quoted text from external
+          sources.
+      - name: no-ai-tell-prefixes
+        mode: error
+        instructions: |
+          Reject the PR if the title or body contains internal
+          classification prefixes used in Pono's memory system: Class N
+          (any number), G01, G04, Sev1, Tier-A, Tier-B, F02, N1, N24.
+          Also reject [REVIEW-ONLY], [WIP], [DRAFT] in the title. Per
+          CLAUDE.md "Zero noise output" standing rule, these prefixes
+          never ship to visible surfaces.
+      - name: no-marketing-words
+        mode: error
+        instructions: |
+          Reject the PR if the title, body, commit message, code comment,
+          or markdown content added in this diff contains any of:
+          elegant, robust, comprehensive, seamless, beautifully,
+          carefully, gracefully, elegantly, robustly. Per CLAUDE.md
+          "Zero noise output" standing rule. Exception: internal memory
+          files under .claude/projects/.../memory/ are local-only and
+          out of scope.
+      - name: no-anchor-lines
+        mode: error
+        instructions: |
+          Reject the PR body if it contains schoolbook anchor lines used
+          for internal scaffolding: "Anchored on:", "Pair:", "see
+          HANDOFF-", "audits/cosmos_v4_full_audit_". Per CLAUDE.md "Zero
+          noise output" standing rule, these never ship to public PR
+          surfaces. Internal memory files are out of scope.
+      - name: no-first-person-plural-narrative
+        mode: error
+        instructions: |
+          Reject the PR title/body if it starts with or prominently
+          contains schoolbook narrative phrases: "This commit", "This
+          change", "We anchor", "We observe", "We add", "We introduce",
+          "In this PR". Per CLAUDE.md "Zero noise output" standing rule
+          on first-person plural in visible text. State the change
+          directly without narrative scaffolding.
+      - name: subprocess-must-have-timeout
+        mode: error
+        instructions: |
+          For every Python diff that adds subprocess.run /
+          subprocess.Popen / subprocess.call / subprocess.check_output /
+          subprocess.check_call, verify a timeout= kwarg is present.
+          Reject the PR if absent. Hung subprocesses leak resources
+          (banked 2026-05-23 in
+          feedback_docker_timeout_rm_ghost_containers_2026_05_23.md
+          shows the failure-mode shape).
+      - name: no-bare-except
+        mode: error
+        instructions: |
+          Reject any Python diff adding `except:` (bare). Require
+          `except Exception:` minimum, ideally a specific exception
+          type. Per CLAUDE.md path_instructions for *.py.
+      - name: no-print-in-service-code
+        mode: error
+        instructions: |
+          Reject print() in Python service code. Service code lives
+          under src/, lib/, services/, daemons/, app/, api/. CLI tools
+          under tools/, bin/, scripts/ may use print. Library code that
+          may be imported by a service uses logging. Per CLAUDE.md
+          path_instructions for *.py.
+      - name: no-string-formatted-sql
+        mode: error
+        instructions: |
+          Reject any Python diff that builds SQL via f-string,
+          .format(), or % formatting on identifiers or values that may
+          contain user input. Require parameter binding: `execute(sql,
+          params)`. SQL injection vector. Per CLAUDE.md security
+          baseline.
+      - name: no-hardcoded-secrets
+        mode: error
+        instructions: |
+          Reject any diff that adds string literals matching common
+          secret patterns: AWS access keys (AKIA followed by 16 chars),
+          GitHub tokens (ghp_, ghs_, gho_, github_pat_ prefixes),
+          Anthropic keys (sk-ant- prefix), generic api_key="..." /
+          secret="..." with 20+ char string values. Per CLAUDE.md
+          "Security baseline" - env vars or keychain only.
+      - name: tier-3-edit-requires-anchor
+        mode: error
+        instructions: |
+          For diffs touching Tier-3 paths (CLAUDE.md, skill_pono_*.md,
+          *.service, *.timer, nodecode.py, install.sh, maui-wall/*.py,
+          tools/recall_session.py, tools/foundry_draft.py,
+          tools/session_lane_surface.py, tools/session_branch_marker.py,
+          legal/*, contracts/*, docs/plans/*, HANDOFF-*.md, PHASE-*.md,
+          *-PLAN.md), require: PR body explains the why, cross-refs
+          existing standing orders if changing one, includes a
+          Class-numbered anchor for new rules. Per Class 226 (Tier-3
+          Edit Gate, 2026-05-18).
+      - name: foundation-flawless-smoke-matrix
+        mode: error
+        instructions: |
+          For PRs that change substrate behavior (new endpoint, new
+          pipeline stage, new container, new config category, new
+          flag-detection class, new egress path, new hook), require a
+          smoke matrix document under docs/plans/ in the same PR before
+          merge. Per Class 249 (Foundation-Flawless Before
+          Scope-Addition, 2026-05-24 HARD requirement).
+      - name: ci-bot-hygiene-passes
+        mode: error
+        instructions: |
+          Per CLAUDE.md "CI / Bot / Workflow Hygiene" HARD requirement
+          (2026-05-17), every commit must pass all bots and workflows.
+          Verify the PR's check runs are all green and no dependabot
+          security alerts are introduced before allowing merge.
+      - name: signed-supply-chain-for-production
+        mode: error
+        instructions: |
+          For PRs touching production-class firmware / OS / runtime /
+          distro bases (systems handling physical risk: heat, motion,
+          electric current, identity, money, voice, customer hardware),
+          require the scoring rubric from
+          skill_production_firmware_stack_scorecard.md is present in the
+          PR body or referenced doc. Per CLAUDE.md "Signed-first Supply
+          Chain" HARD requirement (Class 242, 2026-05-23). Production
+          stacks scoring under 20 of 24 MUST NOT merge.
 
   tools:
-    # Free-tier baseline (already on in v1).
     github-checks:
       enabled: true
     languagetool:
-      enabled: false  # noisy; tone_instructions covers what we care about
+      enabled: false
     ruff:
       enabled: true
     markdownlint:
@@ -296,9 +455,7 @@ reviews:
     ast-grep:
       enabled: true
 
-    # Security tier (v2 add). CLAUDE.md "Security baseline" + "Purple team
-    # posture" + Class 242 unsigned-supply-chain disqualifier all demand
-    # secrets + SAST + dep-CVE coverage from day 0.
+    # Security tier - max-strict requires every secrets + SAST + dep scanner on.
     gitleaks:
       enabled: true
     trufflehog:
@@ -312,15 +469,15 @@ reviews:
     trivy:
       enabled: true
     presidio:
-      enabled: true  # PII detection
+      enabled: true
     dotenvLint:
       enabled: true
 
-    # Language-tier (v2 add). On only for languages present in fleet.
+    # Language-tier - every linter on for fleet-present languages.
     pylint:
       enabled: true
     flake8:
-      enabled: false  # ruff covers this
+      enabled: false
     eslint:
       enabled: true
     biome:
@@ -348,7 +505,7 @@ reviews:
     detekt:
       enabled: true
 
-    # Not in fleet (kept explicitly disabled to document intent).
+    # Not in fleet (kept explicitly off to document intent).
     phpstan:
       enabled: false
     phpmd:
@@ -360,15 +517,15 @@ reviews:
     brakeman:
       enabled: false
     pmd:
-      enabled: false  # no Java in fleet
+      enabled: false
     tflint:
-      enabled: false  # no Terraform
+      enabled: false
     circleci:
-      enabled: false  # GH Actions only
+      enabled: false
     regal:
-      enabled: false  # no OPA / Rego
+      enabled: false
     buf:
-      enabled: false  # no protobuf currently
+      enabled: false
     luacheck:
       enabled: false
     smartyLint:
@@ -398,12 +555,8 @@ chat:
 
 knowledge_base:
   opt_out: false
-  # Pro-tier: web context gathering. Lets CR pull docs / CVE info inline.
   web_search:
     enabled: true
-  # Pro-tier: code-guidelines pulls Jack's standing orders into CR's review
-  # context. CLAUDE.md + AGENTS.md + skill_pono_*.md teach CR the Pono
-  # standards directly. Replaces hand-tuned path_instructions over time.
   code_guidelines:
     enabled: true
     filePatterns:
@@ -413,6 +566,9 @@ knowledge_base:
       - "**/AGENTS.md"
       - "skill_pono_*.md"
       - "docs/standards/**/*.md"
+      - "**/CONTRIBUTING.md"
+      - "**/.github/PULL_REQUEST_TEMPLATE.md"
+      - "**/.github/pull_request_template.md"
       - ".cursor/rules/**"
       - ".clinerules/**"
   learnings:
@@ -428,7 +584,6 @@ knowledge_base:
   linear:
     usage: disabled
 
-# Pro-tier: docstring + unit-test generation language + path-aware prompts.
 code_generation:
   docstrings:
     language: en-US
@@ -465,8 +620,6 @@ code_generation:
           Standard testing package. Table-driven tests for >2 cases. Use
           t.Parallel() for independent cases.
 
-# Pro-tier: issue triage + planning. Auto-enrich pulls related context into
-# every new issue; planning generates implementation sketches on `plan` label.
 issue_enrichment:
   auto_enrich:
     enabled: true
