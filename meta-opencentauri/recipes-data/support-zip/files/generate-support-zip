@@ -19,6 +19,6 @@ free > "$TEMP_DIR/free.log"
 df -h  > "$TEMP_DIR/df.log"
 tree /data/overlay-etc/upper > "$TEMP_DIR/overlay-etc-tree.log"
 
-tar -czf "$support_zip_file" "$TEMP_DIR/*.log" /board-resource/*.log* /etc/klipper/config
+tar -czf "$support_zip_file" $TEMP_DIR/*.log /board-resource/*.log* /etc/klipper/config
 rm -rf "$TEMP_DIR"/*.log
 echo "Support zip generated at $support_zip_file"
