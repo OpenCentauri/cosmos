@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+backup_timestamp="$(date +%Y%m%d_%H%M%S)" || return 1
+backup_file="/etc/klipper/config/config_backups/readonly-$backup_timestamp.tar.gz"
+
+tar -czvf "$backup_file" /etc/klipper/config/*-readonly
+rm -rf /data/overlay-etc/upper/klipper/config/*-readonly
+sync
+echo 3 > /proc/sys/vm/drop_caches
+echo "Readonly configs reset to default state"
