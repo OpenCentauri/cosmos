@@ -1,0 +1,24 @@
+#!/bin/sh
+
+set -e
+
+DRIVE_PATH="/tmp/usb/sda1"
+TEMP_DIR="/user-resource/.tmp"
+
+if [ ! -d "$DRIVE_PATH" ]; then
+    echo "No USB drive detected at /tmp/usb/sda1 - Aborting."
+    exit 1
+fi
+
+support_zip_timestamp="$(date +%Y%m%d_%H%M%S)"
+support_zip_file="$DRIVE_PATH/printer-$backup_timestamp.zip"
+
+dmesg > "$TEMP_DIR/dmesg.log"
+ps > "$TEMP_DIR/ps.log"
+free > "$TEMP_DIR/free.log"
+df -h  > "$TEMP_DIR/df.log"
+tree /data/overlay-etc/upper > "$TEMP_DIR/overlay-etc-tree.log"
+
+tar -czf "$support_zip_file" "$TEMP_DIR/*.log" /board-resource/*.log* /etc/klipper/config
+rm -rf "$TEMP_DIR"/*.log
+echo "Support zip generated at $support_zip_file"
