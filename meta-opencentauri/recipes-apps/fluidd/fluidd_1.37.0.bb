@@ -6,10 +6,13 @@ HOMEPAGE = "https://github.com/fluidd-core/fluidd"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://index.html;md5=e465c9484b3a1201b4cff1978e78b863"
 
+inherit python3native
+
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd.zip;downloadfilename=fluidd-${PV}.zip;subdir=fluidd \
     file://fluidd.cfg \
+    file://opencentauri-fluidd-theme \
 "
 SRC_URI[sha256sum] = "b9f003a82ea9061a77c5b2f47c5cdd15c58c8f5f5532960e811be2b01cf0a00b"
 
@@ -31,6 +34,13 @@ do_install() {
     # Install static web files
     install -d ${D}/var/www/fluidd
     cp -r ${S}/* ${D}/var/www/fluidd/
+    install -m 0644 \
+        ${WORKDIR}/opencentauri-fluidd-theme/logo_opencentauri.svg \
+        ${WORKDIR}/opencentauri-fluidd-theme/carbon-logo-red.webp \
+        ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-logo-small.png \
+        ${WORKDIR}/opencentauri-fluidd-theme/opencentauri-theme.css \
+        ${D}/var/www/fluidd/
+    ${PYTHON} ${WORKDIR}/opencentauri-fluidd-theme/apply-opencentauri-fluidd-theme.py ${D}/var/www/fluidd
 
     # Install default fluidd config
     install -d ${D}${sysconfdir}/klipper
