@@ -25,6 +25,7 @@ RDEPENDS:${PN} = " \
     klipper \
     moonraker \
     gui-switcher \
+    generate-support-zip \
 "
 
 INITSCRIPT_NAME = "grumpyscreen"
