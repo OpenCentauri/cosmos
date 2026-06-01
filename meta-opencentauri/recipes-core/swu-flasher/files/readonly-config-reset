@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
+backup_timestamp="$(date +%Y%m%d_%H%M%S)"
+backup_file="$KLIPPER_CONFIG_BACKUP_DIR/readonly-$backup_timestamp.tar.gz"
+
+mkdir -p "$KLIPPER_CONFIG_BACKUP_DIR"
+tar -czf "$backup_file" /etc/klipper/config/*-readonly
+rm -rf /data/overlay-etc/upper/klipper/config/*-readonly
+sync
+echo 3 > /proc/sys/vm/drop_caches
+echo "Readonly configs reset to default state. A reboot may be required for files to reappear."

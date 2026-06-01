@@ -15,7 +15,7 @@ PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
 KLIPPER_CONFIG_VERSION="0.0.6"
 KLIPPER_CONFIG_VERSION_FILE="/etc/klipper-config.ver"
-KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config_backups"
+KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
 export TMPDIR="/user-resource/.tmp"
 
