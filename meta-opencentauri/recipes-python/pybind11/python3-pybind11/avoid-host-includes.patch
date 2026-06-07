@@ -1,0 +1,32 @@
+Upstream-Status: Inappropriate [Yocto specific]
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+
+diff --git a/pybind11/__main__.py b/pybind11/__main__.py
+index 180665c2..3c58b6f6 100644
+--- a/pybind11/__main__.py
++++ b/pybind11/__main__.py
+@@ -1,6 +1,7 @@
+ # pylint: disable=missing-function-docstring
+ 
+ import argparse
++import os
+ import sys
+ import sysconfig
+ 
+@@ -17,7 +18,16 @@ def print_includes() -> None:
+ 
+     # Make unique but preserve order
+     unique_dirs = []
++    incdir1 = os.getenv("STAGING_INCDIR")
++    incdir2 = os.getenv("STAGING_INCDIR_NATIVE")
++    incdir3 = os.getenv("includedir")
+     for d in dirs:
++        if incdir1 is not None:
++            d = d.replace(incdir1 + '/', '')
++        if incdir2 is not None:
++            d = d.replace(incdir2 + '/', '')
++        if incdir3 is not None:
++            d = d.replace(incdir3 + '/', '')
+         if d and d not in unique_dirs:
+             unique_dirs.append(d)
+ 

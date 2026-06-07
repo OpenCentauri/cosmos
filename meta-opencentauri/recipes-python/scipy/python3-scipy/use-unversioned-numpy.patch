@@ -1,0 +1,16 @@
+Upstream-Status: Inappropriate [Yocto specific]
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+
+diff -durpN scipy-1.14.1.old/pyproject.toml scipy-1.14.1/pyproject.toml
+--- scipy-1.14.1.old/pyproject.toml	2024-04-02 20:31:54.000000000 +0200
++++ scipy-1.14.1/pyproject.toml	2024-04-12 09:13:04.910776142 +0200
+@@ -35,8 +35,7 @@
+     # Note that building against numpy 1.x works fine too - users and
+     # redistributors can do this by installing the numpy version they like and
+     # disabling build isolation.
+-    "numpy>=2.0.0rc1,<2.3",
+-    "numpy>=2.1.0rc1; python_version>='3.13'",
++    "numpy",
+ ]
+ 
+ [project]

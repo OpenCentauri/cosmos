@@ -1,0 +1,197 @@
+From 90a173150f3227cdd2c7ea419e642bac2d07aa95 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zolt=C3=A1n=20B=C3=B6sz=C3=B6rm=C3=A9nyi?=
+ <zboszor@gmail.com>
+Date: Wed, 21 Aug 2024 11:36:04 +0200
+Subject: [PATCH] Conditionally import C modules
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+"import _sigtools" and some others fail during target build
+because those C or pyx modules do not exist yet.
+
+Make those imports conditional.
+
+Upstream-Status: Inappropriate [Yocto specific]
+Signed-off-by: Zoltán Böszörményi <zboszor@gmail.com>
+---
+ scipy/signal/__init__.py           | 23 +++++++++++++++--------
+ scipy/signal/_bsplines.py          |  6 +++++-
+ scipy/signal/_fir_filter_design.py |  5 ++++-
+ scipy/signal/_peak_finding.py      | 15 +++++++++------
+ scipy/signal/_signaltools.py       | 20 +++++++++++++++++---
+ scipy/signal/_upfirdn.py           |  5 ++++-
+ scipy/signal/spline.py             |  5 ++++-
+ 7 files changed, 58 insertions(+), 21 deletions(-)
+
+diff --git a/scipy/signal/__init__.py b/scipy/signal/__init__.py
+index d924d0526..df32f0e6b 100644
+--- a/scipy/signal/__init__.py
++++ b/scipy/signal/__init__.py
+@@ -304,18 +304,25 @@ use the classes to create a reusable function instead.
+ 
+ """
+ 
+-from . import _sigtools, windows
++try:
++    from . import _sigtools, windows
++except:
++    pass
++
+ from ._waveforms import *
+ from ._max_len_seq import max_len_seq
+ from ._upfirdn import upfirdn
+ 
+-from ._spline import (
+-    cspline2d,
+-    qspline2d,
+-    sepfir2d,
+-    symiirorder1,
+-    symiirorder2,
+-)
++try:
++    from ._spline import (
++        cspline2d,
++        qspline2d,
++        sepfir2d,
++        symiirorder1,
++        symiirorder2,
++    )
++except:
++    pass
+ 
+ from ._bsplines import *
+ from ._filter_design import *
+diff --git a/scipy/signal/_bsplines.py b/scipy/signal/_bsplines.py
+index c9b136da7..9e4e6254c 100644
+--- a/scipy/signal/_bsplines.py
++++ b/scipy/signal/_bsplines.py
+@@ -3,7 +3,11 @@ from numpy import (asarray, pi, zeros_like,
+                    r_, atleast_1d, sqrt, exp, greater, cos, add, sin)
+ 
+ # From splinemodule.c
+-from ._spline import cspline2d, sepfir2d
++try:
++    from ._spline import cspline2d, sepfir2d
++except:
++    pass
++
+ from ._signaltools import lfilter, sosfilt, lfiltic
+ 
+ from scipy.interpolate import BSpline
+diff --git a/scipy/signal/_fir_filter_design.py b/scipy/signal/_fir_filter_design.py
+index 476df46a0..96b5b8bd7 100644
+--- a/scipy/signal/_fir_filter_design.py
++++ b/scipy/signal/_fir_filter_design.py
+@@ -12,7 +12,10 @@ from scipy.linalg import (toeplitz, hankel, solve, LinAlgError, LinAlgWarning,
+                           lstsq)
+ from scipy.signal._arraytools import _validate_fs
+ 
+-from . import _sigtools
++try:
++    from . import _sigtools
++except:
++    pass
+ 
+ __all__ = ['kaiser_beta', 'kaiser_atten', 'kaiserord',
+            'firwin', 'firwin2', 'remez', 'firls', 'minimum_phase']
+diff --git a/scipy/signal/_peak_finding.py b/scipy/signal/_peak_finding.py
+index 3dbb04126..19e3e39c8 100644
+--- a/scipy/signal/_peak_finding.py
++++ b/scipy/signal/_peak_finding.py
+@@ -7,12 +7,15 @@ import numpy as np
+ from scipy.signal._wavelets import _cwt, _ricker
+ from scipy.stats import scoreatpercentile
+ 
+-from ._peak_finding_utils import (
+-    _local_maxima_1d,
+-    _select_by_peak_distance,
+-    _peak_prominences,
+-    _peak_widths
+-)
++try:
++    from ._peak_finding_utils import (
++        _local_maxima_1d,
++        _select_by_peak_distance,
++        _peak_prominences,
++        _peak_widths
++    )
++except:
++    pass
+ 
+ 
+ __all__ = ['argrelmin', 'argrelmax', 'argrelextrema', 'peak_prominences',
+diff --git a/scipy/signal/_signaltools.py b/scipy/signal/_signaltools.py
+index 620ae3f5a..9aeb46675 100644
+--- a/scipy/signal/_signaltools.py
++++ b/scipy/signal/_signaltools.py
+@@ -12,9 +12,19 @@ from typing import Literal
+ from numpy._typing import ArrayLike
+ 
+ from scipy.spatial import cKDTree
+-from . import _sigtools
++
++try:
++    from . import _sigtools
++except:
++    pass
++
+ from ._ltisys import dlti
+-from ._upfirdn import upfirdn, _output_len, _upfirdn_modes
++
++try:
++    from ._upfirdn import upfirdn, _output_len, _upfirdn_modes
++except:
++    pass
++
+ from scipy import linalg, fft as sp_fft
+ from scipy import ndimage
+ from scipy.fft._helper import _init_nd_shape_and_axes
+@@ -24,7 +34,11 @@ from .windows import get_window
+ from ._arraytools import axis_slice, axis_reverse, odd_ext, even_ext, const_ext
+ from ._filter_design import cheby1, _validate_sos, zpk2sos
+ from ._fir_filter_design import firwin
+-from ._sosfilt import _sosfilt
++
++try:
++    from ._sosfilt import _sosfilt
++except:
++    pass
+ 
+ 
+ __all__ = ['correlate', 'correlation_lags', 'correlate2d',
+diff --git a/scipy/signal/_upfirdn.py b/scipy/signal/_upfirdn.py
+index d64cc142f..f6910e776 100644
+--- a/scipy/signal/_upfirdn.py
++++ b/scipy/signal/_upfirdn.py
+@@ -33,7 +33,10 @@
+ 
+ import numpy as np
+ 
+-from ._upfirdn_apply import _output_len, _apply, mode_enum
++try:
++    from ._upfirdn_apply import _output_len, _apply, mode_enum
++except:
++    pass
+ 
+ __all__ = ['upfirdn', '_output_len']
+ 
+diff --git a/scipy/signal/spline.py b/scipy/signal/spline.py
+index cc15b2e52..e204f8549 100644
+--- a/scipy/signal/spline.py
++++ b/scipy/signal/spline.py
+@@ -4,7 +4,10 @@
+ 
+ import warnings
+ 
+-from . import _spline
++try:
++    from . import _spline
++except:
++    pass
+ 
+ __all__ = [  # noqa: F822
+     'cspline2d', 'qspline2d', 'sepfir2d', 'symiirorder1', 'symiirorder2']
+-- 
+2.46.0
+

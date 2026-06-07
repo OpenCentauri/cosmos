@@ -1,0 +1,25 @@
+From 02b9272248c902740068555ea1f06fd19f9b726a Mon Sep 17 00:00:00 2001
+From: Xabier Marquiegui <xmarquiegui@ainguraiiot.com>
+Date: Tue, 12 Aug 2025 13:13:31 +0200
+Subject: [PATCH] fix: cblas installation ignores the value of NO_CBLAS
+
+---
+ Makefile.install | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile.install b/Makefile.install
+index 6892efa51..5169ad3ff 100644
+--- a/Makefile.install
++++ b/Makefile.install
+@@ -68,7 +68,7 @@ install : 	lib.grd
+ 	@cat common_interface.h >> "$(DESTDIR)$(OPENBLAS_INCLUDE_DIR)/f77blas.h"
+ 	@echo \#endif >> "$(DESTDIR)$(OPENBLAS_INCLUDE_DIR)/f77blas.h"
+ 
+-ifndef NO_CBLAS
++ifneq ($(NO_CBLAS),1)
+ 	@echo Generating cblas.h in $(DESTDIR)$(OPENBLAS_INCLUDE_DIR)
+ 	@cp cblas.h cblas.tmp
+ ifdef SYMBOLPREFIX
+-- 
+2.39.5
+

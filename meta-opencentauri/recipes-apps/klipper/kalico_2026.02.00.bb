@@ -24,6 +24,7 @@ RDEPENDS:${PN} = " \
     python3-markupsafe \
     python3-pyserial \
     python3-numpy \
+    python3-scipy \
     python3-can \
     python3-msgspec \
     kalico-firmware-dsp \
