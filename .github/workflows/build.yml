@@ -65,6 +65,9 @@ jobs:
       - name: Build image
         run: |
           source poky/oe-init-build-env build
+          # Limit parallelism to prevent bitbake server timeout on the CI runner
+          echo 'BB_NUMBER_THREADS = "4"' >> conf/local.conf
+          echo 'PARALLEL_MAKE = "-j4"' >> conf/local.conf
           bitbake opencentauri-upgrade
 
       - name: Upload build artifacts (SWU only)
