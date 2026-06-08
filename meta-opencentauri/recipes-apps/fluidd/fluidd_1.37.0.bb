@@ -11,7 +11,6 @@ inherit python3native
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd.zip;downloadfilename=fluidd-${PV}.zip;subdir=fluidd \
-    file://fluidd.cfg \
     file://opencentauri-fluidd-theme \
 "
 SRC_URI[sha256sum] = "b9f003a82ea9061a77c5b2f47c5cdd15c58c8f5f5532960e811be2b01cf0a00b"
@@ -19,6 +18,7 @@ SRC_URI[sha256sum] = "b9f003a82ea9061a77c5b2f47c5cdd15c58c8f5f5532960e811be2b01c
 S = "${WORKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
+    klipper \
     moonraker \
 "
 
@@ -42,18 +42,8 @@ do_install() {
         ${D}/var/www/fluidd/
     ${PYTHON} ${WORKDIR}/opencentauri-fluidd-theme/apply-opencentauri-fluidd-theme.py ${D}/var/www/fluidd
 
-    # Install default fluidd config
-    install -d ${D}${sysconfdir}/klipper
-    install -d ${D}${sysconfdir}/klipper/config
-    install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
 }
 
 FILES:${PN} = " \
     /var/www/fluidd \
-    ${sysconfdir}/klipper/config/klipper-readonly/fluidd.cfg \
-"
-
-CONFFILES:${PN} = " \
-    ${sysconfdir}/klipper/config/klipper-readonly/fluidd.cfg \
 "
