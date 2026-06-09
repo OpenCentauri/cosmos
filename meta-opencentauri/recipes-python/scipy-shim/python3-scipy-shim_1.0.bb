@@ -6,7 +6,10 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/BSD-3-Clause;md5=550794465ba0ec
 SRC_URI += "file://scipy"
 SRC_URI += "file://tests"
 
-inherit python3-dir setuptools3
+inherit python3-dir
+
+# No do_compile needed — pure Python files, just install them.
+do_compile[noexec] = "1"
 
 do_install:append() {
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
