@@ -19,6 +19,7 @@ free > "$TEMP_DIR/free.log"
 df -h  > "$TEMP_DIR/df.log"
 tree /data/overlay-etc/upper > "$TEMP_DIR/overlay-etc-tree.log"
 lsusb -tvv > "$TEMP_DIR/lsusb.log"
+ip addr > "$TEMP_DIR/ip.log"
 
 tar -czf "$support_zip_file" $TEMP_DIR/*.log /board-resource/*.log* /etc/klipper/config
 rm -rf "$TEMP_DIR"/*.log
