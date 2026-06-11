@@ -24,6 +24,7 @@ RDEPENDS:${PN} = " \
     python3-markupsafe \
     python3-pyserial \
     python3-numpy \
+    python3-scipy-shim \
     python3-can \
     python3-msgspec \
     kalico-firmware-dsp \
@@ -32,6 +33,8 @@ RDEPENDS:${PN} = " \
 "
 
 RPROVIDES:${PN} += "klipper"
+
+INSANE_SKIP:${PN} += "already-stripped"
 
 INITSCRIPT_NAME = "klipper"
 INITSCRIPT_PARAMS = "defaults 95 5"
@@ -99,6 +102,9 @@ do_install() {
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+
+    # Strip debug info from c_helper.so and any other .so files
+    find ${D} -name '*.so' -type f -exec ${TARGET_PREFIX}strip --strip-unneeded {} \;
 }
 
 FILES:${PN} = " \
