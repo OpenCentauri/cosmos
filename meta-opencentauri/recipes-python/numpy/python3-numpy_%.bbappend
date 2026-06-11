@@ -1,4 +1,4 @@
-# Track B — Trim numpy to what Kalico actually uses
+# Point to our replacement files via FILESDIR
 #
 # AUDIT (Task B1):
 #   199 total .py files in klippy/
@@ -14,14 +14,17 @@
 #   Submodules NOT used (safe to prune):
 #     random, f2py, distutils, ma, polynomial, matrixlib,
 #     array_api, typing, testing, _pyinstaller, _pytesttester,
-#     compat, doc, tests
+#     compat, doc, tests, _core, _typing, matlib.py, conftest.py, setup.py
 #
 #   NOTE: numpy.linalg is KEEP'd because z_tilt_ng.py and angle.py use
 #   np.linalg.solve. The plan's abort criterion ("if numpy.linalg appears")
-#   is satisfied, but we re-evaluate: linalg is only ~8M and z_tilt_ng/angle
+#   is satisfied, but we re-evaluate: linalg is only ~2.7M and z_tilt_ng/angle
 #   are legitimate kalico extras. We prune everything else.
 #
-# Expected savings: ~25M installed → ~3-5M in squashfs
+#   lib/ is replaced with a minimal version: only function_base.py (kaiser, interp)
+#   plus minimal stubs for twodim_base (diag), _utils (set_module), _version.
+#   All other lib/ submodules (index_tricks, histograms, npyio, type_check, etc.)
+#   are never used by kalico.
 
 inherit strip-python-sos
 
@@ -32,7 +35,6 @@ SUMMARY:append = " (pruned for hx711s use)"
 do_install:append() {
     # Remove submodules we never use
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/random
-    # rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/linalg   # KEEP: z_tilt_ng.py, angle.py need np.linalg.solve
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/f2py
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/distutils
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/ma
@@ -46,7 +48,33 @@ do_install:append() {
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/compat
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/doc
     rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/tests
-    # Keep: numpy/core, numpy/lib, numpy/fft, numpy/linalg
-    #        plus top-level __init__.py, _globals.py, version.py,
-    #        exceptions.py, dtypes.py, ctypeslib.py, lib/, fft/, linalg/.
+
+    # Remove numpy 2.0 stub layer (numpy/_core is a compat shim, not used at runtime)
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/_core
+
+    # Remove _typing stubs (only needed at type-check time, not runtime)
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/_typing
+
+    # Remove all test directories (never run on device)
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/core/tests
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/lib/tests
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/linalg/tests
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/fft/tests
+
+    # Remove build-time / type-checker artifacts
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/_utils/__pycache__
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/_typing/__pycache__
+    rm -f  ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/conftest.py
+    rm -f  ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/setup.py
+    rm -f  ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/matlib.py
+
+    # Replace lib/ with minimal version: only function_base.py (kaiser, interp)
+    # + minimal stubs for twodim_base (diag), _utils (set_module), _version.
+    # Everything else in lib/ (index_tricks, histograms, npyio, type_check,
+    # nanfunctions, shape_base, stride_tricks, twodim_base, ufunclike,
+    # arraysetops, arraypad, arrayterator, format, scimath, recfunctions, mixins)
+    # is never used by kalico.
+    rm -rf ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/lib
+    install -d ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/lib
+    cp -r ${@os.path.abspath(os.path.join(d.getVar('TOPDIR'), '..', 'meta-opencentauri', 'files', 'numpy-minimal-lib'))}/* ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/lib/
 }
