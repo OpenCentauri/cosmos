@@ -11,6 +11,8 @@
 GRUMPYSCREEN_EXEC=/usr/bin/grumpyscreen
 PIDFILE=/var/run/gui.pid
 
+export CONFIG_FILE=/etc/klipper/config/grumpyscreen.cfg
+
 case "$1" in
     start)
         echo "Starting grumpyscreen..."

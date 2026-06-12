@@ -11,13 +11,12 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "gitsm://github.com/pellcorp/grumpyscreen.git;protocol=https;branch=main \
-    file://0001-Use-printer_data-config-folder.patch \
     file://0002-Change-wording-in-settings-screen.patch \
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
-SRCREV = "bdb8c481bd49b13f9c496434977acf85adbcc451"
-PR = "r0"
+SRCREV = "d7d5132e0ea7f25b36810a701e278c6ccfcfc969"
+PR = "r1"
 
 S = "${WORKDIR}/git"
 
