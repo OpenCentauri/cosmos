@@ -1,0 +1,355 @@
+diff --git a/src/main_panel.cpp b/src/main_panel.cpp
+index 273c58c..2b77add 100644
+--- a/src/main_panel.cpp
++++ b/src/main_panel.cpp
+@@ -44,6 +44,7 @@ MainPanel::MainPanel(KWebSocketClient &websocket,
+   , numpad(Numpad(main_cont))
+   , extruder_panel(ws, lock, numpad, sm)
+   , prompt_panel(websocket, lock, main_cont)
++  , mmu_panel(ws, lock)
+   , spoolman_panel(sm)
+   , temp_cont(lv_obj_create(main_cont))
+   , temp_chart(lv_chart_create(main_cont))
+@@ -51,6 +52,7 @@ MainPanel::MainPanel(KWebSocketClient &websocket,
+   , extrude_btn(main_cont, &filament_img, "Extrude", &MainPanel::_handle_extrude_cb, this)
+   , action_btn(main_cont, &fan, "Fans", &MainPanel::_handle_fanpanel_cb, this)
+   , led_btn(main_cont, &light_img, "LED", &MainPanel::_handle_ledpanel_cb, this)
++  , mmu_btn(main_cont, NULL, "MMU", &MainPanel::_handle_mmu_cb, this)
+   , print_btn(main_cont, &print, "Print", &MainPanel::_handle_print_cb, this)
+   , emergency_btn(main_cont, &emergency, "Stop", &MainPanel::_handle_emergency_cb, this,
+   		  "Do you want to emergency stop?",
+@@ -219,6 +221,13 @@ void MainPanel::handle_emergency_cb(lv_event_t *event) {
+   }
+ }
+ 
++void MainPanel::handle_mmu_cb(lv_event_t *event) {
++  if (lv_event_get_code(event) == LV_EVENT_CLICKED) {
++    LOG_TRACE("clicked MMU");
++    mmu_panel.foreground();
++  }
++}
++
+ void MainPanel::create_main(lv_obj_t * parent) {
+   lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_ROW_WRAP);
+ 
+@@ -238,6 +247,7 @@ void MainPanel::create_main(lv_obj_t * parent) {
+   lv_obj_set_grid_cell(led_btn.get_container(), LV_GRID_ALIGN_CENTER, 3, 1, LV_GRID_ALIGN_CENTER, 1, 1);
+   lv_obj_set_grid_cell(print_btn.get_container(), LV_GRID_ALIGN_CENTER, 2, 1, LV_GRID_ALIGN_CENTER, 2, 1);
+   lv_obj_set_grid_cell(emergency_btn.get_container(), LV_GRID_ALIGN_CENTER, 3, 1, LV_GRID_ALIGN_CENTER, 2, 1);
++  lv_obj_set_grid_cell(mmu_btn.get_container(), LV_GRID_ALIGN_CENTER, 0, 2, LV_GRID_ALIGN_CENTER, 2, 1);
+ 
+   lv_obj_clear_flag(temp_cont, LV_OBJ_FLAG_SCROLLABLE);
+   lv_obj_set_size(temp_cont, LV_PCT(50), LV_PCT(50));
+diff --git a/src/main_panel.h b/src/main_panel.h
+index 721c53d..194c0bd 100644
+--- a/src/main_panel.h
++++ b/src/main_panel.h
+@@ -17,6 +17,7 @@
+ #include "sysinfo_panel.h"
+ #include "print_status_panel.h"
+ #include "spoolman_panel.h"
++#include "mmu_panel.h"
+ #include "lvgl/lvgl.h"
+ 
+ #include <mutex>
+@@ -45,6 +46,7 @@ class MainPanel : public NotifyConsumer {
+   void handle_ledpanel_cb(lv_event_t *event);
+   void handle_print_cb(lv_event_t *event);
+   void handle_emergency_cb(lv_event_t *event);
++  void handle_mmu_cb(lv_event_t *event);
+ 
+   lv_obj_t *create_button(lv_obj_t *parent,
+ 			  const void *btn_img,
+@@ -86,6 +88,11 @@ class MainPanel : public NotifyConsumer {
+       panel->handle_emergency_cb(event);
+     };
+ 
++  static void _handle_mmu_cb(lv_event_t *event) {
++    MainPanel *panel = (MainPanel*)event->user_data;
++    panel->handle_mmu_cb(event);
++  };
++
+  private:
+   void create_main(lv_obj_t *parent);
+   static void _tabview_event_cb(lv_event_t *e);
+@@ -107,6 +114,7 @@ class MainPanel : public NotifyConsumer {
+   Numpad numpad;
+   ExtruderPanel extruder_panel;
+   PromptPanel prompt_panel;
++  MMUPanel mmu_panel;
+   SpoolmanPanel &spoolman_panel;
+   
+   lv_style_t style;
+@@ -120,6 +128,7 @@ class MainPanel : public NotifyConsumer {
+   ButtonContainer extrude_btn;
+   ButtonContainer action_btn;
+   ButtonContainer led_btn;
++  ButtonContainer mmu_btn;
+   ButtonContainer print_btn;
+   ButtonContainer emergency_btn;
+ };
+diff --git a/src/mmu_panel.cpp b/src/mmu_panel.cpp
+new file mode 100644
+index 0000000..a5c1589
+--- /dev/null
++++ b/src/mmu_panel.cpp
+@@ -0,0 +1,206 @@
++#include "mmu_panel.h"
++#include "state.h"
++#include "logger.h"
++
++LV_IMG_DECLARE(back);
++LV_IMG_DECLARE(home);
++
++MMUPanel::MMUPanel(KWebSocketClient &websocket_client, std::mutex &lock)
++  : NotifyConsumer(lock)
++  , ws(websocket_client)
++  , mmu_cont(lv_obj_create(lv_layer_top()))
++  , status_label(lv_label_create(mmu_cont))
++  , tool_label(lv_label_create(mmu_cont))
++  , gate_btns{
++      ButtonContainer(mmu_cont, NULL, "T0", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T1", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T2", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T3", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T4", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T5", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T6", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T7", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T8", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T9", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T10", &MMUPanel::_handle_callback, this),
++      ButtonContainer(mmu_cont, NULL, "T11", &MMUPanel::_handle_callback, this)
++    }
++  , home_btn(mmu_cont, &home, "Home", &MMUPanel::_handle_callback, this)
++  , eject_btn(mmu_cont, NULL, "Eject", &MMUPanel::_handle_callback, this)
++  , recover_btn(mmu_cont, NULL, "Recov", &MMUPanel::_handle_callback, this)
++  , bypass_btn(mmu_cont, NULL, "Bypass", &MMUPanel::_handle_callback, this)
++  , back_btn(mmu_cont, &back, "Back", &MMUPanel::_handle_callback, this)
++  , current_gate(-1)
++  , num_gates(12)
++  , mmu_enabled(false)
++{
++  // Move to background initially (like other panels)
++  lv_obj_move_background(mmu_cont);
++  
++  // Same style as other panels
++  lv_obj_clear_flag(mmu_cont, LV_OBJ_FLAG_SCROLLABLE);
++  lv_obj_set_size(mmu_cont, LV_PCT(100), LV_PCT(100));
++  lv_obj_set_style_pad_all(mmu_cont, 0, 0);
++  
++  // Match main panel background color
++  lv_obj_set_style_bg_color(mmu_cont, lv_palette_darken(LV_PALETTE_GREY, 4), 0);
++  lv_obj_set_style_border_width(mmu_cont, 0, 0);
++
++  // Grid: 6 columns, 5 rows (optimized for 480x272)
++  static lv_coord_t grid_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), 
++                                       LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
++  static lv_coord_t grid_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2), LV_GRID_FR(2), 
++                                       LV_GRID_FR(2), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
++  lv_obj_set_grid_dsc_array(mmu_cont, grid_col_dsc, grid_row_dsc);
++
++  // Row 0: Status labels
++  lv_label_set_text(status_label, "MMU: ---");
++  lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
++  lv_obj_set_grid_cell(status_label, LV_GRID_ALIGN_START, 0, 3, LV_GRID_ALIGN_CENTER, 0, 1);
++  
++  lv_label_set_text(tool_label, "Tool: ---");
++  lv_obj_set_style_text_font(tool_label, &lv_font_montserrat_14, 0);
++  lv_obj_set_grid_cell(tool_label, LV_GRID_ALIGN_START, 3, 3, LV_GRID_ALIGN_CENTER, 0, 1);
++
++  // Row 1: Gates T0-T5
++  for (int i = 0; i < 6; i++) {
++    lv_obj_set_grid_cell(gate_btns[i].get_container(), LV_GRID_ALIGN_CENTER, i, 1, LV_GRID_ALIGN_CENTER, 1, 1);
++  }
++  
++  // Row 2: Gates T6-T11
++  for (int i = 6; i < 12; i++) {
++    lv_obj_set_grid_cell(gate_btns[i].get_container(), LV_GRID_ALIGN_CENTER, i-6, 1, LV_GRID_ALIGN_CENTER, 2, 1);
++  }
++
++  // Row 3: Action buttons (Home, Eject, Recover, Bypass) - 4 buttons in 6 cols
++  lv_obj_set_grid_cell(home_btn.get_container(), LV_GRID_ALIGN_CENTER, 0, 1, LV_GRID_ALIGN_CENTER, 3, 1);
++  lv_obj_set_grid_cell(eject_btn.get_container(), LV_GRID_ALIGN_CENTER, 1, 1, LV_GRID_ALIGN_CENTER, 3, 1);
++  lv_obj_set_grid_cell(recover_btn.get_container(), LV_GRID_ALIGN_CENTER, 2, 1, LV_GRID_ALIGN_CENTER, 3, 1);
++  lv_obj_set_grid_cell(bypass_btn.get_container(), LV_GRID_ALIGN_CENTER, 3, 1, LV_GRID_ALIGN_CENTER, 3, 1);
++
++  // Row 4: Back button (floating)
++  lv_obj_add_flag(back_btn.get_container(), LV_OBJ_FLAG_FLOATING);
++  lv_obj_align(back_btn.get_container(), LV_ALIGN_BOTTOM_LEFT, 10, -10);
++
++  ws.register_notify_update(this);
++}
++
++MMUPanel::~MMUPanel() {
++  if (mmu_cont != NULL) {
++    lv_obj_del(mmu_cont);
++    mmu_cont = NULL;
++  }
++}
++
++void MMUPanel::foreground() {
++  lv_obj_move_foreground(mmu_cont);
++  ws.send_jsonrpc("printer.objects.query", json{{"objects", json::array({"mmu"})}});
++}
++
++void MMUPanel::consume(json &j) {
++  std::lock_guard<std::mutex> lock(lv_lock);
++  
++  auto mmu_status = j["/params/0/mmu"_json_pointer];
++  if (!mmu_status.is_null()) {
++    update_status(mmu_status);
++  }
++}
++
++void MMUPanel::update_status(json &mmu_status) {
++  auto enabled = mmu_status["/enabled"_json_pointer];
++  if (!enabled.is_null()) {
++    mmu_enabled = enabled.template get<bool>();
++  }
++  
++  if (!mmu_enabled) {
++    lv_label_set_text(status_label, "MMU: Disabled");
++    lv_obj_set_style_text_color(status_label, lv_palette_main(LV_PALETTE_GREY), 0);
++    return;
++  }
++
++  // State
++  auto state = mmu_status["/state"_json_pointer];
++  if (!state.is_null()) {
++    std::string state_str = state.template get<std::string>();
++    lv_obj_set_style_text_color(status_label, lv_palette_main(LV_PALETTE_BLUE), 0);
++    
++    if (state_str == "printing") {
++      lv_obj_set_style_text_color(status_label, lv_palette_main(LV_PALETTE_GREEN), 0);
++      lv_label_set_text(status_label, "MMU: Print");
++    } else if (state_str.find("change") != std::string::npos || 
++               state_str == "loading" || state_str == "unloading") {
++      lv_obj_set_style_text_color(status_label, lv_palette_main(LV_PALETTE_ORANGE), 0);
++      lv_label_set_text(status_label, "MMU: Change");
++    } else if (state_str == "error") {
++      lv_obj_set_style_text_color(status_label, lv_palette_main(LV_PALETTE_RED), 0);
++      lv_label_set_text(status_label, "MMU: ERR!");
++    } else {
++      lv_label_set_text_fmt(status_label, "MMU: %s", state_str.c_str());
++    }
++  }
++
++  // Current gate
++  auto gate = mmu_status["/gate"_json_pointer];
++  if (!gate.is_null()) {
++    current_gate = gate.template get<int>();
++    lv_label_set_text_fmt(tool_label, "Tool: T%d", current_gate);
++    
++    for (int i = 0; i < 12; i++) {
++      if (i == current_gate) {
++        lv_obj_set_style_bg_color(gate_btns[i].get_container(), lv_palette_main(LV_PALETTE_GREEN), 0);
++      } else {
++        lv_obj_set_style_bg_color(gate_btns[i].get_container(), lv_palette_main(LV_PALETTE_GREY), 0);
++      }
++    }
++  }
++  
++  // num_gates
++  auto num_gates_val = mmu_status["/num_gates"_json_pointer];
++  if (!num_gates_val.is_null()) {
++    num_gates = num_gates_val.template get<int>();
++    for (int i = 0; i < 12; i++) {
++      if (i < num_gates) {
++        lv_obj_clear_flag(gate_btns[i].get_container(), LV_OBJ_FLAG_HIDDEN);
++      } else {
++        lv_obj_add_flag(gate_btns[i].get_container(), LV_OBJ_FLAG_HIDDEN);
++      }
++    }
++  }
++}
++
++void MMUPanel::handle_callback(lv_event_t *event) {
++  if (lv_event_get_code(event) == LV_EVENT_CLICKED) {
++    lv_obj_t *obj = lv_event_get_target(event);
++    
++    // Gate buttons
++    for (int i = 0; i < 12; i++) {
++      if (obj == gate_btns[i].get_container()) {
++        LOG_INFO("MMU Change Tool T%d", i);
++        ws.send_jsonrpc("printer.gcode.script", 
++          json{{"script", fmt::format("MMU_CHANGE_TOOL TOOL={}", i)}});
++        return;
++      }
++    }
++    
++    if (obj == home_btn.get_container()) {
++      LOG_INFO("MMU Home");
++      ws.send_jsonrpc("printer.gcode.script", json{{"script", "MMU_HOME"}});
++    }
++    else if (obj == eject_btn.get_container()) {
++      LOG_INFO("MMU Eject");
++      ws.send_jsonrpc("printer.gcode.script", json{{"script", "MMU_EJECT"}});
++    }
++    else if (obj == recover_btn.get_container()) {
++      LOG_INFO("MMU Recover");
++      ws.send_jsonrpc("printer.gcode.script", json{{"script", "MMU_RECOVER"}});
++    }
++    else if (obj == bypass_btn.get_container()) {
++      LOG_INFO("MMU Bypass");
++      ws.send_jsonrpc("printer.gcode.script", json{{"script", "MMU_SELECT_BYPASS"}});
++    }
++    else if (obj == back_btn.get_container()) {
++      LOG_INFO("MMU Back");
++      lv_obj_move_background(mmu_cont);
++    }
++  }
++}
+\ No newline at end of file
+diff --git a/src/mmu_panel.h b/src/mmu_panel.h
+new file mode 100644
+index 0000000..d03037c
+--- /dev/null
++++ b/src/mmu_panel.h
+@@ -0,0 +1,45 @@
++#ifndef __MMU_PANEL_H__
++#define __MMU_PANEL_H__
++
++#include "websocket_client.h"
++#include "notify_consumer.h"
++#include "button_container.h"
++#include "lvgl/lvgl.h"
++
++#include <mutex>
++
++class MMUPanel : public NotifyConsumer {
++ public:
++  MMUPanel(KWebSocketClient &ws, std::mutex &lock);
++  ~MMUPanel();
++
++  void consume(json &j);
++  void foreground();
++  void handle_callback(lv_event_t *event);
++
++  static void _handle_callback(lv_event_t *event) {
++    MMUPanel *panel = (MMUPanel*)event->user_data;
++    panel->handle_callback(event);
++  }
++
++ private:
++  void update_status(json &mmu_status);
++
++  KWebSocketClient &ws;
++  lv_obj_t *mmu_cont;
++  lv_obj_t *status_label;
++  lv_obj_t *tool_label;
++  
++  ButtonContainer gate_btns[12];
++  ButtonContainer home_btn;
++  ButtonContainer eject_btn;
++  ButtonContainer recover_btn;
++  ButtonContainer bypass_btn;
++  ButtonContainer back_btn;
++  
++  int current_gate;
++  int num_gates;
++  bool mmu_enabled;
++};
++
++#endif // __MMU_PANEL_H__
+\ No newline at end of file
