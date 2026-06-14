@@ -15,20 +15,24 @@ copy_wpa_config() {
 copy_gcode_files() {
     SRC_DIR="$1"
 
-    mkdir -p /user-resource
+    # Moonraker/virtual_sdcard serve gcodes from /user-resource/gcodes
+    # (/etc/klipper/gcodes is symlinked there). Files copied anywhere else are
+    # not listed in the print interface (issues #158, #80).
+    DEST_DIR="/user-resource/gcodes"
+    mkdir -p "$DEST_DIR"
 
     COPIED=0
-    for file in "$SRC_DIR"/*.gcode; do
+    for file in "$SRC_DIR"/*.gcode "$SRC_DIR"/*.gco "$SRC_DIR"/*.GCODE "$SRC_DIR"/*.GCO; do
         [ -f "$file" ] || continue
         BASENAME=$(basename "$file")
-        [ -f "/user-resource/$BASENAME" ] && continue
+        [ -f "$DEST_DIR/$BASENAME" ] && continue
 
         if [ "$COPIED" -eq 0 ]; then
             uiprompt "Please wait" "Files from the USB are being copied to internal storage, please wait..."
             COPIED=1
         fi
 
-        cp "$file" /user-resource/ || { uiclear; return 1; }
+        cp "$file" "$DEST_DIR/" || { uiclear; return 1; }
     done
 
     [ "$COPIED" -eq 1 ] && uiclear
