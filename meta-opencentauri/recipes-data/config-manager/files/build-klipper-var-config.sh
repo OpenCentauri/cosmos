@@ -15,6 +15,8 @@ camera_led_default_on=$(get_config_value camera_led_default_on)
 heatsoak=$(get_config_value heatsoak)
 adaptive_mesh=$(get_config_value adaptive_mesh)
 adaptive_purge=$(get_config_value adaptive_purge)
+nozzle_z_homing=$(get_config_value nozzle_z_homing)
+z_ideal_lifting_distance=$(get_config_value z_ideal_lifting_distance)
 full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_temperature)
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
@@ -30,6 +32,8 @@ variable_camera_led_default_on: ${camera_led_default_on}
 variable_heatsoak: ${heatsoak}
 variable_adaptive_mesh: ${adaptive_mesh}
 variable_adaptive_purge: ${adaptive_purge}
+variable_nozzle_z_homing: ${nozzle_z_homing}
+variable_z_ideal_lifting_distance: ${z_ideal_lifting_distance}
 variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
