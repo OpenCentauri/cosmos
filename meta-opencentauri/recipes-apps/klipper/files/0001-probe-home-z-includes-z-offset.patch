@@ -1,0 +1,13 @@
+diff --git a/klippy/extras/probe.py b/klippy/extras/probe.py
+index 426d478f..f1dc49b5 100644
+--- a/klippy/extras/probe.py
++++ b/klippy/extras/probe.py
+@@ -602,7 +602,7 @@ class PrinterProbe:
+             toolhead: ToolHead = self.printer.lookup_object("toolhead")
+             toolhead.get_last_move_time()
+             toolhead_pos = toolhead.get_position()
+-            toolhead_pos[2] = toolhead_pos[2] - self.last_z_result
++            toolhead_pos[2] = toolhead_pos[2] - self.last_z_result + self.z_offset
+             toolhead.set_position(toolhead_pos, homing_axes=[2])
+ 
+     cmd_QUERY_PROBE_help = "Return the status of the z-probe"
