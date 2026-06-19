@@ -1,0 +1,85 @@
+diff --git a/klippy/extras/thermistor.py b/klippy/extras/thermistor.py
+index 5cf31c3e..55a655f5 100644
+--- a/klippy/extras/thermistor.py
++++ b/klippy/extras/thermistor.py
+@@ -13,9 +13,10 @@ KELVIN_TO_CELSIUS = -273.15
+ 
+ # Analog voltage to temperature converter for thermistors
+ class Thermistor:
+-    def __init__(self, pullup, inline_resistor):
++    def __init__(self, pullup, inline_resistor, pulldown_resistor):
+         self.pullup = pullup
+         self.inline_resistor = inline_resistor
++        self.pulldown_resistor = pulldown_resistor
+         self.c1 = self.c2 = self.c3 = 0.0
+ 
+     def setup_coefficients(self, t1, r1, t2, r2, t3, r3, name=""):
+@@ -54,11 +55,25 @@ class Thermistor:
+         self.c2 = 1.0 / beta
+         self.c1 = inv_t1 - self.c2 * ln_r1
+ 
++    def _remove_pulldown(self, r):
++        if not self.pulldown_resistor:
++            return r
++        # The ADC sees the thermistor branch in parallel with pulldown_resistor.
++        r = min(r, self.pulldown_resistor * 0.999999)
++        return r * self.pulldown_resistor / (self.pulldown_resistor - r)
++
++    def _apply_pulldown(self, r):
++        if not self.pulldown_resistor:
++            return r
++        return r * self.pulldown_resistor / (r + self.pulldown_resistor)
++
+     def calc_temp(self, adc):
+         # Calculate temperature from adc
+         adc = max(0.00001, min(0.99999, adc))
+         r = self.pullup * adc / (1.0 - adc)
+-        ln_r = math.log(r - self.inline_resistor)
++        r = self._remove_pulldown(r) - self.inline_resistor
++        r = max(0.0000001, r)
++        ln_r = math.log(r)
+         inv_t = self.c1 + self.c2 * ln_r + self.c3 * ln_r**3
+         return 1.0 / inv_t + KELVIN_TO_CELSIUS
+ 
+@@ -75,6 +90,7 @@ class Thermistor:
+         else:
+             ln_r = (inv_t - self.c1) / self.c2
+         r = math.exp(ln_r) + self.inline_resistor
++        r = self._apply_pulldown(r)
+         return r / (self.pullup + r)
+ 
+ 
+@@ -82,7 +98,10 @@ class Thermistor:
+ def PrinterThermistor(config, params):
+     pullup = config.getfloat("pullup_resistor", 4700.0, above=0.0)
+     inline_resistor = config.getfloat("inline_resistor", 0.0, minval=0.0)
+-    thermistor = Thermistor(pullup, inline_resistor)
++    pulldown_resistor = config.getfloat(
++        "pulldown_resistor", params.get("pulldown_resistor", 0.0),
++        minval=0.0)
++    thermistor = Thermistor(pullup, inline_resistor, pulldown_resistor)
+     if "beta" in params:
+         thermistor.setup_coefficients_beta(
+             params["t1"], params["r1"], params["beta"]
+@@ -107,8 +126,12 @@ class CustomThermistor:
+         t1 = config.getfloat("temperature1", minval=KELVIN_TO_CELSIUS)
+         r1 = config.getfloat("resistance1", minval=0.0)
+         beta = config.getfloat("beta", None, above=0.0)
++        pulldown_resistor = config.getfloat(
++            "pulldown_resistor", 0.0, minval=0.0)
+         if beta is not None:
+-            self.params = {"t1": t1, "r1": r1, "beta": beta}
++            self.params = {
++                "t1": t1, "r1": r1, "beta": beta,
++                "pulldown_resistor": pulldown_resistor}
+             return
+         t2 = config.getfloat("temperature2", minval=KELVIN_TO_CELSIUS)
+         r2 = config.getfloat("resistance2", minval=0.0)
+@@ -122,6 +145,7 @@ class CustomThermistor:
+             "r2": r2,
+             "t3": t3,
+             "r3": r3,
++            "pulldown_resistor": pulldown_resistor,
+         }
+ 
+     def create(self, config):
