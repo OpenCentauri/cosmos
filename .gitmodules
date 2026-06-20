@@ -1,7 +1,7 @@
 [submodule "poky"]
 	path = poky
-	url = https://git.yoctoproject.org/poky
-	branch = scarthgap
+	url = https://github.com/OpenCentauri/cosmos-poky.git
+	branch = scarthgap-crate-ua-fix
 [submodule "meta-sunxi"]
 	path = meta-sunxi
 	url = https://github.com/linux-sunxi/meta-sunxi
