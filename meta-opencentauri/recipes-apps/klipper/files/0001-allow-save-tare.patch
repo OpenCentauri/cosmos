@@ -1,0 +1,46 @@
+diff --git a/klippy/extras/load_cell/load_cell.py b/klippy/extras/load_cell/load_cell.py
+index 1482d8d2..701bc4c4 100644
+--- a/klippy/extras/load_cell/load_cell.py
++++ b/klippy/extras/load_cell/load_cell.py
+@@ -72,6 +72,13 @@ class LoadCellCommandHelper:
+             self.cmd_LOAD_CELL_TARE,
+             desc=self.cmd_LOAD_CELL_TARE_help,
+         )
++        gcode.register_mux_command(
++            "LOAD_CELL_SAVE_TARE",
++            "LOAD_CELL",
++            name,
++            self.cmd_LOAD_CELL_SAVE_TARE,
++            desc=self.cmd_LOAD_CELL_SAVE_TARE_help,
++        )
+         gcode.register_mux_command(
+             "LOAD_CELL_CALIBRATE",
+             "LOAD_CELL",
+@@ -112,6 +119,27 @@ class LoadCellCommandHelper:
+                 % (tare_percent, tare_counts)
+             )
+ 
++    cmd_LOAD_CELL_SAVE_TARE_help = (
++        "Tare the load cell and save the result as reference_tare_counts. "
++        "Run SAVE_CONFIG to persist to printer.cfg."
++    )
++
++    def cmd_LOAD_CELL_SAVE_TARE(self, gcmd):
++        counts_per_gram = self.load_cell.counts_per_gram
++        if counts_per_gram is None:
++            raise gcmd.error(
++                "Load cell has no counts_per_gram calibration. "
++                "Run LOAD_CELL_CALIBRATE first."
++            )
++        tare_counts = self.load_cell.avg_counts()
++        # Updates runtime state (reference_tare_counts, tare_force) and
++        # stages the write to printer.cfg for the next SAVE_CONFIG.
++        self.load_cell.set_calibration(counts_per_gram, tare_counts)
++        gcmd.respond_info(
++            "Load cell reference tare set to %i counts. "
++            "Run SAVE_CONFIG to persist." % (tare_counts,)
++        )
++
+     cmd_CALIBRATE_LOAD_CELL_help = "Start interactive calibration tool"
+ 
+     def cmd_LOAD_CELL_CALIBRATE(self, gcmd):
