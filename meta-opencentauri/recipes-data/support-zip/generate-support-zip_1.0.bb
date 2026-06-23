@@ -8,7 +8,7 @@ inherit allarch
 
 do_install() {
 	install -d ${D}${bindir}
-	install -m 0755 ${WORKDIR}/generate-support-zip ${D}${bindir}/generate-support-zip
+	install -m 0755 ${UNPACKDIR}/generate-support-zip ${D}${bindir}/generate-support-zip
 }
 
 FILES:${PN} = "${bindir}/generate-support-zip"
