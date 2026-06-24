@@ -8,7 +8,7 @@
 #include "sun8i-t113s.dtsi"
 
 / {
-	model = "Elegoo Centauri Carbon 1";
+	model = "Elegoo Centauri Carbon 2";
 	compatible = "widora,mangopi-mq-r-t113", "allwinner,sun8i-t113s";
 
 	aliases {
