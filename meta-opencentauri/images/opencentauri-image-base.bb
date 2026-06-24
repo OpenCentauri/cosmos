@@ -48,10 +48,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     dragonbreath \
 "
 
-CORE_IMAGE_EXTRA_INSTALL:append:elegoo-centauri-carbon1 = " \
-    rtw88 \
-"
-
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
 INITRAMFS_FSTYPES = "cpio.gz"
 INITRAMFS_IMAGE_BUNDLE = "1"

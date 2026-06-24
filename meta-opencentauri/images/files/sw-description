@@ -17,10 +17,10 @@ software =
                     sha256 = "$swupdate_get_sha256(bootA.img)"
                 },
                 {
-                    filename = "opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.squashfs";
+                    filename = "opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs";
                     device = "/dev/mmcblk0p8";
                     installed-directly = true;
-                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.squashfs)"
+                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs)"
                 },
                 {
                     filename = "u-boot-sunxi-with-spl.bin";
@@ -59,7 +59,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@SERIAL_CONSOLES@@ earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
                     name = "bootcmd_";
@@ -102,10 +102,10 @@ software =
                     sha256 = "$swupdate_get_sha256(bootA.img)"
                 },
                 {
-                    filename = "opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.squashfs";
+                    filename = "opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs";
                     device = "/dev/mmcblk0p5";
                     installed-directly = true;
-                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.squashfs)"
+                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs)"
                 },
                 {
                     filename = "u-boot-sunxi-with-spl.bin";
@@ -144,7 +144,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=ttyS0,115200 earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@SERIAL_CONSOLES@@ earlycon=uart8250,mmio32,0x02500000 root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
                     name = "bootcmd_";

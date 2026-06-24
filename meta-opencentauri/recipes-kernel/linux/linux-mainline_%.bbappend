@@ -5,7 +5,8 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 SRC_URI:append = " \
-	file://elegoo-centauri-carbon.dts;subdir=linux-${PV}/arch/${ARCH}/boot/dts/allwinner \
+	file://elegoo-centauri-carbon1.dts;subdir=linux-${PV}/arch/${ARCH}/boot/dts/allwinner \
+	file://elegoo-centauri-carbon2.dts;subdir=linux-${PV}/arch/${ARCH}/boot/dts/allwinner \
 	file://sunxi-r528-msgbox.c;subdir=linux-${PV}/drivers/mailbox \
 	file://sunxi_r528_remoteproc.c;subdir=linux-${PV}/drivers/remoteproc \
 	file://0001-Add-elegoo-centauri-carbon.dts.patch \
