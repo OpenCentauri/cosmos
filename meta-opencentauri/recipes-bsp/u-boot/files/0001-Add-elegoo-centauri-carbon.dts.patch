@@ -6,18 +6,19 @@ Subject: [PATCH] Add elegoo-centauri-carbon.dts
 Signed-off-by: James Turton <james.turton@gmx.com>
 Upstream-Status: Pending [Not submitted to upstream yet]
 ---
- arch/arm/dts/Makefile | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm/dts/Makefile | 3 ++
+ 1 file changed, 3 insertions(+)
 
 diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
 index e54213f9599..d0ceb213c12 100644
 --- a/arch/arm/dts/Makefile
 +++ b/arch/arm/dts/Makefile
-@@ -1199,6 +1199,8 @@ dtb-$(CONFIG_TARGET_SC594_SOM_EZLITE) += sc594-som-ezlite.dtb
+@@ -1199,6 +1199,9 @@ dtb-$(CONFIG_TARGET_SC594_SOM_EZLITE) += sc594-som-ezlite.dtb
  dtb-$(CONFIG_TARGET_SC598_SOM_EZKIT) += sc598-som-ezkit.dtb
  dtb-$(CONFIG_TARGET_SC598_SOM_EZLITE) += sc598-som-ezlite.dtb
  
-+dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon.dtb
++dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon1.dtb
++dtb-$(CONFIG_MACH_SUN8I_R528) += elegoo-centauri-carbon2.dtb
 +
  ifneq ($(CONFIG_TARGET_IMX8MP_RSB3720A1_4G)$(CONFIG_TARGET_IMX8MP_RSB3720A1_6G),)
  dtb-y += imx8mp-rsb3720-a1.dtb

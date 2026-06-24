@@ -4,18 +4,19 @@ Date: Mon, 16 Feb 2026 22:16:21 +0100
 Subject: [PATCH] Add elegoo-centauri-carbon.dts
 
 ---
- arch/arm/boot/dts/allwinner/Makefile | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm/boot/dts/allwinner/Makefile | 2 +
+ 1 file changed, 2 insertion(+)
 
 diff --git a/arch/arm/boot/dts/allwinner/Makefile b/arch/arm/boot/dts/allwinner/Makefile
 index 296be33ec..c103a1ef9 100644
 --- a/arch/arm/boot/dts/allwinner/Makefile
 +++ b/arch/arm/boot/dts/allwinner/Makefile
-@@ -199,6 +199,7 @@ DTC_FLAGS_sun8i-h3-orangepi-pc := -@
+@@ -199,6 +199,8 @@ DTC_FLAGS_sun8i-h3-orangepi-pc := -@
  DTC_FLAGS_sun8i-h3-bananapi-m2-plus-v1.2 := -@
  DTC_FLAGS_sun8i-h3-orangepi-pc-plus := -@
  dtb-$(CONFIG_MACH_SUN8I) += \
-+	elegoo-centauri-carbon.dtb \
++	elegoo-centauri-carbon1.dtb \
++	elegoo-centauri-carbon2.dtb \
  	sun8i-a23-evb.dtb \
  	sun8i-a23-gt90h-v4.dtb \
  	sun8i-a23-inet86dz.dtb \
