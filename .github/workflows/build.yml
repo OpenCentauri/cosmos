@@ -62,23 +62,41 @@ jobs:
           version="${version:0:10}"
           sed -i -E "s/^DISTRO_VERSION = \".*\"/DISTRO_VERSION = \"${version}\"/" meta-opencentauri/conf/distro/cosmos.conf
 
-      - name: Build image
+      - name: Build CC1 image
         run: |
           source openembedded-core/oe-init-build-env build
           bitbake opencentauri-upgrade
 
-      - name: Upload build artifacts (SWU only)
+      - name: Build CC2 image
+        run: |
+          source openembedded-core/oe-init-build-env build-cc2
+          MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-upgrade
+
+      - name: Upload build artifacts CC1 (SWU only)
         uses: actions/upload-artifact@v4
         with:
           name: CC1 Firmware
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
 
-      - name: Upload build artifacts
+      - name: Upload build artifacts CC2 (SWU only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CC2 Firmware
+          path: build-cc2/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
+
+      - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}
         uses: actions/upload-artifact@v4
         with:
           name: elegoo-centauri-carbon1-images
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/
+
+      - name: Upload build artifacts CC2
+        if: ${{ inputs.upload_all_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: elegoo-centauri-carbon2-images
+          path: build-cc2/tmp/deploy/images/elegoo-centauri-carbon2/
 
       - name: Write back cache
         if: ${{ inputs.write_back_cache }}
