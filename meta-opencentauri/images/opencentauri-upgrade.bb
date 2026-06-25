@@ -9,14 +9,13 @@ SRC_URI = " \
 IMAGE_DEPENDS = "opencentauri-image-mmc virtual/kernel u-boot"
 
 SWUPDATE_IMAGES = " \
-    opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs \
+    opencentauri-image-mmc \
     bootA \
     bootlogos \
     u-boot-sunxi-with-spl \
 "
 
-SWUPDATE_IMAGES_FSTYPES[opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs] = ".squashfs"
-SWUPDATE_IMAGES_NOAPPEND_MACHINE[opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs] = "1"
+SWUPDATE_IMAGES_FSTYPES[opencentauri-image-mmc] = ".rootfs.squashfs"
 
 SWUPDATE_IMAGES_FSTYPES[bootA] = ".img"
 SWUPDATE_IMAGES_NOAPPEND_MACHINE[bootA] = "1"
@@ -28,6 +27,6 @@ SWUPDATE_IMAGES_FSTYPES[u-boot-sunxi-with-spl] = ".bin"
 SWUPDATE_IMAGES_NOAPPEND_MACHINE[u-boot-sunxi-with-spl] = "1"
 
 SWUPDATE_SIGNING = "RSA"
-SWUPDATE_PRIVATE_KEY = "${THISDIR}/files/swupdate_private.pem"
+SWUPDATE_PRIVATE_KEY = "${THISDIR}/files/${MACHINE}/swupdate_private.pem"
 
 inherit swupdate
