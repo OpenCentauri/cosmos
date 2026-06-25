@@ -18,5 +18,3 @@ KERNEL_MODULE_PROBECONF += "rtw_core"
 module_conf_rtw_core = "options rtw_core disable_lps_deep=Y"
 
 RDEPENDS:${PN} += "linux-firmware-rtl8821"
-
-COMPATIBLE_MACHINE = "elegoo-centauri-carbon1"

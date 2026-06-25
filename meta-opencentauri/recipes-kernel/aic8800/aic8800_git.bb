@@ -19,5 +19,3 @@ do_install:append() {
 }
 
 FILES:${PN} += "/lib/firmware/aic8800D80"
-
-COMPATIBLE_MACHINE = "elegoo-centauri-carbon1"
