@@ -64,12 +64,12 @@ jobs:
 
       - name: Build CC1 image
         run: |
-          source openembedded-core/oe-init-build-env build
-          bitbake opencentauri-upgrade
+          TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
+          MACHINE=elegoo-centauri-carbon1 bitbake opencentauri-upgrade
 
       - name: Build CC2 image
         run: |
-          source openembedded-core/oe-init-build-env build-cc2
+          TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
           MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-upgrade
 
       - name: Upload build artifacts CC1 (SWU only)
@@ -82,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CC2 Firmware
-          path: build-cc2/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
+          path: build/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
 
       - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}
@@ -96,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: elegoo-centauri-carbon2-images
-          path: build-cc2/tmp/deploy/images/elegoo-centauri-carbon2/
+          path: build/tmp/deploy/images/elegoo-centauri-carbon2/
 
       - name: Write back cache
         if: ${{ inputs.write_back_cache }}
