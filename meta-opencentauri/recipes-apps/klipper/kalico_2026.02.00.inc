@@ -11,6 +11,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=rpmsg-
     file://0001-Don-t-write-tmp-files-to-ramdisk.patch \
     file://0001-implement-pulldown-resistor-in-thermistor-calc.patch \
     file://0001-probe-home-z-includes-z-offset.patch \
+    file://0001-force-specific-input-shaper.patch \
 "
 SRCREV = "afe7178d0859f3cbc80e591473f86ee64183122b"
 

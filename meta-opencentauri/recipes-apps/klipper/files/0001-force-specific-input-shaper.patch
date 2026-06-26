@@ -1,0 +1,34 @@
+diff --git a/klippy/extras/resonance_tester.py b/klippy/extras/resonance_tester.py
+index 87948530..72d81c4a 100644
+--- a/klippy/extras/resonance_tester.py
++++ b/klippy/extras/resonance_tester.py
+@@ -9,7 +9,7 @@ import os
+ import time
+ from contextlib import contextmanager
+ 
+-from . import shaper_calibrate
++from . import shaper_calibrate, shaper_defs
+ 
+ 
+ class TestAxis:
+@@ -541,6 +541,12 @@ class ResonanceTester:
+         max_smoothing = gcmd.get_float(
+             "MAX_SMOOTHING", self.max_smoothing, minval=0.05
+         )
++        force_shaper = gcmd.get("FORCE_SHAPER", None)
++        if force_shaper is not None:
++            force_shaper = force_shaper.lower()
++            supported_shapers = [s.name for s in shaper_defs.INPUT_SHAPERS]
++            if force_shaper not in supported_shapers:
++                raise gcmd.error(f"Unsupported shaper type: {force_shaper}")
+ 
+         name_suffix = gcmd.get("NAME", time.strftime("%Y%m%d_%H%M%S"))
+         if not self.is_valid_name_suffix(name_suffix):
+@@ -575,6 +581,7 @@ class ResonanceTester:
+                 calibration_data[axis],
+                 max_smoothing=max_smoothing,
+                 scv=scv,
++                shapers=[force_shaper] if force_shaper is not None else None,
+                 max_freq=max_freq,
+                 logger=gcmd.respond_info,
+             )
