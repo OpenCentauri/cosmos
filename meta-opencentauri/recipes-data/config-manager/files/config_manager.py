@@ -20,6 +20,7 @@ VALIDATORS = {
         'heatsoak': [str(x / 10) for x in range(100)] + [str(x) for x in range(31)],
         'adaptive_mesh': ['True', 'False'],
         'adaptive_purge': ['True', 'False'],
+        'unload_after_print': ['True', 'False'],
         'nozzle_z_homing': ['True', 'False'],
         'z_ideal_lifting_distance': [str(i) for i in range(257)],
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
