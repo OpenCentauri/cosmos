@@ -1,0 +1,97 @@
+From 0e90d3d558a119af3239519e105778c8a5bd3d16 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Sat, 27 Jun 2026 10:50:56 +0200
+Subject: [PATCH] Memory optimisation in shaper_calibrate
+
+---
+ klippy/extras/shaper_calibrate.py | 50 ++++++++++++++++++++++---------
+ 1 file changed, 36 insertions(+), 14 deletions(-)
+
+diff --git a/klippy/extras/shaper_calibrate.py b/klippy/extras/shaper_calibrate.py
+index 230e2f58..457d3632 100644
+--- a/klippy/extras/shaper_calibrate.py
++++ b/klippy/extras/shaper_calibrate.py
+@@ -147,25 +147,31 @@ class ShaperCalibrate:
+         window = np.kaiser(nfft, 6.0)
+         # Compensation for windowing loss
+         scale = 1.0 / (window**2).sum()
++        window = window[:, None]
+ 
+         # Split into overlapping windows of size nfft
+         overlap = nfft // 2
+         x = self._split_into_windows(x, nfft, overlap)
++        n_windows = x.shape[-1]
++
++        # Accumulate the response over windows in small batches to keep
++        # peak memory usage low
++        psd = np.zeros(nfft // 2 + 1)
++        batch = 64
++        for start in range(0, n_windows, batch):
++            win = x[:, start : start + batch]
++            # First detrend, then apply windowing function
++            win = window * (win - win.mean(axis=0))
++            # Calculate frequency response for each window using FFT
++            result = np.fft.rfft(win, n=nfft, axis=0)
++            psd += (result.real**2 + result.imag**2).sum(axis=-1)
+ 
+-        # First detrend, then apply windowing function
+-        x = window[:, None] * (x - np.mean(x, axis=0))
+-
+-        # Calculate frequency response for each window using FFT
+-        result = np.fft.rfft(x, n=nfft, axis=0)
+-        result = np.conjugate(result) * result
+-        result *= scale / fs
++        # Welch's algorithm: average response over windows
++        psd *= scale / (fs * n_windows)
+         # For one-sided FFT output the response must be doubled, except
+         # the last point for unpaired Nyquist frequency (assuming even nfft)
+         # and the 'DC' term (0 Hz)
+-        result[1:-1, :] *= 2.0
+-
+-        # Welch's algorithm: average response over windows
+-        psd = result.real.mean(axis=-1)
++        psd[1:-1] *= 2.0
+ 
+         # Calculate the frequency bins
+         freqs = np.fft.rfftfreq(nfft, 1.0 / fs)
+@@ -177,14 +183,19 @@ class ShaperCalibrate:
+             return None
+         if isinstance(raw_values, np.ndarray):
+             data = raw_values
++            N = data.shape[0]
++            T = float(data[-1, 0]) - float(data[0, 0])
+         else:
+             samples = raw_values.get_samples()
+             if not samples:
+                 return None
+-            data = np.array(samples)
++            # Measure the time span at full precision before packing the
++            # samples into a compact single-precision array
++            N = len(samples)
++            T = samples[-1][0] - samples[0][0]
++            data = np.asarray(samples, dtype=np.float32)
++            del samples
+ 
+-        N = data.shape[0]
+-        T = data[-1, 0] - data[0, 0]
+         SAMPLING_FREQ = N / T
+         # Round up to the nearest power of 2 for faster FFT
+         M = 1 << int(SAMPLING_FREQ * WINDOW_T_SEC - 1).bit_length()
+@@ -199,6 +210,17 @@ class ShaperCalibrate:
+         return CalibrationData(fx, px + py + pz, px, py, pz)
+ 
+     def process_accelerometer_data(self, data):
++        np = self.numpy
++        if not isinstance(data, np.ndarray):
++            samples = data.get_samples()
++            if samples:
++                # Pack the samples into a compact single-precision array; only
++                # the first and last timestamps are used, so set them at full
++                # precision to keep the sampling frequency accurate
++                data = np.asarray(samples, dtype=np.float32)
++                data[0, 0] = 0.0
++                data[-1, 0] = samples[-1][0] - samples[0][0]
++                del samples
+         calibration_data = self.background_process_exec(
+             self.calc_freq_response, (data,)
+         )
