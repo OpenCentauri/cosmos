@@ -1,6 +1,6 @@
 /.vscode
 
 # Yocto build artifacts (generated locally)
-/build
+/build*
 
 __pycache__
