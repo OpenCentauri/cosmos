@@ -57,17 +57,17 @@ Choose the appropriate image type based on your target boot media:
 When building the USB image, the MMC environment storage options must be removed from the U-Boot defconfig for your target machine. These settings cause U-Boot to store its environment on the internal eMMC, which conflicts with USB boot.
 
 For **CC1**, edit:
-- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon1/elegoo_centauri_carbon_defconfig`
+- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo_centauri_carbon1_defconfig`
 
 For **CC2**, edit:
-- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo-centauri-carbon2/elegoo_centauri_carbon_defconfig`
+- `meta-opencentauri/recipes-bsp/u-boot/files/elegoo_centauri_carbon2_defconfig`
 
 Remove (or ensure absent) these configuration options:
 ```
 CONFIG_ENV_IS_IN_MMC=y
 CONFIG_ENV_OFFSET=0x1A66000
 CONFIG_ENV_OFFSET_REDUND=0x1AA5000
-CONFIG_SYS_REDUNDAND_ENVIRONMENT=y
+CONFIG_ENV_REDUNDANT=y
 ```
 
 This is required for proper USB boot functionality.
@@ -81,9 +81,9 @@ This is required for proper USB boot functionality.
 ## How to Build
 
 1. **Initialize the build environment:**
-   Source the environment setup script provided by Poky to prepare your shell for BitBake.
+   Source the environment setup script provided by Openembedded Core to prepare your shell for BitBake.
    ```bash
-   source poky/oe-init-build-env build
+   TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
    ```
 
 2. **Configure your target (if needed):**
@@ -206,6 +206,6 @@ bitbake <image-target>
 For a complete clean build (removes all build artifacts):
 ```bash
 rm -rf tmp/
-source poky/oe-init-build-env build
+source openembedded-core/oe-init-build-env build
 bitbake <image-target>
 ```
