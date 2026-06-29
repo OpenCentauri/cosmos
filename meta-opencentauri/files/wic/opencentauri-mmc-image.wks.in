@@ -4,18 +4,18 @@
 # with Allwinner arm (32-bit) SoC family
 #
 
-part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"      --no-table                             --align 8
-part /boot-resource  --source rootfs            --ondisk mmcblk0 --fstype=vfat     --label bootlogos      --fixed-size 6300k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
-part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env" --fixed-size 251k     --offset 27032k  --align 1
-part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env" --fixed-size 251k     --offset 27284k  --align 1
-part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA          --fixed-size 6299k    --offset 27536k  --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                        --fixed-size 131125k  --offset 33836k  --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0A          --fixed-size 1007k    --offset 165002k --align 1
-part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootB          --fixed-size 6299k    --offset 166010k --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                        --fixed-size 131125k  --offset 172310k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0B          --fixed-size 1007k    --offset 303476k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label rootfs_data    --fixed-size 131125k  --offset 304484k --align 1
-part /board-resource --source empty             --ondisk mmcblk0 --fstype=ext4     --label user           --fixed-size 131125k  --offset 435650k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label private        --fixed-size 1007k    --offset 566816k --align 1
-part /user-resource  --source empty             --ondisk mmcblk0 --fstype=ext4     --label UDISK          --fixed-size 6903263k --offset 567824k --align 1
+part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"           --no-table                             --align 8
+part /boot-resource  --source rootfs            --ondisk mmcblk0 --fstype=vfat     --label bootlogos           --fixed-size 6300k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --fixed-size 251k     --offset 27032k  --align 1
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --fixed-size 251k     --offset 27284k  --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA               --fixed-size 6299k    --offset 27536k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --fixed-size 131125k  --offset 33836k  --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0A               --fixed-size 1007k    --offset 165002k --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootB               --fixed-size 6299k    --offset 166010k --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --fixed-size 131125k  --offset 172310k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0B               --fixed-size 1007k    --offset 303476k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label rootfs_data         --fixed-size 131125k  --offset 304484k --align 1
+part /board-resource --source empty             --ondisk mmcblk0 --fstype=ext4     --label user                --fixed-size 131125k  --offset 435650k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label private             --fixed-size 1007k    --offset 566816k --align 1
+part /user-resource  --source empty             --ondisk mmcblk0 --fstype=ext4     --label UDISK               --fixed-size 6903263k --offset 567824k --align 1
 bootloader --ptable gpt
