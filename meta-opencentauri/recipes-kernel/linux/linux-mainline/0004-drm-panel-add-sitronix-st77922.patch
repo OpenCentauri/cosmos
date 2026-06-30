@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Tue, 30 Jun 2026 00:00:00 +0000
+Subject: [PATCH] drm/panel: add Sitronix ST77922 MIPI-DSI panel driver
+
+Wire the out-of-tree panel-sitronix-st77922.c driver (added to the tree
+via SRC_URI) into the DRM panel Kconfig and Makefile. The driver supports
+the Sitronix ST77922 controller as used on the Elegoo Centauri Carbon 2
+display, ported from the Espressif esp_lcd_st77922 component.
+
+Signed-off-by: James Turton <james.turton@gmx.com>
+---
+ drivers/gpu/drm/panel/Kconfig  | 11 +++++++++++
+ drivers/gpu/drm/panel/Makefile |  1 +
+ 2 files changed, 12 insertions(+)
+
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index 1111111111111..2222222222222 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -988,4 +988,16 @@ config DRM_PANEL_XINPENG_XPP055C272
+ 	  Say Y here if you want to enable support for the Xinpeng
+ 	  XPP055C272 controller for 720x1280 LCD panels with MIPI/RGB/SPI
+ 	  system interfaces.
++
++config DRM_PANEL_SITRONIX_ST77922
++	tristate "Sitronix ST77922-based MIPI-DSI panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for the Sitronix ST77922
++	  controller for MIPI-DSI panels, such as the display fitted to the
++	  Elegoo Centauri Carbon 2.  To compile this driver as a module,
++	  choose M here.
++
+ endmenu
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index 3333333333333..4444444444444 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -86,5 +86,6 @@ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7701) += panel-sitronix-st7701.o
+ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7703) += panel-sitronix-st7703.o
+ obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
++obj-$(CONFIG_DRM_PANEL_SITRONIX_ST77922) += panel-sitronix-st77922.o
+ obj-$(CONFIG_DRM_PANEL_SYNAPTICS_R63353) += panel-synaptics-r63353.o
+ obj-$(CONFIG_DRM_PANEL_SONY_ACX565AKM) += panel-sony-acx565akm.o
+ obj-$(CONFIG_DRM_PANEL_SONY_TD4353_JDI) += panel-sony-td4353-jdi.o
+--
+2.43.0
