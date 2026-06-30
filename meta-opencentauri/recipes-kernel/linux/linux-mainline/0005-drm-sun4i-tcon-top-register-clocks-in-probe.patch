@@ -1,0 +1,75 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Tue, 30 Jun 2026 00:00:00 +0000
+Subject: [PATCH] drm/sun4i: tcon_top: register reset/clocks in probe
+
+TCON TOP registers its clock gates (including the DSI "mod" clock used by
+the A100/D1/T113 MIPI-DSI controller) in its component bind callback. The
+sun6i-mipi-dsi controller, however, fetches that "mod" clock in its own
+platform probe, which runs before the sun4i-drm component master binds the
+pipeline. The result is a deadlock specific to the D1/T113 DSI path:
+
+  - DSI probe can't get the mod clock -> -EPROBE_DEFER, so it never calls
+    component_add();
+  - the component master therefore never has all its components and never
+    binds;
+  - so TCON TOP bind never runs and never registers the mod clock.
+
+Boot logs show this as endless:
+  sun6i-mipi-dsi 5450000.dsi: Couldn't get the DSI mod clock
+  platform 5450000.dsi: deferred probe pending
+
+Break the cycle by running the TCON TOP clock setup at probe time (reusing
+the existing bind body) and turning the component bind into a stub, so the
+clocks exist before any consumer probes. This mirrors the long-standing
+out-of-tree fix from the Allwinner R40/D1 DSI work.
+
+Signed-off-by: James Turton <james.turton@gmx.com>
+---
+ drivers/gpu/drm/sun4i/sun8i_tcon_top.c | 27 ++++++++++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+index 1111111111111..2222222222222 100644
+--- a/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
++++ b/drivers/gpu/drm/sun4i/sun8i_tcon_top.c
+@@ -249,15 +249,35 @@ static void sun8i_tcon_top_unbind(struct device *dev, struct device *master,
+ 	clk_disable_unprepare(tcon_top->bus);
+ 	reset_control_assert(tcon_top->rst);
+ }
+
++static int sun8i_tcon_top_dummy_bind(struct device *dev, struct device *master,
++				     void *data)
++{
++	return 0;
++}
++
+ static const struct component_ops sun8i_tcon_top_ops = {
+-	.bind	= sun8i_tcon_top_bind,
++	.bind	= sun8i_tcon_top_dummy_bind,
+ 	.unbind	= sun8i_tcon_top_unbind,
+ };
+
+ static int sun8i_tcon_top_probe(struct platform_device *pdev)
+ {
+-	return component_add(&pdev->dev, &sun8i_tcon_top_ops);
++	int ret;
++
++	/*
++	 * Register the TCON TOP reset, bus clock and clock gates (including
++	 * the DSI "mod" clock) at probe rather than at DRM component bind.
++	 * The MIPI-DSI controller fetches that clock during its own probe,
++	 * which runs before the sun4i-drm component master binds the
++	 * pipeline; registering it at bind deadlocks DSI probe.  Reuse the
++	 * existing bind body directly here.
++	 */
++	ret = sun8i_tcon_top_bind(&pdev->dev, NULL, NULL);
++	if (ret)
++		return ret;
++
++	return component_add(&pdev->dev, &sun8i_tcon_top_ops);
+ }
+
+ static void sun8i_tcon_top_remove(struct platform_device *pdev)
+--
+2.43.0
