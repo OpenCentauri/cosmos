@@ -9,9 +9,12 @@ SRC_URI:append = " \
 	file://elegoo-centauri-carbon2.dts;subdir=linux-${PV}/arch/${ARCH}/boot/dts/allwinner \
 	file://sunxi-r528-msgbox.c;subdir=linux-${PV}/drivers/mailbox \
 	file://sunxi_r528_remoteproc.c;subdir=linux-${PV}/drivers/remoteproc \
+	file://panel-sitronix-st77922.c;subdir=linux-${PV}/drivers/gpu/drm/panel \
 	file://0001-Add-elegoo-centauri-carbon.dts.patch \
 	file://0001-Add-support-for-r528-msgbox-and-remoteproc.patch \
 	file://0002-drm-add-RB-channel-swap-support-for-panels-with-swap.patch \
+	file://0004-drm-panel-add-sitronix-st77922.patch \
+	file://0005-drm-sun4i-tcon-top-register-clocks-in-probe.patch \
 	file://fragment.cfg \
 	file://0001-dt-bindings-pwm-Add-binding-for-Allwinner-D1-T113-S3.patch \
 	file://0002-pwm-Add-Allwinner-s-D1-T113-S3-R329-SoCs-PWM-support.patch \
