@@ -44,7 +44,7 @@ case "$1" in
                 exit 0
             else
                 echo "Attempting bootloader upgrade..."
-                if mcu-flasher --canvas --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
+                if mcu-flasher --canvas --timeout 10 --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
                     sleep 3
                     echo "Bootloader deployer flashed successfully, clearing installed version."
                     rm -f $INSTALLED_VERSION
