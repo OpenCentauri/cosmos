@@ -206,6 +206,14 @@ static int st77922_enable(struct drm_panel *panel)
 	 */
 	ctx->desc->init_sequence(&dsi_ctx);
 
+	/*
+	 * The vendor disp.ko init table does not include COLMOD, so the panel
+	 * is left at its power-on default (typically RGB565). Force RGB888 to
+	 * match the DSI host configuration and MIPI_DSI_FMT_RGB888.
+	 */
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_PIXEL_FORMAT, 0x77);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_ADDRESS_MODE, 0x00);
+
 	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
 	mipi_dsi_msleep(&dsi_ctx, 120);
 
