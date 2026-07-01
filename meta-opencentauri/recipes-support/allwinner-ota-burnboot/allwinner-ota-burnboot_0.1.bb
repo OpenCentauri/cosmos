@@ -7,6 +7,11 @@ SRC_URI = "git://github.com/jamesturton/allwinner-ota-burnboot.git;protocol=http
 SRCREV = "abb7920b78ce6616cef9e4bf8fce32d8edcdd45f"
 PR = "r1"
 
+# The upstream Makefile's `clean` target uses `rm` without `-f`, so the base
+# class's `oe_runmake clean` fails on a fresh source tree. There is no real
+# configure step, so skip it.
+do_configure[noexec] = "1"
+
 do_install() {
     install -d ${D}${libdir}
     install -m 0755 ${S}/libota-burnboot.so ${D}${libdir}/
