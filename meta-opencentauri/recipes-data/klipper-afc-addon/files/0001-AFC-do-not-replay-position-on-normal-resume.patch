@@ -1,0 +1,69 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: OpenCentauri <noreply@opencentauri.local>
+Date: Wed, 1 Jul 2026 00:00:00 +0000
+Subject: [PATCH] AFC: do not replay position on normal resume
+
+AFC_RESUME replaces the normal RESUME command during PREP, so a paused
+printer reaching cmd_AFC_RESUME does not imply that AFC caused the pause.
+
+The existing temp_is_paused check is always true because the function has
+already returned when the printer is not paused. As a result, AFC always
+restores its own saved position after running the user's renamed RESUME
+macro. On configs where the renamed RESUME runs RESUME_BASE and parks or
+primes at a tray first, this creates a second resume move from AFC's saved
+state and can replay stale coordinates.
+
+Only run AFC's restore_pos path when AFC was actually in an error state.
+For normal pause/resume, the renamed RESUME macro and Klipper RESUME_BASE
+own position recovery.
+
+Upstream-Status: Pending
+---
+ extras/AFC_error.py | 22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/extras/AFC_error.py b/extras/AFC_error.py
+index 0d2f0f1..deba260 100644
+--- a/extras/AFC_error.py
++++ b/extras/AFC_error.py
+@@ -218,8 +218,10 @@ class afcError:
+             self.logger.debug("AFC_RESUME: Printer not paused, not executing resume code")
+             return
+ 
+-        # Save current pause state
+-        temp_is_paused = self.afc.function.is_paused()
++        # AFC_RESUME wraps both normal and AFC error resumes. Being paused here
++        # is expected for both cases, so do not use the pause flag to decide
++        # whether AFC should replay its own saved toolhead position.
++        restore_afc_position = self.afc.error_state
+ 
+         # Verify that printer is in absolute mode
+         self.afc.function.check_absolute_mode("AFC_RESUME")
+@@ -236,12 +238,22 @@ class afcError:
+         self.afc.function.log_toolhead_pos()
+         self.afc.gcode.run_script_from_command("{macro_name} {user_params}".format(macro_name=self.AFC_RENAME_RESUME_NAME, user_params=gcmd.get_raw_command_parameters()))
+ 
+-        # The only time our resume should restore position is if there was an error that caused the pause
+-        if self.afc.error_state or temp_is_paused or self.afc.position_saved:
++        # If the user's resume macro aborted before RESUME_BASE, leave AFC state
++        # intact so the next resume attempt still has the saved position.
++        if self.afc.function.is_paused():
++            self.logger.debug("AFC_RESUME: User resume did not clear pause; leaving saved position")
++            return
++
++        # The only time our resume should restore position is if there was an
++        # AFC error that caused the pause. Normal pause/resume position recovery
++        # is handled by the user's renamed RESUME macro / RESUME_BASE.
++        if restore_afc_position:
+             self.set_error_state(False)
+             self.afc.restore_pos(False)
+             self.pause = False
+-
++        else:
++            self.afc.position_saved = False
++
+         self.logger.debug("RESUME-Error State: {}, Is Paused {}, Position_saved {}, in toolchange: {}".format(
+             self.afc.error_state, self.afc.function.is_paused(), self.afc.position_saved, self.afc.in_toolchange ))
+ 
+-- 
+2.43.0

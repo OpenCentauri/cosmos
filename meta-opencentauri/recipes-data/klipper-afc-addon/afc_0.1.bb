@@ -8,6 +8,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/suchmememanyskill/AFC-Klipper-Add-On.git;protocol=https;branch=DEV \
+    file://0001-AFC-do-not-replay-position-on-normal-resume.patch \
     file://afc.cfg \
     file://canvas.cfg \
 "
