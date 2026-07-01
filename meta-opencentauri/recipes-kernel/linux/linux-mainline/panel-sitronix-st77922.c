@@ -77,9 +77,9 @@ static void st77922_init_sequence(struct mipi_dsi_multi_context *dsi_ctx)
 {
 	/*
 	 * The vendor disp.ko table starts with 0xD0 0x80 before the CMD2
-	 * page-select. This command was accidentally dropped in the initial
-	 * transcription and is required for the panel to lock its internal
-	 * timing correctly.
+	 * page-select. Include it verbatim for parity with the stock driver;
+	 * its exact function is undocumented but it is part of the reference
+	 * bring-up sequence.
 	 */
 	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xD0, 0x80);
 
@@ -194,8 +194,10 @@ static int st77922_prepare(struct drm_panel *panel)
 
 	/*
 	 * Vendor reset sequence (active-low). The probe hook already asserted
-	 * reset so the panel stays in reset while supplies ramp. Now match the
-	 * stock disp.ko timing: deassert 10ms, assert 10ms, deassert 120ms.
+	 * reset so the panel stays in reset while supplies ramp. After the
+	 * regulators are stable, we reproduce the disp.ko pulse shape: a
+	 * 10ms deassert, a 10ms assert, and a final 120ms deassert before the
+	 * DSI host starts sending commands.
 	 */
 	usleep_range(10000, 20000);
 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
@@ -388,8 +390,17 @@ static int st77922_probe(struct mipi_dsi_device *dsi)
 	if (IS_ERR(ctx->reset_gpio))
 		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
 				     "Failed to get reset gpio\n");
+	/*
+	 * Hold the panel in reset from probe until prepare() has enabled the
+	 * regulators and released the reset pulse. Active-low GPIO -> high
+	 * logical value asserts reset.
+	 */
 
-	/* Both supplies are optional; absent ones resolve to a dummy. */
+	/*
+	 * Both supplies are described in the DT. devm_regulator_get() returns
+	 * -ENODEV if a named supply is missing, so the driver is only usable on
+	 * boards that provide both vdd and iovcc (the CC2 DT does).
+	 */
 	ctx->vdd = devm_regulator_get(dev, "vdd");
 	if (IS_ERR(ctx->vdd))
 		return dev_err_probe(dev, PTR_ERR(ctx->vdd),
