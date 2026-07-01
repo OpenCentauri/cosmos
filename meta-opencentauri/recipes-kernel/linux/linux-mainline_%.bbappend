@@ -20,3 +20,7 @@ SRC_URI:append = " \
 	file://0002-pwm-Add-Allwinner-s-D1-T113-S3-R329-SoCs-PWM-support.patch \
 	file://0003-riscv-dts-allwinner-d1-Add-pwm-node.patch \
 "
+
+SRC_URI:append:elegoo-centauri-carbon2 = " \
+	file://cc2-mipi.cfg \
+"
