@@ -16,8 +16,6 @@ SRC_URI = "file://aic8800_fw \
            file://calibmode_8800d80.bin \
            file://aic_userconfig_8800d80.txt"
 
-S = "${WORKDIR}"
-
 inherit allarch
 
 do_install() {
