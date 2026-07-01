@@ -19,3 +19,5 @@ do_install:append() {
 }
 
 FILES:${PN} += "/lib/firmware/aic8800D80"
+
+RDEPENDS:${PN} += "aic8800-firmware"
