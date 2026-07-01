@@ -291,12 +291,15 @@ static const struct st77922_panel_desc st77922_desc = {
 	.mode = &st77922_mode,
 	.lanes = 1,
 	/*
-	 * Video mode (vendor lcd_dsi_if=0), no EoT packet (lcd_dsi_eotp=0).
-	 * MIPI_DSI_MODE_VIDEO_SYNC_PULSE is intentionally omitted: the vendor
-	 * BSP gives no evidence for sync-pulse packetisation, and burst mode
-	 * is the safer default for sun6i-dsi with this panel.
+	 * Burst video mode with sync pulses (vendor lcd_dsi_if=0,
+	 * lcd_dsi_eotp=0). VIDEO_BURST allows the host to transmit pixel
+	 * data at maximum lane speed; VIDEO_SYNC_PULSE ensures sync events
+	 * are sent as null packets during blanking rather than being elided,
+	 * which some panels require even in burst mode.
 	 */
 	.mode_flags = MIPI_DSI_MODE_VIDEO |
+		      MIPI_DSI_MODE_VIDEO_BURST |
+		      MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 		      MIPI_DSI_MODE_LPM |
 		      MIPI_DSI_MODE_NO_EOT_PACKET,
 	.format = MIPI_DSI_FMT_RGB888,
