@@ -60,6 +60,24 @@
 		vin-supply = <&reg_vcc5v>;
 	};
 
+	wifi_pwrseq: wifi-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		reset-gpios = <&pio 6 7 GPIO_ACTIVE_LOW>; /* PG7 - WL_REG_ON */
+		clocks = <&ccu CLK_FANOUT2>;
+		clock-names = "ext_clock";
+		assigned-clocks = <&ccu CLK_FANOUT2>;
+		assigned-clock-parents = <&ccu CLK_FANOUT_32K>;
+		pinctrl-0 = <&clk_pg12_pin>;
+		pinctrl-names = "default";
+	};
+
+	rfkill-bt {
+		compatible = "rfkill-gpio";
+		label = "bt";
+		radio-type = "bluetooth";
+		shutdown-gpios = <&pio 6 18 GPIO_ACTIVE_HIGH>; /* PG18 - BT_RST_N */
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pwm 7 20000 0>;
@@ -176,6 +194,25 @@
 	clock-frequency = <24000000>;
 };
 
+/* SDIO WiFi module (vendor: sdc1, WL_HOSTWAKE on PG6) */
+&mmc1 {
+	pinctrl-0 = <&mmc1_pins>;
+	pinctrl-names = "default";
+	vmmc-supply = <&reg_3v3>;
+	vqmmc-supply = <&reg_3v3>;
+	mmc-pwrseq = <&wifi_pwrseq>;
+	bus-width = <4>;
+	non-removable;
+	status = "okay";
+
+	wifi: wifi@1 {
+		reg = <1>;
+		interrupt-parent = <&pio>;
+		interrupts = <6 6 IRQ_TYPE_LEVEL_LOW>; /* PG6 - WL_HOSTWAKE */
+		interrupt-names = "host-wake";
+	};
+};
+
 &mmc2 {
 	pinctrl-0 = <&mmc2_pins>;
 	pinctrl-names = "default";
@@ -247,6 +284,12 @@
 	i2c2_pins: i2c2-pins {
 		pins = "PB0", "PB1";
 		function = "i2c2";
+	};
+
+	/* 32.768 kHz clock output for the WiFi/BT module */
+	clk_pg12_pin: clk-pg12-pin {
+		pins = "PG12";
+		function = "clk";
 	};
 };
 

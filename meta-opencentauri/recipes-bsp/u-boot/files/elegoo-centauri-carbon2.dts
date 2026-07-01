@@ -36,6 +36,15 @@
 		vin-supply = <&reg_vcc5v>;
 	};
 
+	reg_1v8: regulator-1v8 {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-1v8";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+		vin-supply = <&reg_3v3>;
+	};
+
 	/* SY8008 DC/DC regulator on the board, also supplying VDD-SYS */
 	reg_vcc_core: regulator-core {
 		compatible = "regulator-fixed";
@@ -69,17 +78,16 @@
 };
 
 &mmc2 {
-    pinctrl-0 = <&mmc2_pins>;
-    pinctrl-names = "default";
-    vmmc-supply = <&reg_3v3>;
-    vqmmc-supply = <&reg_3v3>;
-    no-1-8-v;
-    cap-mmc-highspeed;
-    non-removable;
-    cap-mmc-hw-reset;
-    bus-width = <8>;
-    max-frequency = <52000000>;
-    status = "okay";
+	pinctrl-0 = <&mmc2_pins>;
+	pinctrl-names = "default";
+	vmmc-supply = <&reg_3v3>;
+	vqmmc-supply = <&reg_1v8>;
+	cap-mmc-highspeed;
+	non-removable;
+	cap-mmc-hw-reset;
+	bus-width = <4>;
+	max-frequency = <52000000>;
+	status = "okay";
 };
 
 &ohci1 {
@@ -88,6 +96,7 @@
 
 &pio {
 	vcc-pb-supply = <&reg_3v3>;
+	vcc-pc-supply = <&reg_1v8>;
 	vcc-pd-supply = <&reg_3v3>;
 	vcc-pe-supply = <&reg_3v3>;
 	vcc-pf-supply = <&reg_3v3>;
