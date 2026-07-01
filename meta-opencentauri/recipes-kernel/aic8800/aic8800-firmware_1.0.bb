@@ -21,17 +21,17 @@ inherit allarch
 do_install() {
     install -d ${D}/lib/firmware/rtlbt
     # AIC8800 BT firmware; the AIC driver hardcodes /lib/firmware/rtlbt/
-    install -m 0644 ${S}/aic8800_fw ${D}/lib/firmware/rtlbt/aic8800_fw
-    install -m 0644 ${S}/aic8800_config ${D}/lib/firmware/rtlbt/aic8800_config
+    install -m 0644 ${WORKDIR}/aic8800_fw ${D}/lib/firmware/rtlbt/aic8800_fw
+    install -m 0644 ${WORKDIR}/aic8800_config ${D}/lib/firmware/rtlbt/aic8800_config
 
     install -d ${D}/lib/firmware/aic8800D80
-    install -m 0644 ${S}/aic_powerlimit_8800d80.txt ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/fmacfw_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/fw_patch_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/fw_patch_table_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/lmacfw_rf_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/calibmode_8800d80.bin ${D}/lib/firmware/aic8800D80/
-    install -m 0644 ${S}/aic_userconfig_8800d80.txt ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/aic_powerlimit_8800d80.txt ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/fmacfw_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/fw_patch_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/fw_patch_table_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/lmacfw_rf_8800d80_u02.bin ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/calibmode_8800d80.bin ${D}/lib/firmware/aic8800D80/
+    install -m 0644 ${WORKDIR}/aic_userconfig_8800d80.txt ${D}/lib/firmware/aic8800D80/
 }
 
 FILES:${PN} += "/lib/firmware/rtlbt/* /lib/firmware/aic8800D80/*"
