@@ -75,6 +75,14 @@ static inline struct st77922 *panel_to_st77922(struct drm_panel *panel)
  */
 static void st77922_init_sequence(struct mipi_dsi_multi_context *dsi_ctx)
 {
+	/*
+	 * The vendor disp.ko table starts with 0xD0 0x80 before the CMD2
+	 * page-select. This command was accidentally dropped in the initial
+	 * transcription and is required for the panel to lock its internal
+	 * timing correctly.
+	 */
+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xD0, 0x80);
+
 	/* ===================== CMD2 ===================== */
 	mipi_dsi_dcs_write_seq_multi(dsi_ctx, ST77922_PAGE_CMD2, 0x00);
 	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x00, 0x00, 0x00);
@@ -174,8 +182,6 @@ static int st77922_prepare(struct drm_panel *panel)
 	struct st77922 *ctx = panel_to_st77922(panel);
 	int ret;
 
-	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-
 	ret = regulator_enable(ctx->iovcc);
 	if (ret < 0)
 		return dev_err_probe(ctx->dev, ret, "Failed to enable iovcc\n");
@@ -186,7 +192,15 @@ static int st77922_prepare(struct drm_panel *panel)
 		return dev_err_probe(ctx->dev, ret, "Failed to enable vdd\n");
 	}
 
-	/* Power-stabilise, then release reset (active-low). */
+	/*
+	 * Vendor reset sequence (active-low). The probe hook already asserted
+	 * reset so the panel stays in reset while supplies ramp. Now match the
+	 * stock disp.ko timing: deassert 10ms, assert 10ms, deassert 120ms.
+	 */
+	usleep_range(10000, 20000);
+	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
+	usleep_range(10000, 20000);
+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 	usleep_range(10000, 20000);
 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
 	msleep(120);
@@ -232,6 +246,7 @@ static int st77922_enable(struct drm_panel *panel)
 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
 	/* Tearing-effect line on, V-blank only (ESP sent 0x35 0x00). */
 	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
+	mipi_dsi_msleep(&dsi_ctx, 100);
 
 	return dsi_ctx.accum_err;
 }
