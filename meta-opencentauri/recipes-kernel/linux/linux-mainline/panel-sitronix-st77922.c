@@ -217,6 +217,18 @@ static int st77922_enable(struct drm_panel *panel)
 	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
 	mipi_dsi_msleep(&dsi_ctx, 120);
 
+	/*
+	 * Explicitly program the active address window to match the DRM mode
+	 * (532 columns, 300 rows). The vendor init table does not issue these
+	 * standard DCS commands, so the panel power-on default may not match.
+	 *   columns: 0x0000..0x0213  (531 = 0x213)
+	 *   rows:    0x0000..0x012B  (299 = 0x12B)
+	 */
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_COLUMN_ADDRESS,
+				     0x00, 0x00, 0x02, 0x13);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_PAGE_ADDRESS,
+				     0x00, 0x00, 0x01, 0x2B);
+
 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
 	/* Tearing-effect line on, V-blank only (ESP sent 0x35 0x00). */
 	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
@@ -278,9 +290,15 @@ static const struct drm_display_mode st77922_mode = {
 static const struct st77922_panel_desc st77922_desc = {
 	.mode = &st77922_mode,
 	.lanes = 1,
-	/* video mode (vendor lcd_dsi_if=0), no EoT packet (lcd_dsi_eotp=0) */
-	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
-		      MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET,
+	/*
+	 * Video mode (vendor lcd_dsi_if=0), no EoT packet (lcd_dsi_eotp=0).
+	 * MIPI_DSI_MODE_VIDEO_SYNC_PULSE is intentionally omitted: the vendor
+	 * BSP gives no evidence for sync-pulse packetisation, and burst mode
+	 * is the safer default for sun6i-dsi with this panel.
+	 */
+	.mode_flags = MIPI_DSI_MODE_VIDEO |
+		      MIPI_DSI_MODE_LPM |
+		      MIPI_DSI_MODE_NO_EOT_PACKET,
 	.format = MIPI_DSI_FMT_RGB888,
 	.init_sequence = st77922_init_sequence,
 };
