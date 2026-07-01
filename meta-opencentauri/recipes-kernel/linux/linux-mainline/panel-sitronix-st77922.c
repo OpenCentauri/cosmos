@@ -264,14 +264,20 @@ static int st77922_unprepare(struct drm_panel *panel)
  * Centauri Carbon 2 panel timing, derived from the vendor BSP disp2 lcd0 node:
  *   lcd_x 532, lcd_y 300, lcd_dclk_freq 20 MHz
  *   lcd_ht 714, lcd_hbp 84, lcd_hspw 4  -> hfp 98, hsync 4, hbp 80
- *   lcd_vt 462, lcd_vbp 24, lcd_vspw 4  -> vfp 138, vsync 4, vbp 20
- * 714 x 462 @ 20 MHz pixel clock -> ~60 Hz. At 24bpp / 1 lane this is
- * ~480 Mbps, close to the ESP reference PHY rate (500 Mbps).
+ *   lcd_vt 462, lcd_vbp 24, lcd_vspw 4
  *
- * The init sequence in st77922_init_sequence() was extracted from the CC2
- * vendor disp.ko (st77922_panel .data offset 0x4348) and is specific to the
- * 532x300 CC2 glass. Do not substitute the Espressif 480x480 reference
- * sequence without re-verifying on CC2 hardware.
+ * Note on vertical blanking interpretation:
+ *   The Allwinner BSP field lcd_vbp=24 counts from the start of the vertical
+ *   blanking region and includes the sync pulse (lcd_vspw=4).  In DRM
+ *   convention the back-porch is the guard band *after* VSync (where the
+ *   panel PLL re-locks) and the front-porch is *before* VSync.  Mapping:
+ *     vfp = lcd_vbp - lcd_vspw = 24 - 4 = 20   (lines before VSync)
+ *     vbp = lcd_vt - lcd_y - lcd_vbp = 462-300-24 = 138 (lines after VSync)
+ *   A 138-line VBP gives the ST77922 sufficient time to re-lock after each
+ *   frame; the original mapping (VFP=138, VBP=20) was too short and caused
+ *   the panel to repeatedly lose sync.
+ *
+ * 714 x 462 @ 20 MHz pixel clock -> ~60 Hz.
  */
 static const struct drm_display_mode st77922_mode = {
 	.clock		= 20000,
@@ -280,9 +286,9 @@ static const struct drm_display_mode st77922_mode = {
 	.hsync_end	= 532 + 98 + 4,
 	.htotal		= 532 + 98 + 4 + 80,
 	.vdisplay	= 300,
-	.vsync_start	= 300 + 138,
-	.vsync_end	= 300 + 138 + 4,
-	.vtotal		= 300 + 138 + 4 + 20,
+	.vsync_start	= 300 + 20,
+	.vsync_end	= 300 + 20 + 4,
+	.vtotal		= 300 + 20 + 4 + 138,
 	.width_mm	= 110,	/* vendor lcd_width  = 0x6e */
 	.height_mm	= 62,	/* vendor lcd_height = 0x3e */
 };
@@ -291,14 +297,13 @@ static const struct st77922_panel_desc st77922_desc = {
 	.mode = &st77922_mode,
 	.lanes = 1,
 	/*
-	 * Burst video mode with sync pulses (vendor lcd_dsi_if=0,
-	 * lcd_dsi_eotp=0). VIDEO_BURST allows the host to transmit pixel
-	 * data at maximum lane speed; VIDEO_SYNC_PULSE ensures sync events
-	 * are sent as null packets during blanking rather than being elided,
-	 * which some panels require even in burst mode.
+	 * Sync-pulse video mode (vendor lcd_dsi_if=0), no EoT packet
+	 * (lcd_dsi_eotp=0). VIDEO_BURST is intentionally omitted: burst
+	 * mode compresses blanking periods and caused the panel to lose
+	 * frame sync (rapid flashing). Plain sync-pulse mode preserves
+	 * the full blanking intervals the ST77922 requires.
 	 */
 	.mode_flags = MIPI_DSI_MODE_VIDEO |
-		      MIPI_DSI_MODE_VIDEO_BURST |
 		      MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 		      MIPI_DSI_MODE_LPM |
 		      MIPI_DSI_MODE_NO_EOT_PACKET,
