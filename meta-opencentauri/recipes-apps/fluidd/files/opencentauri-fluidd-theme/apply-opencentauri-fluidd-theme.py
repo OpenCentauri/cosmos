@@ -190,6 +190,48 @@ def patch_state_chunk(webroot):
     raise RuntimeError(f"{webroot}/assets: expected hardcoded default theme not found in any state chunk")
 
 
+def patch_dashboard_position_panel(webroot):
+    """Patch the dashboard toolhead position panel to show the E coordinate."""
+    bundles = sorted((webroot / "assets").glob("Dashboard-*.js"))
+    if len(bundles) != 1:
+        raise RuntimeError(f"{webroot}: expected exactly one assets/Dashboard-*.js bundle, found {len(bundles)}")
+
+    path = bundles[0]
+    text = path.read_text()
+
+    old_live_position = (
+        "get livePosition(){return this.$typedState.printer.printer.motion_report?.live_position??[0,0,0]}"
+    )
+    new_live_position = (
+        "get livePosition(){return this.$typedState.printer.printer.motion_report?.live_position??[0,0,0,0]}"
+    )
+    text = replace_once(text, old_live_position, new_live_position, path)
+
+    z_position_readout = (
+        "t(s,{staticClass:`pr-1 pl-1`,attrs:{cols:`3`}},[t(at,{attrs:{"
+        "color:e.forceMoveEnabled?`error`:`primary`,label:`Z [ ${e.livePosition[2].toFixed(3)} ]`,"
+        "rules:[e.$rules.required,e.$rules.numberValid],outlined:``,"
+        '"persistent-placeholder":``,"hide-details":``,dense:``,small:``,type:`number`,'
+        "disabled:!e.klippyReady||!e.zHomed&&!e.zForceMove,readonly:e.printerPrinting,"
+        "value:e.useGcodeCoords?e.gcodePosition[2].toFixed(3):e.toolheadPosition[2].toFixed(3)},"
+        "on:{submit:function(t){return e.moveAxisTo(`Z`,+t)}}})],1),"
+    )
+    e_position_readout = (
+        "t(s,{staticClass:`pl-1`,attrs:{cols:`3`}},[t(at,{attrs:{color:`primary`,"
+        "label:`E [ ${(e.livePosition[3]??0).toFixed(2)} ]`,outlined:``,"
+        '"persistent-placeholder":``,"hide-details":``,dense:``,small:``,type:`number`,'
+        "disabled:!e.klippyReady,readonly:!0,"
+        "value:((e.useGcodeCoords?e.gcodePosition[3]:e.toolheadPosition[3])??0).toFixed(2)}})],1),"
+    )
+    text = replace_once(text, z_position_readout, z_position_readout + e_position_readout, path)
+
+    old_positioning_column = "t(s,{staticClass:`pl-1`,attrs:{cols:`3`}},[t(Ze,{staticClass:`d-flex`"
+    new_positioning_column = "t(s,{staticClass:`pt-2`,attrs:{cols:`12`}},[t(Ze,{staticClass:`d-flex`"
+    text = replace_once(text, old_positioning_column, new_positioning_column, path)
+
+    path.write_text(text)
+
+
 def verify_assets(webroot):
     for name in (ICON_SRC, WORDMARK_SRC, LOGO_SRC, THEME_CSS):
         path = webroot / name
@@ -208,6 +250,7 @@ def main():
     patch_config(webroot)
     patch_main_bundle(webroot)
     patch_state_chunk(webroot)
+    patch_dashboard_position_panel(webroot)
 
 
 if __name__ == "__main__":
