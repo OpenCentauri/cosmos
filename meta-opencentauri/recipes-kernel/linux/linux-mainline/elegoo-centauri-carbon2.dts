@@ -176,6 +176,27 @@
 	clock-frequency = <24000000>;
 };
 
+&mmc1 {
+	pinctrl-0 = <&mmc1_pins>;
+	pinctrl-names = "default";
+	vmmc-supply = <&reg_3v3>;
+	vqmmc-supply = <&reg_1v8>;
+	bus-width = <4>;
+	non-removable;
+	broken-cd;
+	cap-sd-highspeed;
+	no-sd;
+	no-mmc;
+	cap-sdio-irq;
+	max-frequency = <150000000>;
+	status = "okay";
+
+	wifi@0 {
+		reg = <0>;
+		compatible = "aicsemi,aic8800d80";
+	};
+};
+
 &mmc2 {
 	pinctrl-0 = <&mmc2_pins>;
 	pinctrl-names = "default";
@@ -247,6 +268,16 @@
 	i2c2_pins: i2c2-pins {
 		pins = "PB0", "PB1";
 		function = "i2c2";
+	};
+
+	mmc1_pins: mmc1-pins {
+		pins = "PG0", "PG1", "PG2", "PG3", "PG4", "PG5";
+		function = "mmc1";
+	};
+
+	mmc2_pins: mmc2-pins {
+		pins = "PC2", "PC3", "PC4", "PC5", "PC6", "PC7";
+		function = "mmc2";
 	};
 };
 
