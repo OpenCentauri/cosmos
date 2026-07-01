@@ -369,7 +369,7 @@
 	pinctrl-0 = <&i2c2_pins>;
 
 	touchscreen@55 {
-		compatible = "sitronix,st1633";	/* TODO: confirm st1633 vs st1232 */
+		compatible = "sitronix,st1633";
 		reg = <0x55>;
 		interrupt-parent = <&pio>;
 		interrupts = <4 1 IRQ_TYPE_LEVEL_LOW>; /* INT (PE1) */
