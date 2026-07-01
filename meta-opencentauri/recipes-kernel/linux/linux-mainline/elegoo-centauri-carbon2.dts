@@ -188,9 +188,11 @@
 	no-sd;
 	no-mmc;
 	cap-sdio-irq;
-	max-frequency = <150000000>;
+	/* Start conservative (50 MHz); vendor reference used 150 MHz. */
+	max-frequency = <50000000>;
 	status = "okay";
 
+	/* The AIC8800 module on this board has no host GPIO control lines. */
 	wifi@0 {
 		reg = <0>;
 		compatible = "aicsemi,aic8800d80";

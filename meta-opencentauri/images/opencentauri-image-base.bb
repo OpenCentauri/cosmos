@@ -18,7 +18,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod \
     libgpiod-tools \
     iw \
-    wireless-tools \
     wpa-supplicant \
     aic8800 \
     aic8800-firmware \
