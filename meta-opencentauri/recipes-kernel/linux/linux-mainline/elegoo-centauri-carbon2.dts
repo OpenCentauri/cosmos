@@ -253,6 +253,18 @@
 	vcc-pf-supply = <&reg_3v3>;
 	vcc-pg-supply = <&reg_3v3>;
 
+	st1633_ts_rst_pin: st1633-ts-rst-pin {
+		pins = "PE0";
+		function = "gpio_out";
+		bias-pull-up;
+	};
+
+	st1633_ts_int_pin: st1633-ts-int-pin {
+		pins = "PE1";
+		function = "gpio_in";
+		bias-pull-up;
+	};
+
 	uart0_pf_pins: uart0-pf-pins {
 		pins = "PF2", "PF4";
 		function = "uart0";
@@ -388,6 +400,8 @@
 		interrupt-parent = <&pio>;
 		interrupts = <4 1 IRQ_TYPE_LEVEL_LOW>; /* INT (PE1) */
 		gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; /* RST (PE0) */
+		pinctrl-0 = <&st1633_ts_rst_pin>, <&st1633_ts_int_pin>;
+		pinctrl-names = "default";
 	};
 };
 
