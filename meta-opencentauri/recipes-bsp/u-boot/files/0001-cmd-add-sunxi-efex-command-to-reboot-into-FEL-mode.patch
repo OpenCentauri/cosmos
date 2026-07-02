@@ -1,0 +1,260 @@
+From 110bea08605d21f0b29fa6c05ba9c3b8a3eec3cc Mon Sep 17 00:00:00 2001
+From: James Turton <james@titv.se>
+Date: Thu, 2 Jul 2026 10:46:49 +0200
+Subject: [PATCH] cmd: add sunxi efex command to reboot into FEL mode
+
+The 'efex' command writes the EFEX magic flag (0x5AA5A55A) into RTC
+general purpose data register 2 and resets the board.
+
+The boot ROM does not check this flag itself: on stock firmware it is
+Allwinner's boot0 that probes the flag early during boot, clears it
+and jumps back into the boot ROM FEL routine at 0x20. Mainline SPL
+never did this, so add the equivalent check to board_init_f(),
+skipped when already booted via FEL.
+
+Before jumping, undo the SPL init that the boot ROM FEL routine
+cannot cope with, putting the SoC back into the state boot0 leaves
+it in (taken from the disassembly of libsun8iw20p1_sdcard.a and
+boot0_entry.S):
+
+ - mux the CPU, PSI/AHB and APB2 clocks back to OSC24M like boot0's
+   sunxi_board_clock_reset() does
+ - clear SCTLR.A and SCTLR.I as boot0_entry.S does; sunxi-fel
+   refuses a FEL mode with alignment checking on ("Unexpected
+   SCTLR")
+ - restore VBAR to the boot ROM vector table: the FEL routine is
+   interrupt driven and needs its own exception vectors, which boot0
+   never touches but mainline cpu_init_cp15() repoints at the SPL
+
+This allows the device to be flashed over USB with tools such as
+sunxi-fel or xfel, and also works from Linux by setting the flag via
+the RTC data register and rebooting.
+
+Ported from the Allwinner BSP U-Boot (cmd/sunxi_efex.c,
+arch/arm/mach-sunxi/rtc.c) and boot0 (spl-pub/nboot/main/boot0_main.c,
+boot0_entry.S).
+---
+ arch/arm/include/asm/arch-sunxi/efex.h | 52 +++++++++++++++++++++
+ arch/arm/mach-sunxi/board.c            | 64 ++++++++++++++++++++++++++
+ cmd/Kconfig                            |  9 ++++
+ cmd/Makefile                           |  1 +
+ cmd/sunxi_efex.c                       | 34 ++++++++++++++
+ 5 files changed, 160 insertions(+)
+ create mode 100644 arch/arm/include/asm/arch-sunxi/efex.h
+ create mode 100644 cmd/sunxi_efex.c
+
+diff --git a/arch/arm/include/asm/arch-sunxi/efex.h b/arch/arm/include/asm/arch-sunxi/efex.h
+new file mode 100644
+index 00000000000..0cb3cac9f67
+--- /dev/null
++++ b/arch/arm/include/asm/arch-sunxi/efex.h
+@@ -0,0 +1,52 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * Allwinner FEL (USB boot ROM) flag handling.
++ *
++ * The stock Allwinner boot0 checks a magic value in an RTC general
++ * purpose data register early during boot and jumps back into the
++ * boot ROM FEL routine when it is set. U-Boot proper (or Linux) sets
++ * the flag and resets the board to request this. The boot ROM itself
++ * does not look at the flag, so the SPL has to perform the check.
++ *
++ * Register index and magic value taken from the Allwinner BSP U-Boot
++ * (arch/arm/mach-sunxi/rtc.c) and boot0 (spl-pub/nboot/main/boot0_main.c).
++ */
++
++#ifndef _SUNXI_EFEX_H
++#define _SUNXI_EFEX_H
++
++#include <asm/arch/cpu.h>
++#include <asm/barriers.h>
++#include <asm/io.h>
++
++#define SUNXI_RTC_DATA_BASE	(SUNXI_RTC_BASE + 0x100)
++#define SUNXI_RTC_FEL_REG	(SUNXI_RTC_DATA_BASE + 2 * 4)
++#define SUNXI_EFEX_FLAG		0x5AA5A55A
++
++/* FEL entry point in the boot ROM (H6 and newer generations) */
++#define SUNXI_FEL_ENTRY		0x20
++
++static inline void sunxi_set_fel_flag(void)
++{
++	do {
++		writel(SUNXI_EFEX_FLAG, SUNXI_RTC_FEL_REG);
++		DSB;
++		ISB;
++	} while (readl(SUNXI_RTC_FEL_REG) != SUNXI_EFEX_FLAG);
++}
++
++static inline void sunxi_clear_fel_flag(void)
++{
++	do {
++		writel(0, SUNXI_RTC_FEL_REG);
++		DSB;
++		ISB;
++	} while (readl(SUNXI_RTC_FEL_REG) != 0);
++}
++
++static inline bool sunxi_probe_fel_flag(void)
++{
++	return readl(SUNXI_RTC_FEL_REG) == SUNXI_EFEX_FLAG;
++}
++
++#endif /* _SUNXI_EFEX_H */
+diff --git a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+index 432b1c10f92..d9c4c87e8bf 100644
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -21,6 +21,7 @@
+ #include <asm/gpio.h>
+ #include <asm/io.h>
+ #include <asm/arch/clock.h>
++#include <asm/arch/efex.h>
+ #include <asm/arch/spl.h>
+ #include <asm/arch/sys_proto.h>
+ #include <asm/arch/timer.h>
+@@ -483,6 +484,69 @@ void board_init_f(ulong dummy)
+ 	spl_init();
+ 	preloader_console_init();
+ 
++	/*
++	 * The stock Allwinner boot0 jumps back into the boot ROM FEL
++	 * routine when the FEL flag is set in the RTC data registers
++	 * (see the 'efex' command). The boot ROM does not check the
++	 * flag itself, so do it here. Skip the check when already
++	 * booted via FEL.
++	 */
++#ifdef CONFIG_CMD_SUNXI_EFEX
++	if (sunxi_get_boot_device() != BOOT_DEVICE_BOARD &&
++	    sunxi_probe_fel_flag()) {
++		void (*fel_entry)(void) = (void *)SUNXI_FEL_ENTRY;
++		u32 sctlr;
++
++		sunxi_clear_fel_flag();
++		printf("FEL flag set, jumping to FEL...\n");
++
++		/*
++		 * Mux the CPU, PSI/AHB and APB2 clocks back to OSC24M
++		 * like boot0's sunxi_board_clock_reset() does: the boot
++		 * ROM FEL routine does not cope with the PLL-clocked
++		 * state set up by clock_init().
++		 */
++		clrbits_le32(SUNXI_CCM_BASE + CCU_H6_PSI_AHB1_AHB2_CFG,
++			     0x03000303);
++		clrbits_le32(SUNXI_CCM_BASE + CCU_H6_APB1_CFG, 0x03000303);
++		writel(CCM_CPU_AXI_MUX_OSC24M | CCM_CPU_AXI_DEFAULT_FACTORS,
++		       SUNXI_CCM_BASE + CCU_H6_CPU_AXI_CFG);
++		DSB;
++
++		/*
++		 * Restore the SCTLR bits that cpu_init_cp15() changed
++		 * to the state boot0_entry.S leaves them in: alignment
++		 * checking and the icache off, branch prediction on.
++		 * sunxi-fel refuses to talk to a FEL mode that has
++		 * SCTLR.A set ("Unexpected SCTLR").
++		 */
++		asm volatile("mrc p15, 0, %0, c1, c0, 0" : "=r" (sctlr));
++		sctlr &= ~(CR_V | CR_I | CR_A);
++		sctlr |= CR_Z;
++		asm volatile("mcr p15, 0, %0, c1, c0, 0" : : "r" (sctlr));
++		ISB;
++
++		/* invalidate the now-disabled icache */
++		asm volatile("mcr p15, 0, %0, c7, c5, 0" : : "r" (0));
++
++		/*
++		 * Point VBAR back at the boot ROM vector table. The boot
++		 * ROM FEL routine is interrupt driven (see fel_stash
++		 * above) and relies on its own exception vectors, which
++		 * boot0 never touches, while cpu_init_cp15() pointed
++		 * VBAR at the SPL's vectors.
++		 */
++		asm volatile("mcr p15, 0, %0, c12, c0, 0" : : "r" (0));
++
++		/* invalidate the branch predictor, as boot0_jmp() does */
++		asm volatile("mcr p15, 0, %0, c7, c5, 6" : : "r" (0) : "memory");
++		DSB;
++		ISB;
++
++		fel_entry();
++	}
++#endif
++
+ #if CONFIG_IS_ENABLED(I2C) && CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
+ 	/* Needed early by sunxi_board_init if PMU is enabled */
+ 	i2c_init_board();
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index 5c611fb3016..9ae3c0736de 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -599,6 +599,15 @@ config SYS_XIMG_LEN
+ 	  It should be large enough to fit uncompressed size of
+ 	  FIT piece we are extracting.
+ 
++config CMD_SUNXI_EFEX
++	bool "efex - reboot into Allwinner FEL (USB boot ROM) mode"
++	depends on SUNXI_GEN_NCAT2 || SUN50I_GEN_H6
++	help
++	  Set the FEL flag in the RTC general purpose data registers and
++	  reset the board. The boot ROM checks this flag and enters FEL
++	  (USB boot) mode, allowing the device to be flashed over USB with
++	  tools such as sunxi-fel or xfel.
++
+ config CMD_SPL
+ 	bool "spl export - Export boot information for Falcon boot"
+ 	depends on SPL
+diff --git a/cmd/Makefile b/cmd/Makefile
+index 25479907797..ad00f63c334 100644
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -215,6 +215,7 @@ obj-$(CONFIG_CMD_VBE) += vbe.o
+ obj-$(CONFIG_CMD_XIMG) += ximg.o
+ obj-$(CONFIG_CMD_XXD) += xxd.o
+ obj-$(CONFIG_CMD_SPL) += spl.o
++obj-$(CONFIG_CMD_SUNXI_EFEX) += sunxi_efex.o
+ obj-$(CONFIG_CMD_W1) += w1.o
+ obj-$(CONFIG_CMD_ZIP) += zip.o
+ obj-$(CONFIG_CMD_ZFS) += zfs.o
+diff --git a/cmd/sunxi_efex.c b/cmd/sunxi_efex.c
+new file mode 100644
+index 00000000000..9b80a89e52e
+--- /dev/null
++++ b/cmd/sunxi_efex.c
+@@ -0,0 +1,34 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * 'efex' command - reboot into the Allwinner FEL (USB boot ROM) mode.
++ *
++ * Set the FEL flag in the RTC data registers and reset the board.
++ * The SPL checks the flag early during the next boot and jumps back
++ * into the boot ROM FEL routine (see arch/arm/mach-sunxi/board.c).
++ *
++ * Ported from the Allwinner BSP U-Boot:
++ * (C) Copyright 2018-2020
++ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
++ * wangwei <wangwei@allwinnertech.com>
++ */
++
++#include <command.h>
++#include <asm/arch/efex.h>
++
++static int do_efex(struct cmd_tbl *cmdtp, int flag, int argc,
++		   char *const argv[])
++{
++	printf("## jump to efex ...\n");
++
++	sunxi_set_fel_flag();
++
++	do_reset(NULL, 0, 0, NULL);
++
++	return 0;
++}
++
++U_BOOT_CMD(
++	efex,	1,	0,	do_efex,
++	"reboot into FEL (USB boot ROM) mode",
++	""
++);
+-- 
+2.53.0
+
