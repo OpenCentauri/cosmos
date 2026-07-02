@@ -4,7 +4,7 @@ DESCRIPTION = "Fluidd is a free and open-source Klipper web interface for \
     tablets and mobile with customizable layouts."
 HOMEPAGE = "https://github.com/fluidd-core/fluidd"
 LICENSE = "GPL-3.0-only"
-LIC_FILES_CHKSUM = "file://index.html;md5=3b00ecfc948a3467a588bf3a3eb33a00"
+LIC_FILES_CHKSUM = "file://index.html;md5=02c023fdf3a0f62d1a070d1163c7f4c5"
 
 inherit python3native
 
@@ -13,7 +13,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd.zip;downloadfilename=fluidd-${PV}.zip;subdir=fluidd \
     file://opencentauri-fluidd-theme \
 "
-SRC_URI[sha256sum] = "f08e9d438fdce472553e1ce46a9be62f5ababb4b0f64f65efbd4561d9379653c"
+SRC_URI[sha256sum] = "e42d4e8b14a3a0b20573485c882cc4dcfac33d9fbd946c8803a942be282e2b6e"
 
 S = "${WORKDIR}/fluidd"
 
