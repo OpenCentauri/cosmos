@@ -10,27 +10,21 @@ require recipes-kernel/linux/linux.inc
 
 LINUX_VERSION = "${PV}"
 
-# Since we're not using git, this doesn't make a difference, but we need to fill
-# in something or kernel-yocto.bbclass will fail.
-KBRANCH ?= "master"
-
-DEPENDS += "rsync-native"
+KBRANCH = "linux-6.18.y"
 
 # Pull in the devicetree files into the rootfs
 RDEPENDS_${KERNEL_PACKAGE_NAME}-base += "kernel-devicetree"
 
 KERNEL_EXTRA_ARGS += "LOADADDR=${UBOOT_ENTRYPOINT}"
 
-S = "${UNPACKDIR}/linux-${PV}"
-
-# get release version 5.x or 6.x based on version
-KRELEASE = "${@d.getVar('PV', True).split('.')[0]}"
+S = "${UNPACKDIR}/${BP}"
 
 SRC_URI = " \
-    https://www.kernel.org/pub/linux/kernel/v${KRELEASE}.x/linux-${PV}.tar.xz \
+    git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git;protocol=https;branch=${KBRANCH} \
     file://defconfig \
 "
 
-SRC_URI[sha256sum] = "c92591d896e79ecddbc3319136f0c2f855e832b397de7593f013ad7590a43e53"
+# v${PV}
+SRCREV = "0c503cf3dde2e53614f05261ece12f9d3d4c3c20"
 
 FILES_${KERNEL_PACKAGE_NAME}-base:append = " ${nonarch_base_libdir}/modules/${KERNEL_VERSION}/modules.builtin.modinfo"
