@@ -18,6 +18,8 @@
 		serial3 = &uart3;
 		serial4 = &uart4;
 		i2c2 = &i2c2;
+		mmc0 = &mmc2; /* eMMC -> /dev/mmcblk0 */
+		mmc1 = &mmc1; /* SDIO WiFi */
 	};
 
 	chosen {
