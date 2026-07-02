@@ -1,0 +1,41 @@
+diff --git a/drivers/aic8800/aic8800_fdrv/Makefile b/drivers/aic8800/aic8800_fdrv/Makefile
+index 53fa11e..e468cf6 100644
+--- a/drivers/aic8800/aic8800_fdrv/Makefile
++++ b/drivers/aic8800/aic8800_fdrv/Makefile
+@@ -186,7 +186,6 @@ $(MODULE_NAME)-y := \
+ 	regdb.o                \
+ 	md5.o                  \
+ 	aic_vendor.o           \
+-        aic_priv_cmd.o         \
+ 	aicwf_compat_8800dc.o  \
+ 	aicwf_compat_8800d80.o \
+ 	aicwf_compat_8800d80x2.o
+@@ -203,6 +202,7 @@ $(MODULE_NAME)-$(CONFIG_RWNX_MUMIMO_TX)   += rwnx_mu_group.o
+ $(MODULE_NAME)-$(CONFIG_SDIO_SUPPORT)     += sdio_host.o
+ $(MODULE_NAME)-$(CONFIG_SDIO_SUPPORT)     += aicwf_txrxif.o
+ $(MODULE_NAME)-$(CONFIG_SDIO_SUPPORT)     += aicwf_sdio.o
++$(MODULE_NAME)-$(CONFIG_USB_SUPPORT)      += aic_priv_cmd.o
+ $(MODULE_NAME)-$(CONFIG_FILTER_TCP_ACK)   += aicwf_tcp_ack.o
+ 
+ $(MODULE_NAME)-$(CONFIG_USB_SUPPORT)     += usb_host.o
+diff --git a/drivers/aic8800/aic8800_fdrv/rwnx_defs.h b/drivers/aic8800/aic8800_fdrv/rwnx_defs.h
+index 643b45f..718ddc8 100644
+--- a/drivers/aic8800/aic8800_fdrv/rwnx_defs.h
++++ b/drivers/aic8800/aic8800_fdrv/rwnx_defs.h
+@@ -910,13 +910,15 @@ extern u8 chip_id;
+ static inline bool is_multicast_sta(int sta_idx)
+ {
+ 
+-	if((g_rwnx_plat->usbdev->chipid == PRODUCT_ID_AIC8801) || 
++#ifdef AICWF_USB_SUPPORT
++	if((g_rwnx_plat->usbdev->chipid == PRODUCT_ID_AIC8801) ||
+ 		((g_rwnx_plat->usbdev->chipid == PRODUCT_ID_AIC8800DC ||
+ 		g_rwnx_plat->usbdev->chipid == PRODUCT_ID_AIC8800DW) && chip_id < 3)){
+ 		return (sta_idx >= NX_REMOTE_STA_MAX_FOR_OLD_IC);
+ 	}else{
+ 		return (sta_idx >= NX_REMOTE_STA_MAX);
+ 	}
++#endif
+ 
+ }
+ struct rwnx_sta *rwnx_get_sta(struct rwnx_hw *rwnx_hw, const u8 *mac_addr);
