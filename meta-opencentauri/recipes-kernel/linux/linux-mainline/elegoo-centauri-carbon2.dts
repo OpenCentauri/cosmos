@@ -255,13 +255,13 @@
 
 	st1633_ts_rst_pin: st1633-ts-rst-pin {
 		pins = "PE0";
-		function = "gpio_out";
+		function = "gpio";
 		bias-pull-up;
 	};
 
 	st1633_ts_int_pin: st1633-ts-int-pin {
 		pins = "PE1";
-		function = "gpio_in";
+		function = "gpio";
 		bias-pull-up;
 	};
 
