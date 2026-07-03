@@ -19,7 +19,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod-tools \
     kernel-modules \
     rtw88 \
-    ${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon1', 'aic8800', '', d)} \
+    aic8800 \
     kalico \
     moonraker \
     mainsail \

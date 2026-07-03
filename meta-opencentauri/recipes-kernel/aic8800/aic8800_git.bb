@@ -11,7 +11,8 @@ SRC_URI = "git://github.com/shenmintao/aic8800d80.git;protocol=https;branch=main
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}/drivers/aic8800 \
     CONFIG_PREALLOC_RX_SKB=n CONFIG_PREALLOC_TXQ=n \
     CONFIG_SDIO_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'y', 'n', d)} \
-    CONFIG_USB_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'y', d)}"
+    CONFIG_USB_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'y', d)} \
+    CONFIG_AIC_LOADFW_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'm', d)}"
 
 MODULES_MODULE_SYMVERS_LOCATION = "drivers/aic8800"
 
