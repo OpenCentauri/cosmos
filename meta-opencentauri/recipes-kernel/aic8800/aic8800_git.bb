@@ -5,8 +5,8 @@ LIC_FILES_CHKSUM = "file://drivers/aic8800/aic8800_fdrv/rwnx_main.c;beginline=1;
 
 inherit module
 
-SRCREV = "05710dff05dabce66ab3ee80f40484892c512b3c"
-SRC_URI = "git://github.com/shenmintao/aic8800d80.git;protocol=https;branch=main"
+SRCREV = "dac72e690ccd86f0715c5c40167c0b7c5af1a413"
+SRC_URI = "git://github.com/OpenCentauri/aic8800d80-sdio.git;protocol=https;branch=sdio-cc2"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}/drivers/aic8800 \
     CONFIG_PREALLOC_RX_SKB=n CONFIG_PREALLOC_TXQ=n \
