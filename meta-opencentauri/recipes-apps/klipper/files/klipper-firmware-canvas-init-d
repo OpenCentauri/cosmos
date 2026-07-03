@@ -39,21 +39,13 @@ case "$1" in
             echo "Firmware is already up to date."
             exit 0
         else
-            echo "Firmware version mismatch or not installed, flashing firmware..."
-            if update; then
-                exit 0
-            else
-                echo "Attempting bootloader upgrade..."
-                if mcu-flasher --canvas --timeout 10 --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
-                    sleep 3
-                    echo "Bootloader deployer flashed successfully, clearing installed version."
-                    rm -f $INSTALLED_VERSION
-                    update
-                else
-                    echo "Cannot update bootloader."
-                    exit 1
-                fi
+            if mcu-flasher --canvas --timeout 10 --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
+                sleep 3
+                echo "Bootloader deployer flashed successfully, clearing installed version."
+                rm -f $INSTALLED_VERSION
             fi
+
+            update
         fi
         ;;
     status)
