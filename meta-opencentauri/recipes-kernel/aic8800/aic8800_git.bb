@@ -5,14 +5,15 @@ LIC_FILES_CHKSUM = "file://drivers/aic8800/aic8800_fdrv/rwnx_main.c;beginline=1;
 
 inherit module
 
-SRCREV = "69a84c94c75318b25a44a2609a56dea7f42aa7e2"
+SRCREV = "bd10611475568a9c5f397f94de9eaedc776024dd"
 SRC_URI = "git://github.com/OpenCentauri/aic8800d80-sdio.git;protocol=https;branch=sdio-cc2"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}/drivers/aic8800 \
     CONFIG_PREALLOC_RX_SKB=n CONFIG_PREALLOC_TXQ=n \
     CONFIG_SDIO_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'y', 'n', d)} \
     CONFIG_USB_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'y', d)} \
-    CONFIG_AIC_LOADFW_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'm', d)}"
+    CONFIG_AIC_LOADFW_SUPPORT=${@bb.utils.contains('MACHINE', 'elegoo-centauri-carbon2', 'n', 'm', d)} \
+    CONFIG_PLATFORM_UBUNTU=n"
 
 MODULES_MODULE_SYMVERS_LOCATION = "drivers/aic8800"
 
