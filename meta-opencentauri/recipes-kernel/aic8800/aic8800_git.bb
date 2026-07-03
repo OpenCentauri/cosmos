@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://drivers/aic8800/aic8800_fdrv/rwnx_main.c;beginline=1;
 
 inherit module
 
-SRCREV = "dac72e690ccd86f0715c5c40167c0b7c5af1a413"
+SRCREV = "69a84c94c75318b25a44a2609a56dea7f42aa7e2"
 SRC_URI = "git://github.com/OpenCentauri/aic8800d80-sdio.git;protocol=https;branch=sdio-cc2"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}/drivers/aic8800 \
@@ -19,6 +19,8 @@ MODULES_MODULE_SYMVERS_LOCATION = "drivers/aic8800"
 do_install:append() {
     install -d ${D}/lib/firmware/aic8800D80
     install -m 0644 ${S}/fw/aic8800D80/* ${D}/lib/firmware/aic8800D80/
+    install -d ${D}/lib/firmware/aic8800D80N
+    install -m 0644 ${S}/fw/aic8800D80N/* ${D}/lib/firmware/aic8800D80N/
 }
 
-FILES:${PN} += "/lib/firmware/aic8800D80"
+FILES:${PN} += "/lib/firmware/aic8800D80 /lib/firmware/aic8800D80N"
