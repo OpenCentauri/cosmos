@@ -8,6 +8,6 @@ inherit module
 SRCREV = "da63b6f9578001ab2456bbf59066e893ea6ca3f1"
 SRC_URI = "git://github.com/OpenCentauri/sitronix-i2c-touch.git;protocol=https;branch=main"
 
-EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S} modules"
+EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}"
 
 MODULES_MODULE_SYMVERS_LOCATION = "."
