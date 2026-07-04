@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://drivers/input/touchscreen/sitronix_ts_i2c.c;beginline
 
 inherit module
 
-SRCREV = "6edde58cdf37ded1c12766135a579e8df950a15d"
+SRCREV = "e12aec9183b3a1b4c87de818cb67a5bb17845bce"
 SRC_URI = "git://github.com/OpenCentauri/sitronix-i2c-touch.git;protocol=https;branch=main"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}"
