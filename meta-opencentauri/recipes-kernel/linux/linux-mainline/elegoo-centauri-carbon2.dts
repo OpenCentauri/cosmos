@@ -381,12 +381,16 @@
 	pinctrl-0 = <&i2c2_pins>;
 
 	touchscreen@55 {
-		compatible = "sitronixts";
+		compatible = "sitronix_ts";
 		reg = <0x55>;
 		interrupt-parent = <&pio>;
 		interrupts = <4 1 IRQ_TYPE_LEVEL_LOW>; /* INT (PE1) */
 		irq-gpio = <&pio 4 1 GPIO_ACTIVE_HIGH>;
-		rst-gpio = <&pio 4 0 GPIO_ACTIVE_HIGH>;
+		reset-gpio = <&pio 4 0 GPIO_ACTIVE_HIGH>;
+		/*
+		 * PE0 is the active-high reset line.
+		 * Stock driver sequence: low 1ms, high 100ms.
+		 */
 	};
 };
 
