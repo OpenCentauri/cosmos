@@ -1,9 +1,9 @@
 diff --git a/klippy/extras/drv8833.py b/klippy/extras/drv8833.py
 new file mode 100644
-index 00000000..c6271960
+index 00000000..14cd066f
 --- /dev/null
 +++ b/klippy/extras/drv8833.py
-@@ -0,0 +1,786 @@
+@@ -0,0 +1,787 @@
 +# Support for DRV8833 based CANVAS-style motor control
 +#
 +# This file may be distributed under the terms of the GNU GPLv3 license.
@@ -654,7 +654,7 @@ index 00000000..c6271960
 +            self._stop(eventtime)
 +        self._start(eventtime, direction, target_speed)
 +
-+    def drv8833_move(self, speed: float, distance: float):
++    def drv8833_move(self, speed: float, distance: float, wait_for_completion=True):
 +        eventtime = self.reactor.monotonic()
 +        if distance < 0.0:
 +            speed *= -1.0
@@ -671,7 +671,8 @@ index 00000000..c6271960
 +        if self.active:
 +            self._stop(eventtime)
 +        self._start_move(eventtime, direction, target_speed, stop_ticks)
-+        self._wait_for_move_complete(eventtime)
++        if wait_for_completion:
++            self._wait_for_move_complete(eventtime)
 +
 +    cmd_MOVE_DEBUG_help = (
 +        "Run the DRV8833 lane for a fixed time while logging hall counts, "
@@ -790,7 +791,6 @@ index 00000000..c6271960
 +
 +def load_config_prefix(config):
 +    return PrinterDrv8833(config)
-\ No newline at end of file
 diff --git a/src/Kconfig b/src/Kconfig
 index d679cef9..00da2118 100644
 --- a/src/Kconfig
@@ -820,7 +820,7 @@ index 3e7754af..19421fed 100644
  src-$(CONFIG_WANT_SOFTWARE_SPI) += spi_software.c
 diff --git a/src/drv8833.c b/src/drv8833.c
 new file mode 100644
-index 00000000..1101992c
+index 00000000..cee90955
 --- /dev/null
 +++ b/src/drv8833.c
 @@ -0,0 +1,371 @@
