@@ -11,6 +11,7 @@
 ATOMSCREEN_EXEC=/usr/bin/atomscreen
 ATOMSCREEN_ARGS=/etc/klipper/config/atomscreen.toml
 PIDFILE=/var/run/gui.pid
+export LVGL_EVDEV_DEV=${LVGL_EVDEV_DEV:-/dev/input/touchscreen0}
 
 case "$1" in
     start)

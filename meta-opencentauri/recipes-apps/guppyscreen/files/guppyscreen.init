@@ -10,6 +10,7 @@
 
 GUPPYSCREEN_EXEC=/usr/bin/guppyscreen
 PIDFILE=/var/run/gui.pid
+export LVGL_EVDEV_DEV=${LVGL_EVDEV_DEV:-/dev/input/touchscreen0}
 
 case "$1" in
     start)
