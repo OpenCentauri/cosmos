@@ -253,18 +253,6 @@
 	vcc-pf-supply = <&reg_3v3>;
 	vcc-pg-supply = <&reg_3v3>;
 
-	st1633_ts_rst_pin: st1633-ts-rst-pin {
-		pins = "PE0";
-		function = "gpio";
-		bias-pull-up;
-	};
-
-	st1633_ts_int_pin: st1633-ts-int-pin {
-		pins = "PE1";
-		function = "gpio";
-		bias-pull-up;
-	};
-
 	uart0_pe_pins: uart0-pe-pins {
 		pins = "PE2", "PE3";
 		function = "uart0";
@@ -393,13 +381,12 @@
 	pinctrl-0 = <&i2c2_pins>;
 
 	touchscreen@55 {
-		compatible = "sitronix,st1633";
+		compatible = "sitronixts";
 		reg = <0x55>;
 		interrupt-parent = <&pio>;
 		interrupts = <4 1 IRQ_TYPE_LEVEL_LOW>; /* INT (PE1) */
-		gpios = <&pio 4 0 GPIO_ACTIVE_HIGH>; /* RST (PE0) */
-		pinctrl-0 = <&st1633_ts_rst_pin>, <&st1633_ts_int_pin>;
-		pinctrl-names = "default";
+		irq-gpio = <&pio 4 1 GPIO_ACTIVE_HIGH>;
+		rst-gpio = <&pio 4 0 GPIO_ACTIVE_HIGH>;
 	};
 };
 
