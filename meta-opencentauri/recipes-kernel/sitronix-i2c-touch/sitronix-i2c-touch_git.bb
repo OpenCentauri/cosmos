@@ -5,7 +5,10 @@ LIC_FILES_CHKSUM = "file://drivers/input/touchscreen/sitronix_ts_i2c.c;beginline
 
 inherit module
 
-SRCREV = "e12aec9183b3a1b4c87de818cb67a5bb17845bce"
+SRCREV = "e32bedef7897ce2c691a7da252ccf6e342881351"
+
+# ponytail: auto-load so the DT i2c touchscreen node probes before gui-switcher starts
+KERNEL_MODULE_AUTOLOAD += "sitronix_ts_i2c"
 SRC_URI = "git://github.com/OpenCentauri/sitronix-i2c-touch.git;protocol=https;branch=main"
 
 EXTRA_OEMAKE += "-C ${STAGING_KERNEL_DIR} M=${S}"
