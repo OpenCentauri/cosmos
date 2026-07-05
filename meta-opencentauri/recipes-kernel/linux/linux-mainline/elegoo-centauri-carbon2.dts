@@ -23,7 +23,7 @@
 	};
 
 	chosen {
-		stdout-path = "serial0:115200n8";
+		stdout-path = "serial2:115200n8";
 	};
 
 	/* board wide 5V supply directly from the USB-C socket */
@@ -253,9 +253,8 @@
 	vcc-pf-supply = <&reg_3v3>;
 	vcc-pg-supply = <&reg_3v3>;
 
-	uart0_pe_pins: uart0-pe-pins {
-		pins = "PE2", "PE3";
-		function = "uart0";
+	uart0_pf_pins: uart0-pf-pins {
+		pins = "PF2", "PF4";
 	};
 
 	uart1_pe_pins: uart1-pe-pins {
@@ -297,7 +296,7 @@
 
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_pe_pins>;
+	pinctrl-0 = <&uart0_pf_pins>;
 	status = "okay";
 };
 
@@ -308,7 +307,9 @@
 };
 
 &uart2 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2_pe_pins>;
+	status = "okay";
 };
 
 &uart3 {
