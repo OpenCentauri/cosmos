@@ -4,7 +4,7 @@
 # Required-Start:    $local_fs $network klipper moonraker
 # Required-Stop:     $local_fs $network
 # Default-Start:     2 3 4 5
-# Default-Stop:     0 1 6
+# Default-Stop:      0 1 6
 # Description:       Guppy Screen - Touch UI for Klipper
 ### END INIT INFO
 
@@ -15,11 +15,6 @@ export LVGL_EVDEV_DEV=${LVGL_EVDEV_DEV:-/dev/input/touchscreen0}
 case "$1" in
     start)
         echo "Starting grumpyscreen..."
-        # Wait for the DT-auto-probed touch input node to appear.
-        for _ in 1 2 3 4 5; do
-            [ -e /dev/input/touchscreen0 ] && break
-            sleep 1
-        done
         # Start grumpyscreen in the background
         start-stop-daemon -S -b -m -p "$PIDFILE" -x "$GRUMPYSCREEN_EXEC"
         ;;
