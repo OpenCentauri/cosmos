@@ -15,7 +15,7 @@ export LVGL_EVDEV_DEV=${LVGL_EVDEV_DEV:-/dev/input/touchscreen0}
 case "$1" in
     start)
         echo "Starting grumpyscreen..."
-        # ponytail: wait for the DT-auto-probed touch input node to appear.
+        # Wait for the DT-auto-probed touch input node to appear.
         for _ in 1 2 3 4 5; do
             [ -e /dev/input/touchscreen0 ] && break
             sleep 1
