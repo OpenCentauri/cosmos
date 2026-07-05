@@ -25,6 +25,9 @@ EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.bed"
 INITSCRIPT_NAME = "klipper-firmware-bed"
 INITSCRIPT_PARAMS = "defaults 94 4"
 
+# disable boot-time start on CC2 only; scripts still installed and manually runnable
+INITSCRIPT_PARAMS:elegoo-centauri-carbon2 = "stop 20 0 1 6 ."
+
 do_install() {
     install -d ${D}/lib/firmware
     cp -r ${S}/out/klipper.bin ${D}/lib/firmware/klipper-bed.bin
