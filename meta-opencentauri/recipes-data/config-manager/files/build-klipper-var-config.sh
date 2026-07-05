@@ -26,7 +26,7 @@ if $(echo "$load_skew_profile" | tr '[:upper:]' '[:lower:]'); then
 else
         #if someone has set load_skew_profile to false and also deleted skew_profile_name,
         #provide a dummy value since we are set -eu
-        skew_profile_name=undefined
+        skew_profile_name="undefined"
 fi
 
 mkdir -p "${OUTPUT_DIR}"
@@ -47,7 +47,8 @@ variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
 variable_load_skew_profile: ${load_skew_profile}
-variable_skew_profile_name: ${skew_profile_name}
+variable_skew_profile_name: '"$skew_profile_name"'
+
 gcode:
 
 EOF

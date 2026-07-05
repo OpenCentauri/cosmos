@@ -22,6 +22,7 @@ VALIDATORS = {
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(40, 101)],
         'load_skew_profile' : ['True', 'False'],
+        'skew_profile_name': None,  
     },
 }
 
@@ -36,6 +37,11 @@ def validate_config(config : dict):
             if option not in config[section]:
                 continue
             value = config[section][option]
+            if valid_values is None:
+                if not isinstance(value, str):
+                    print(f"Warning: Invalid value '{value}' for '{option}' in section '{section}'. Expected a string.", file=sys.stderr)
+                    del config[section][option]
+                continue
             if value not in valid_values:
                 print(f"Warning: Invalid value '{value}' for '{option}' in section '{section}'. Valid options are: {valid_values}", file=sys.stderr)
                 del config[section][option]
