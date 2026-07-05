@@ -21,6 +21,7 @@ VALIDATORS = {
         'z_ideal_lifting_distance': [str(i) for i in range(257)],
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(40, 101)],
+        'load_skew_profile' : ['True', 'False'],
     },
 }
 
