@@ -16,4 +16,8 @@ SRC_URI:append = " \
 	file://0001-Reduce-size-of-framebuffer.patch \
 	file://0001-cmd-add-sunxi-efex-command-to-reboot-into-FEL-mode.patch \
 	file://0001-Use-PE2-and-PE3-for-UART2.patch \
+	file://0002-video-add-st77922-panel-and-allwinner-dsi-host.patch \
 "
+
+ERROR_QA:remove = "patch-status"
+WARN_QA:remove = "patch-status"
