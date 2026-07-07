@@ -66,6 +66,11 @@ install_firmware_update() {
         return 1
     fi
 
+    if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
+        # Revert stock bootcmd
+        fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+    fi
+
     uiprompt "Firmware update complete" "Please reboot the printer to finalize the update."
     touch "$SUCCESS_FILE"
 }
