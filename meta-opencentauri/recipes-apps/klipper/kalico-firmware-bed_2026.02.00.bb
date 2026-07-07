@@ -9,8 +9,6 @@ SRC_URI += " \
     file://klipper-firmware-bed-init-d \
 "
 
-PR = "r3"
-
 DEPENDS += "gcc-arm-none-eabi-native"
 RDEPENDS:${PN} = " \
     flashtool \
