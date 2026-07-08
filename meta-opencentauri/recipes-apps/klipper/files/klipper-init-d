@@ -13,7 +13,7 @@ KLIPPER_PRINTER_CONFIG="/etc/klipper/config/printer.cfg"
 KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
-KLIPPER_CONFIG_VERSION="0.0.9"
+KLIPPER_CONFIG_VERSION="0.0.8-2"
 KLIPPER_CONFIG_VERSION_FILE="/etc/klipper-config.ver"
 KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
