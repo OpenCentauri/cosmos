@@ -30,6 +30,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     i2c-tools \
     nano \
     devmem2 \
+    efex \
     ustreamer \
     swupdate \
     u-boot-fw-utils \

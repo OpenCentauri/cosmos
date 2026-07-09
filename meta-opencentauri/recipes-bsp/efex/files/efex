@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+devmem2 0x07090108 w 0x5AA5A55A
+
+echo "efex triggered; you can now issue a normal Linux 'reboot' to go directly to FEL mode."
