@@ -15,9 +15,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0003-drv8833-motor-control.patch \
     file://0004-allow-config-exclude.patch \
 "
-SRCREV = "3f166182f82f95584112571b4f7b2258922be60d"
+SRCREV = "0b8b97d3ac3ada328aed6bb59d3f88d180520f42"
 
-PR = "r10"
+PR = "r11"
 
 DEPENDS = " \
     python3-native \
