@@ -1,0 +1,22 @@
+From 41105a77e00f8a2397b7d6d29e46e7e7f497163d Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Mon, 13 Jul 2026 00:38:10 +0200
+Subject: [PATCH] Increase max velocity in resonance tester
+
+---
+ klippy/extras/resonance_tester.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/klippy/extras/resonance_tester.py b/klippy/extras/resonance_tester.py
+index ab1dd3d1..01f0fda2 100644
+--- a/klippy/extras/resonance_tester.py
++++ b/klippy/extras/resonance_tester.py
+@@ -231,7 +231,7 @@ class ResonanceTestExecutor:
+         with suspend_limits(
+             self.printer,
+             freq_end * accel_per_hz + 10.0,
+-            accel_per_hz * 0.25 + 1.0,
++            accel_per_hz * 1.0 + 1.0,
+             gcmd.get_int("INPUT_SHAPING", 0),
+         ):
+             self._run_test(test_seq, axis, gcmd)
