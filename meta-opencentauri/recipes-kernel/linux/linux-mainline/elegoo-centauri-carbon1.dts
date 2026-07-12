@@ -99,36 +99,39 @@
 		ranges;
 
 		/*
-		 * Reserve memory for the DSP firmware.
-		 * Adjust base and size to match your firmware's linker script.
-		 * This region must not overlap with Linux kernel memory.
+		 * Shared memory for RPMsg virtio vrings, buffers and the DSP
+		 * trace log, in SRAM A1 (32 KiB @ 0x00020000). Both ARM and
+		 * DSP see it at the same address and it is uncached on both
+		 * sides, so there are no coherency concerns. Layout uses
+		 * SRAM A1 exactly: 4 KiB + 4 KiB vrings, 20 KiB buffer pool
+		 * (Linux allocates num*2*512 = 16 KiB from it for
+		 * RPMSG_NUM_BUFS = 16) and 4 KiB firmware trace buffer.
 		 *
-		 * Common configurations:
-		 *   - SRAM only (small firmware): use the DSP SRAM region
-		 *   - DDR carveout (large firmware): reserve a DDR region
+		 * Must match the firmware's rpmsg.h and hifi4.ld: the vring
+		 * da/align/num live in the firmware resource table.
+		 *
+		 * reserved-memory nodes outside DDR are fine (same pattern as
+		 * stm32mp1 MCU SRAM); no-map is required by shared-dma-pool
+		 * on ARM32 and a no-op for addresses outside system RAM.
 		 */
-		dsp_reserved: dsp@42000000 {
-			reg = <0x42000000 0x00100000>; /* 1 MiB example */
+		vdev0vring0: vdev0vring0@20000 {
+			reg = <0x00020000 0x1000>; /* 4 KiB */
 			no-map;
 		};
 
-		/*
-		 * Shared memory for RPMsg virtio vrings and buffers.
-		 * This must be accessible by both ARM and DSP.
-		 */
-		vdev0buffer: vdev0buffer@42100000 {
+		vdev0vring1: vdev0vring1@21000 {
+			reg = <0x00021000 0x1000>; /* 4 KiB */
+			no-map;
+		};
+
+		vdev0buffer: vdev0buffer@22000 {
 			compatible = "shared-dma-pool";
-			reg = <0x42100000 0x40000>; /* 256 KiB */
+			reg = <0x00022000 0x5000>; /* 20 KiB */
 			no-map;
 		};
 
-		vdev0vring0: vdev0vring0@42140000 {
-			reg = <0x42140000 0x2000>; /* 8 KiB */
-			no-map;
-		};
-
-		vdev0vring1: vdev0vring1@42142000 {
-			reg = <0x42142000 0x2000>; /* 8 KiB */
+		dsp_trace: trace@27000 {
+			reg = <0x00027000 0x1000>; /* 4 KiB */
 			no-map;
 		};
 	};
@@ -182,10 +185,10 @@
 			         <&msgbox 4>;  /* TX: ARM -> DSP */
 			mbox-names = "rx", "tx";
 
-			memory-region = <&dsp_reserved>,
-			                <&vdev0buffer>,
+			memory-region = <&vdev0buffer>,
 			                <&vdev0vring0>,
-			                <&vdev0vring1>;
+			                <&vdev0vring1>,
+			                <&dsp_trace>;
 
 			/*
 			 * Firmware file loaded from /lib/firmware/.
