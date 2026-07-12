@@ -27,13 +27,11 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/mailbox_client.h>
-#include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
-#include <linux/regmap.h>
 #include <linux/remoteproc.h>
 #include <linux/reset.h>
 #include <linux/workqueue.h>
@@ -76,7 +74,7 @@ struct sunxi_r528_rproc {
 	struct rproc *rproc;
 
 	void __iomem *cfg_base;		/* DSP CFG registers */
-	struct regmap *sram_regmap;	/* SRAMC registers (for remap) */
+	void __iomem *sram_base;	/* SRAMC registers (for remap) */
 
 	struct clk *clk_dsp;		/* DSP core clock */
 	struct clk *clk_cfg;		/* DSP cfg bus clock */
@@ -108,12 +106,17 @@ struct sunxi_r528_rproc {
 
 static void sunxi_r528_rproc_sram_remap(struct sunxi_r528_rproc *dsp, bool arm_access)
 {
-	if (IS_ERR_OR_NULL(dsp->sram_regmap))
+	u32 val;
+
+	if (!dsp->sram_base)
 		return;
 
-	regmap_update_bits(dsp->sram_regmap, SRAMC_SRAM_REMAP_REG,
-	                   SRAM_REMAP_ENABLE,
-	                   arm_access ? SRAM_REMAP_ENABLE : 0);
+	val = readl(dsp->sram_base + SRAMC_SRAM_REMAP_REG);
+	if (arm_access)
+		val |= SRAM_REMAP_ENABLE;
+	else
+		val &= ~SRAM_REMAP_ENABLE;
+	writel(val, dsp->sram_base + SRAMC_SRAM_REMAP_REG);
 }
 
 static void sunxi_r528_rproc_set_runstall(struct sunxi_r528_rproc *dsp, bool stall)
@@ -615,13 +618,16 @@ static int sunxi_r528_rproc_probe(struct platform_device *pdev)
 	}
 
 	/* Map SRAMC registers (optional — needed for SRAM remap). */
-	/* Get SRAMC regmap via syscon (shared with other drivers). */
-	dsp->sram_regmap = syscon_regmap_lookup_by_phandle(dev->of_node,
-							   "allwinner,sram");
-	if (IS_ERR(dsp->sram_regmap)) {
-		dev_warn(dev, "SRAM syscon lookup failed: %ld\n",
-				PTR_ERR(dsp->sram_regmap));
-		dsp->sram_regmap = NULL;
+	{
+		struct device_node *sram_np;
+
+		sram_np = of_parse_phandle(dev->of_node, "allwinner,sram", 0);
+		if (sram_np) {
+			dsp->sram_base = of_iomap(sram_np, 0);
+			of_node_put(sram_np);
+		}
+		if (!dsp->sram_base)
+			dev_warn(dev, "SRAMC not mapped, SRAM remap disabled\n");
 	}
 
 	/* Get clocks. */
@@ -679,6 +685,8 @@ static int sunxi_r528_rproc_probe(struct platform_device *pdev)
 err_free_mbox:
 	sunxi_r528_rproc_free_mbox(dsp);
 err_free_rproc:
+	if (dsp->sram_base)
+		iounmap(dsp->sram_base);
 	rproc_free(rproc);
 	return ret;
 }
@@ -691,6 +699,8 @@ static void sunxi_r528_rproc_remove(struct platform_device *pdev)
 	rproc_del(rproc);
 	cancel_work_sync(&dsp->rx_work);
 	sunxi_r528_rproc_free_mbox(dsp);
+	if (dsp->sram_base)
+		iounmap(dsp->sram_base);
 	rproc_free(rproc);
 }
 
