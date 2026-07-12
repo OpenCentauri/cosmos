@@ -1,0 +1,21 @@
+From 538950f1328e8cabe7bde45fa947be2cc221d8ba Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Sun, 12 Jul 2026 23:45:24 +0200
+Subject: [PATCH] Make CONFIG_FB select CONFIG_FB_BACKLIGHT
+
+---
+ drivers/video/fbdev/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/video/fbdev/Kconfig b/drivers/video/fbdev/Kconfig
+index a257b739188d..93dbe2ae92f1 100644
+--- a/drivers/video/fbdev/Kconfig
++++ b/drivers/video/fbdev/Kconfig
+@@ -7,6 +7,7 @@ menuconfig FB
+ 	tristate "Support for frame buffer device drivers"
+ 	select FB_CORE
+ 	select FB_NOTIFY
++	select FB_BACKLIGHT
+ 	help
+ 	  The frame buffer device provides an abstraction for the graphics
+ 	  hardware. It represents the frame buffer of some video hardware and
