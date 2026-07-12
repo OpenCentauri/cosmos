@@ -283,12 +283,29 @@ static int sunxi_r528_rproc_prepare(struct rproc *rproc)
 			return -EINVAL;
 		}
 
-		mem = rproc_mem_entry_init(dev, NULL,
-					  (dma_addr_t)rmem->base,
-					  rmem->size, rmem->base,
-					  sunxi_r528_rproc_mem_alloc,
-					  sunxi_r528_rproc_mem_release,
-					  it.node->name);
+		if (!strcmp(it.node->name, "vdev0buffer")) {
+			/*
+			 * The rpmsg buffer pool must be registered by its
+			 * reserved-memory index so rproc_add_virtio_dev()
+			 * associates it via the reserved-mem framework
+			 * (of_reserved_mem_device_init_by_idx). The fallback
+			 * path there converts our ioremap'd va back to a
+			 * physical address through vmalloc_to_page(), which
+			 * only works for memory with struct pages — true for
+			 * DDR, not for SRAM A1.
+			 */
+			mem = rproc_of_resm_mem_entry_init(dev, index,
+							   rmem->size,
+							   rmem->base,
+							   it.node->name);
+		} else {
+			mem = rproc_mem_entry_init(dev, NULL,
+						  (dma_addr_t)rmem->base,
+						  rmem->size, rmem->base,
+						  sunxi_r528_rproc_mem_alloc,
+						  sunxi_r528_rproc_mem_release,
+						  it.node->name);
+		}
 		if (!mem) {
 			of_node_put(it.node);
 			return -ENOMEM;
@@ -477,6 +494,13 @@ static void *sunxi_r528_rproc_da_to_va(struct rproc *rproc, u64 da, size_t len,
 	 * regions that were registered in prepare().
 	 */
 	list_for_each_entry(carveout, &rproc->carveouts, node) {
+		/*
+		 * Carveouts registered by reserved-memory index (vdev0buffer)
+		 * have no kernel mapping here — skip them.
+		 */
+		if (!carveout->va)
+			continue;
+
 		if (pa >= carveout->dma &&
 		    pa + len <= carveout->dma + carveout->len) {
 			void *va = carveout->va + (pa - carveout->dma);
