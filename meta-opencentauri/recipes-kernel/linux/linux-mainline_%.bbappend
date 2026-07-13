@@ -10,6 +10,7 @@ SRC_URI:append = " \
 	file://sunxi-r528-msgbox.c;subdir=${BP}/drivers/mailbox \
 	file://sunxi_r528_remoteproc.c;subdir=${BP}/drivers/remoteproc \
 	file://panel-sitronix-st77922.c;subdir=${BP}/drivers/gpu/drm/panel \
+	file://st77922.c;subdir=${BP}/drivers/input/touchscreen \
 	file://0001-Add-elegoo-centauri-carbon.dts.patch \
 	file://0001-Add-support-for-r528-msgbox-and-remoteproc.patch \
 	file://0002-drm-add-RB-channel-swap-support-for-panels-with-swap.patch \
@@ -20,6 +21,7 @@ SRC_URI:append = " \
 	file://0002-pwm-Add-Allwinner-s-D1-T113-S3-R329-SoCs-PWM-support.patch \
 	file://0003-riscv-dts-allwinner-d1-Add-pwm-node.patch \
 	file://0001-Make-CONFIG_FB-select-CONFIG_FB_BACKLIGHT.patch \
+	file://0001-Add-support-for-st77922-touchscreen-driver.patch \
 "
 
 SRC_URI:append:elegoo-centauri-carbon2 = " \
