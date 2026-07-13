@@ -1,7 +1,7 @@
 [submodule "meta-sunxi"]
 	path = meta-sunxi
-	url = https://github.com/jamesturton/meta-sunxi
-	branch = wrynose
+	url = https://github.com/linux-sunxi/meta-sunxi
+	branch = master
 [submodule "meta-openembedded"]
 	path = meta-openembedded
 	url = https://git.openembedded.org/meta-openembedded
@@ -12,7 +12,7 @@
 	branch = wrynose
 [submodule "meta-swupdate"]
 	path = meta-swupdate
-	url = https://github.com/sbabic/meta-swupdate.git
+	url = https://github.com/sbabic/meta-swupdate
 	branch = wrynose
 [submodule "meta-yocto"]
 	path = meta-yocto
