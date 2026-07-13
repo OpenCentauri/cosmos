@@ -1,0 +1,45 @@
+From 2842207e832ef1c8d1b0071c6fbcc4c97e481746 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Tue, 14 Jul 2026 00:22:47 +0200
+Subject: [PATCH] Add support for st77922 touchscreen driver
+
+---
+ drivers/input/touchscreen/Kconfig  | 12 ++++++++++++
+ drivers/input/touchscreen/Makefile |  1 +
+ 2 files changed, 13 insertions(+)
+
+diff --git a/drivers/input/touchscreen/Kconfig b/drivers/input/touchscreen/Kconfig
+index 7d5b72ee07fa..e85232e4ecb0 100644
+--- a/drivers/input/touchscreen/Kconfig
++++ b/drivers/input/touchscreen/Kconfig
+@@ -1250,6 +1250,18 @@ config TOUCHSCREEN_ST1232
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called st1232_ts.
+ 
++config TOUCHSCREEN_ST77922
++	tristate "Sitronix ST77922 touchscreen controllers"
++	depends on I2C
++	help
++	  Say Y here if you want to support the Sitronix ST77922
++	  touchscreen controller.
++
++	  If unsure, say N.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called st77922_ts.
++
+ config TOUCHSCREEN_STMFTS
+ 	tristate "STMicroelectronics STMFTS touchscreen"
+ 	depends on I2C
+diff --git a/drivers/input/touchscreen/Makefile b/drivers/input/touchscreen/Makefile
+index ab9abd151078..68751522cc30 100644
+--- a/drivers/input/touchscreen/Makefile
++++ b/drivers/input/touchscreen/Makefile
+@@ -83,6 +83,7 @@ obj-$(CONFIG_TOUCHSCREEN_S6SY761)	+= s6sy761.o
+ obj-$(CONFIG_TOUCHSCREEN_SILEAD)	+= silead.o
+ obj-$(CONFIG_TOUCHSCREEN_SIS_I2C)	+= sis_i2c.o
+ obj-$(CONFIG_TOUCHSCREEN_ST1232)	+= st1232.o
++obj-$(CONFIG_TOUCHSCREEN_ST77922)	+= st77922.o
+ obj-$(CONFIG_TOUCHSCREEN_STMFTS)	+= stmfts.o
+ obj-$(CONFIG_TOUCHSCREEN_STMPE)		+= stmpe-ts.o
+ obj-$(CONFIG_TOUCHSCREEN_SUN4I)		+= sun4i-ts.o
