@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-import subprocess, json
+import subprocess, json, sys
 
-# This should probably be replaced by loading it from a file
-VERSION = "%REPLACE_ME_WITH_CURRENT_VERSION%"
+def get_current_version() -> str:
+    with open("/etc/issue") as f:
+        return f.read().strip().split(" ")[2]
 
 def get_version_branch() -> str:
     return subprocess.run(["config-manager", "update", "release"], capture_output=True, text=True, check=True).stdout
@@ -51,9 +52,13 @@ def notify_update_availabe(new_version : str, current_version : str):
 
 def main():
     if not is_check_for_updates_enabled():
+        print("Update check is disabled. Skipping update check.")
         return
+    
+    version = sys.argv[1] if len(sys.argv) > 1 else get_current_version()
 
-    if "PR" in VERSION:
+    if "PR" in version:
+        print("Running a PR build. Skipping update check.")
         return
     
     is_stable = get_version_branch() == "stable"
@@ -63,10 +68,9 @@ def main():
         print("Failed to fetch latest version information.")
         return
 
-    is_match = remote_version == VERSION if is_stable else remote_version.startswith(VERSION)
-    
+    is_match = remote_version == version if is_stable else remote_version.startswith(version)
     if not is_match:
-        notify_update_availabe(remote_version, VERSION)
+        notify_update_availabe(remote_version, version)
     else:
         print("No updates available.")
 
