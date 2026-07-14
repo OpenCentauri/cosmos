@@ -45,7 +45,7 @@ def get_latest_commit() -> str|None:
 
 def notify_update_availabe(new_version : str, current_version : str):
     title = "Update Available"
-    message = f"A new version of COSMOS is available. You're currently on version {current_version}, and the latest version is {new_version}. Please update to the latest version using the touchscreen user interface. This will stop any active print jobs."
+    message = f"An upgrade from COSMOS version {current_version} to {new_version} is available. Upgrade to the latest version for new features and bugfixes."
     subprocess.run(["uiprompt", title, message])
     print(title)
     print(message)
