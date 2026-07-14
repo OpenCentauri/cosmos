@@ -8,6 +8,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/andrewmcgr/klipper_tmc_autotune.git;protocol=https;branch=main \
+    file://database.cfg \
 "
 
 SRCREV = "3f979750b758ac95c67e19f658f60566c19fff82"
@@ -28,7 +29,8 @@ do_compile[noexec] = "1"
 do_install() {
     # Install klippy extras
     install -d ${D}${datadir}/klipper/klippy/extras
-    cp ${S}/autotune_tmc.py ${S}/motor_constants.py ${S}/motor_database.cfg ${D}${datadir}/klipper/klippy/extras/
+    cp ${S}/autotune_tmc.py ${S}/motor_constants.py ${D}${datadir}/klipper/klippy/extras/
+    cp ${S}/database.cfg ${D}${datadir}/klipper/klippy/extras/motor_database.cfg
 }
 
 FILES:${PN} = " \
