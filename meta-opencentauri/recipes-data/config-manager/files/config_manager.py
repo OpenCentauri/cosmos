@@ -9,6 +9,7 @@ VALIDATORS = {
     },
     'update': {
         'release': ['stable', 'nightly'],
+        'check_for_updates': ['True', 'False'],
     },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
