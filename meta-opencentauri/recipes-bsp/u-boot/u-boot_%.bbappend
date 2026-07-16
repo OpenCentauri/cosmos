@@ -14,6 +14,9 @@ SRC_URI:append = " \
 	file://0001-sunxi-r528-add-display-support-with-RB-channel-swap.patch \
 	file://0001-Reduce-size-of-framebuffer.patch \
 	file://0001-cmd-add-sunxi-efex-command-to-reboot-into-FEL-mode.patch \
+"
+
+SRC_URI:append:elegoo-centauri-carbon2 = " \
 	file://0002-video-add-st77922-panel-and-allwinner-dsi-host.patch \
 "
 
