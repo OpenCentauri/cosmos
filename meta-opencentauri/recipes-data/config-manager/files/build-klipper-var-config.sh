@@ -21,6 +21,7 @@ full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_tempe
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
 toolhead_led=$(get_config_value toolhead_led)
+case_led=$(get_config_value case_led)
 
 mkdir -p "${OUTPUT_DIR}"
 
@@ -40,7 +41,7 @@ variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
 variable_toolhead_led: ${toolhead_led}
+variable_case_led: ${case_led}
 gcode:
 
 EOF
-

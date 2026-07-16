@@ -22,6 +22,7 @@ VALIDATORS = {
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(30, 111)],
         'toolhead_led': ['True', 'False'],
+        'case_led': ['True', 'False'],
     },
 }
 
