@@ -1,0 +1,60 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cc2-toolhead-mcu
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Power and initialize Carbon2 toolhead MCU
+### END INIT INFO
+
+GPIO="145" # host:PE17 = 4 * 32 + 17
+SERIAL="/dev/ttyS3"
+
+power_on() {
+    if [ ! -d "/sys/class/gpio/gpio${GPIO}" ]; then
+        echo "$GPIO" > /sys/class/gpio/export || return 1
+    fi
+    echo out > "/sys/class/gpio/gpio${GPIO}/direction" || return 1
+    echo 0 > "/sys/class/gpio/gpio${GPIO}/value" || return 1
+    sleep 0.2
+    echo 1 > "/sys/class/gpio/gpio${GPIO}/value" || return 1
+    echo "$GPIO" > /sys/class/gpio/unexport 2>/dev/null || true
+}
+
+power_off() {
+    if [ ! -d "/sys/class/gpio/gpio${GPIO}" ]; then
+        echo "$GPIO" > /sys/class/gpio/export || return 1
+    fi
+    echo out > "/sys/class/gpio/gpio${GPIO}/direction" || return 1
+    echo 0 > "/sys/class/gpio/gpio${GPIO}/value" || return 1
+    echo "$GPIO" > /sys/class/gpio/unexport 2>/dev/null || true
+}
+
+case "$1" in
+    start)
+        echo "Powering Carbon2 toolhead MCU..."
+        power_on || exit 1
+        mcu-flasher --cc2-boot --no-wait --baud 250000 --timeout 1 "$SERIAL"
+        ;;
+    stop)
+        echo "Powering off Carbon2 toolhead MCU..."
+        power_off || exit 1
+        ;;
+    restart|force-reload)
+        "$0" stop && "$0" start
+        ;;
+    status)
+        if [ -r "/sys/class/gpio/gpio${GPIO}/value" ]; then
+            echo "cc2-toolhead-mcu power is $(cat "/sys/class/gpio/gpio${GPIO}/value")"
+        else
+            echo "cc2-toolhead-mcu power state is not exported"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
