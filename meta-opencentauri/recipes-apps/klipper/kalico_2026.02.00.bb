@@ -35,6 +35,17 @@ RDEPENDS:${PN} = " \
     kalico-firmware-bed \
 "
 
+# CC2 uses the stock MCU applications. Only power-cycle them and ask the
+# Elegoo bootloader to jump to the application; do not install CC1 firmware.
+RDEPENDS:${PN}:remove:elegoo-centauri-carbon2 = " \
+    kalico-firmware-toolhead \
+    kalico-firmware-bed \
+"
+RDEPENDS:${PN}:append:elegoo-centauri-carbon2 = " \
+    cc2-toolhead-mcu \
+    cc2-bed-mcu \
+"
+
 RPROVIDES:${PN} += "klipper"
 
 INITSCRIPT_NAME = "klipper"
