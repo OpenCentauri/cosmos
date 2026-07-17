@@ -7,15 +7,20 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
     file://klipper-init-d \
-    file://printer.cfg \
-    file://macros.cfg \
-    file://machine.cfg \
-    file://shell.cfg \
-    file://screen.cfg \
-    file://calibration.cfg \
-    file://kamp.cfg \
-    file://client.cfg \
+    file://config/shared/macros.cfg \
+    file://config/shared/calibration.cfg \
+    file://config/shared/kamp.cfg \
+    file://config/shared/client.cfg \
+    file://config/shared/shell.cfg \
+    file://config/shared/screen.cfg \
+    file://config/cc1/printer.cfg \
+    file://config/cc1/machine.cfg \
+    file://config/cc2/printer.cfg \
+    file://config/cc2/machine.cfg \
 "
+
+CFG_VARIANT = "cc1"
+CFG_VARIANT:elegoo-centauri-carbon2 = "cc2"
 
 inherit python3-dir update-rc.d
 
@@ -105,11 +110,30 @@ do_install() {
     # Install default kalico config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${UNPACKDIR}/printer.cfg ${D}${sysconfdir}/klipper/config/
+    install -d ${D}${sysconfdir}/klipper/config/shared
+    install -d ${D}${sysconfdir}/klipper/config/cc1
+    install -d ${D}${sysconfdir}/klipper/config/cc2
+    cp -r ${UNPACKDIR}/config/shared/. ${D}${sysconfdir}/klipper/config/shared/
+    cp -r ${UNPACKDIR}/config/cc1/. ${D}${sysconfdir}/klipper/config/cc1/
+    cp -r ${UNPACKDIR}/config/cc2/. ${D}${sysconfdir}/klipper/config/cc2/
 
-    # Copy non-printer .cfg files to readonly folder
+    # Keep the selected variant at the established live paths used by
+    # klipper-init-d and by user tooling.
+    install -m 0644 ${UNPACKDIR}/config/${CFG_VARIANT}/printer.cfg \
+        ${D}${sysconfdir}/klipper/config/printer.cfg
+
+    # Shared files are the base; variant files can override them. printer.cfg
+    # stays at the live user-editable path and is never copied readonly.
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    cp -r ${UNPACKDIR}/config/shared/. \
+        ${D}${sysconfdir}/klipper/config/klipper-readonly/
+    for cfg in ${UNPACKDIR}/config/${CFG_VARIANT}/*.cfg; do
+        name=$(basename "$cfg")
+        if [ "$name" != "printer.cfg" ]; then
+            install -m 0644 "$cfg" \
+                ${D}${sysconfdir}/klipper/config/klipper-readonly/
+        fi
+    done
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
