@@ -12,9 +12,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=paul/a
     file://0001-implement-pulldown-resistor-in-thermistor-calc.patch \
     file://0001-probe-home-z-includes-z-offset.patch \
 "
-SRCREV = "e58266b46df35bf67706792a3684bfa0ce53d089"
+SRCREV = "0b767b33d56716305f7e3613a71eea4e9c2d4bea"
 
-PR = "r7"
+PR = "r8"
 
 DEPENDS = " \
     python3-native \
