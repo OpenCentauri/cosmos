@@ -20,6 +20,7 @@ z_ideal_lifting_distance=$(get_config_value z_ideal_lifting_distance)
 full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_temperature)
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
+toolhead_led=$(get_config_value toolhead_led)
 
 mkdir -p "${OUTPUT_DIR}"
 
@@ -38,6 +39,7 @@ variable_z_ideal_lifting_distance: ${z_ideal_lifting_distance}
 variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
+variable_toolhead_led: ${toolhead_led}
 gcode:
 
 EOF
