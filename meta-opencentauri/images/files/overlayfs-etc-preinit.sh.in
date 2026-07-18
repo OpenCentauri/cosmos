@@ -58,6 +58,37 @@ then
     mkdir -p $UPPER_DIR
     mkdir -p $WORK_DIR
 
+    # Init scripts supplied by the image are release-owned rather than printer
+    # configuration.  Before /etc becomes an overlay, compare upper entries
+    # with the new rootfs's /etc/init.d and discard only stale overrides of
+    # scripts that the image also supplies.  This keeps user-created scripts
+    # (for example ustreamer.new) intact while allowing every shipped service
+    # to receive revised launch defaults on the first boot after an A/B update.
+    if [ -d "$UPPER_DIR/init.d" ]; then
+        for upper_script in "$UPPER_DIR"/init.d/*; do
+            [ -f "$upper_script" ] || continue
+            script_name=${upper_script##*/}
+            [ -f "/etc/init.d/$script_name" ] || continue
+            rm -f "$upper_script"
+        done
+
+        # A deleted image script may be represented by an overlayfs whiteout.
+        # Remove whiteouts only when they hide an image-owned init script.
+        for whiteout in "$UPPER_DIR"/init.d/.wh.*; do
+            [ -e "$whiteout" ] || continue
+            whiteout_name=${whiteout##*/}
+            case "$whiteout_name" in
+                .wh..wh..opq)
+                    rm -f "$whiteout"
+                    ;;
+                .wh.*)
+                    script_name=${whiteout_name#.wh.}
+                    [ -f "/etc/init.d/$script_name" ] && rm -f "$whiteout"
+                    ;;
+            esac
+        done
+    fi
+
     if {OVERLAYFS_ETC_EXPOSE_LOWER}; then
         mkdir -p $LOWER_DIR
 
