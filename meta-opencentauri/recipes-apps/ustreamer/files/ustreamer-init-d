@@ -9,7 +9,9 @@
 ### END INIT INFO
 
 USTREAMER_EXEC="/usr/bin/ustreamer"
-USTREAMER_ARGS="-r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
+# The CC2 deployment uses camera-provided MJPEG at 864x480.  Eight FPS is the
+# measured stable delivery rate with the bounded frame backlog.
+USTREAMER_ARGS="-r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 8 -l --host=0.0.0.0 --allow-origin=*"
 PIDFILE="/var/run/ustreamer.pid"
 
 case "$1" in
