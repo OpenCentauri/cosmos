@@ -1,14 +1,49 @@
 name: Build OpenCentauri Image
 
+# RATIONALE — Cache Architecture Change
+#
+# Problem:
+#   The previous workflow copied the entire downloads + sstate-cache into and
+#   out of the workspace on every build (cp -ar). This added ~9.5 GB of I/O
+#   per run, slowed build startup, and caused intermittent rust crate fetch
+#   failures when the copy raced with network timeouts.
+#
+# Solution:
+#   Set DL_DIR as a global environment variable pointing at the persistent
+#   cache volume (/data/cache). Downloads are always shared.
+#   SSTATE_DIR, CCACHE_TOP_DIR, and TMPDIR are set conditionally based on the
+#   use_cache input so release builds can run from a clean state while test
+#   builds reuse cached compilation and temporary state.
+#
+# Phase 2 (planned):
+#   - Enable ccache (INHERIT += "ccache", CCACHE_TOP_DIR env var)
+#     to cache C/C++ compilation independently of sstate.
+#   - Persist tmp/cache/ + tmp/stamps/ via env vars to speed up bitbake
+#     metadata parsing and task state tracking between runs.
+#
+# Why this is safe:
+#   - Single-tenant runner: only OpenCentauri/cosmos builds on this runner.
+#   - Persistent bind-mounted volume: /data/cache survives container restarts.
+#   - Identical host/container architecture: sstate is ABI-compatible.
+#   - No concurrency: GitHub Actions concurrency group prevents simultaneous
+#     jobs from corrupting shared cache.
+#
+# Tradeoffs:
+#   - Cache is live: failed builds may leave partial sstate entries. Bitbake
+#     handles this gracefully (stale sstate is ignored on hash mismatch).
+#   - No rollback: cache mutations are immediate. This is acceptable because
+#     sstate entries are content-addressed and immutable.
+#
+# References:
+#   - Bitbake DL_DIR: https://docs.yoctoproject.org/ref-manual/variables.html#term-DL_DIR
+#   - Bitbake SSTATE_DIR: https://docs.yoctoproject.org/ref-manual/variables.html#term-SSTATE_DIR
+
 on:
   workflow_call:
     inputs:
       use_cache:
         type: boolean
         default: true
-      write_back_cache:
-        type: boolean
-        default: false
       upload_all_artifacts:
         type: boolean
         default: false
@@ -21,10 +56,6 @@ on:
         description: 'Use cache'
         type: boolean
         default: true
-      write_back_cache:
-        description: 'Write back cache'
-        type: boolean
-        default: false
       upload_all_artifacts:
         description: 'Upload all artifacts'
         type: boolean
@@ -35,25 +66,26 @@ on:
         default: ''
 
 env:
-  # Sims server cache dir
-  CACHE_DIR: /data/cache
+  # Always use persistent downloads directory to avoid re-fetching sources.
+  DL_DIR: /data/cache/downloads
 
 jobs:
   build:
     runs-on: self-hosted
+    # Prevent concurrent jobs from writing to shared cache simultaneously.
+    concurrency:
+      group: cosmos-build-cache
+      cancel-in-progress: false
 
     steps:
+      - name: Ensure cache directories exist
+        run: mkdir -p /data/cache/{downloads,sstate-cache,ccache,tmp}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-
-      - name: Restore cache
-        if: ${{ inputs.use_cache }}
-        run: |
-          mkdir -p ./build
-          cp -ar ${{ env.CACHE_DIR }}/* ./build
 
       - name: Set distro version
         if: ${{ inputs.version != '' }}
@@ -63,6 +95,10 @@ jobs:
           sed -i -E "s/^DISTRO_VERSION = \".*\"/DISTRO_VERSION = \"${version}\"/" meta-opencentauri/conf/distro/cosmos.conf
 
       - name: Build image
+        env:
+          SSTATE_DIR: ${{ inputs.use_cache && '/data/cache/sstate-cache' || '' }}
+          CCACHE_TOP_DIR: ${{ inputs.use_cache && '/data/cache/ccache' || '' }}
+          TMPDIR: ${{ inputs.use_cache && '/data/cache/tmp' || '' }}
         run: |
           source poky/oe-init-build-env build
           bitbake opencentauri-upgrade
@@ -79,13 +115,6 @@ jobs:
         with:
           name: elegoo-centauri-carbon1-images
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/
-
-      - name: Write back cache
-        if: ${{ inputs.write_back_cache }}
-        run: |
-          rm -rf ${{ env.CACHE_DIR }}/*
-          cp -ar ./build/downloads ${{ env.CACHE_DIR }}
-          cp -ar ./build/sstate-cache ${{ env.CACHE_DIR }}
 
       - name: Clean workspace
         if: always()
