@@ -1,0 +1,30 @@
+From c4b86f3ae1929829fc0c22d0914d9e97acfa1c02 Mon Sep 17 00:00:00 2001
+From: Jason Pell <jason@pellcorp.com>
+Date: Sat, 11 Jul 2026 08:36:13 +1000
+Subject: [PATCH] lowering the velocity of the toolhead sweep is what causes
+ the oom on a k1 because it means input shaping just takes too damn long
+
+---
+ klippy/extras/resonance_tester.py | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/klippy/extras/resonance_tester.py b/klippy/extras/resonance_tester.py
+index 71c8f724a8..2b63f88938 100644
+--- a/klippy/extras/resonance_tester.py
++++ b/klippy/extras/resonance_tester.py
+@@ -228,10 +228,14 @@ def __init__(self, config):
+         self.gcode = self.printer.lookup_object("gcode")
+ 
+     def run_test(self, test_seq, axis, freq_end, accel_per_hz, gcmd):
++        toolhead = self.printer.lookup_object("toolhead")
++        max_velocity = toolhead.get_status(
++            self.printer.get_reactor().monotonic()
++        )["max_velocity"]
+         with suspend_limits(
+             self.printer,
+             freq_end * accel_per_hz + 10.0,
+-            accel_per_hz * 0.25 + 1.0,
++            max_velocity,
+             gcmd.get_int("INPUT_SHAPING", 0),
+         ):
+             self._run_test(test_seq, axis, gcmd)
