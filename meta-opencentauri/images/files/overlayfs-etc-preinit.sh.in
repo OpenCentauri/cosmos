@@ -67,7 +67,7 @@ then
     if [ -d "$UPPER_DIR/init.d" ]; then
         for upper_script in "$UPPER_DIR"/init.d/*; do
             [ -f "$upper_script" ] || continue
-            script_name=${upper_script##*/}
+            script_name=${{upper_script##*/}}
             [ -f "/etc/init.d/$script_name" ] || continue
             rm -f "$upper_script"
         done
@@ -76,13 +76,13 @@ then
         # Remove whiteouts only when they hide an image-owned init script.
         for whiteout in "$UPPER_DIR"/init.d/.wh.*; do
             [ -e "$whiteout" ] || continue
-            whiteout_name=${whiteout##*/}
+            whiteout_name=${{whiteout##*/}}
             case "$whiteout_name" in
                 .wh..wh..opq)
                     rm -f "$whiteout"
                     ;;
                 .wh.*)
-                    script_name=${whiteout_name#.wh.}
+                    script_name=${{whiteout_name#.wh.}}
                     [ -f "/etc/init.d/$script_name" ] && rm -f "$whiteout"
                     ;;
             esac
