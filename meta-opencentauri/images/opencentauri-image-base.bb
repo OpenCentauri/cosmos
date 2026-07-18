@@ -21,6 +21,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     rtw88 \
     aic8800 \
     kalico \
+    rusty-shaper \
     moonraker \
     mainsail \
     fluidd \

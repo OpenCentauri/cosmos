@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 import os, configparser, sys
 
+VALID_INPUT_SHAPERS = {'zv', 'mzv', 'zvd', 'ei', '2hump_ei', '3hump_ei'}
+
+def valid_input_shapers(value: str) -> bool:
+    """Accept an empty value or a comma-separated Rusty Shaper list."""
+    if not value:
+        return True
+    shapers = value.split(',')
+    return ('all' not in shapers or len(shapers) == 1) and all(
+        shaper in VALID_INPUT_SHAPERS or shaper == 'all'
+        for shaper in shapers)
+
 VALIDATORS = {
     'ui': {
         'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen', 'none'],
@@ -23,6 +34,8 @@ VALIDATORS = {
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(30, 111)],
         'toolhead_led': ['True', 'False'],
+        'input_shaper': ['rusty', 'classic'],
+        'input_shapers': valid_input_shapers,
     },
 }
 
@@ -37,7 +50,9 @@ def validate_config(config : dict):
             if option not in config[section]:
                 continue
             value = config[section][option]
-            if value not in valid_values:
+            is_valid = (valid_values(value) if callable(valid_values)
+                        else value in valid_values)
+            if not is_valid:
                 print(f"Warning: Invalid value '{value}' for '{option}' in section '{section}'. Valid options are: {valid_values}", file=sys.stderr)
                 del config[section][option]
 

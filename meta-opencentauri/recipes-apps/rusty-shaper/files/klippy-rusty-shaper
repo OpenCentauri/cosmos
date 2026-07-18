@@ -1,0 +1,63 @@
+#!/bin/sh
+
+log_file=/etc/klipper/logs/klippy.log
+full_calibration=0
+if [ "${1:-}" = full ]; then
+    full_calibration=1
+    shift
+fi
+shapers=${1:-}
+run_dir=/user-resource/.tmp
+moonraker_host=127.0.0.1
+moonraker_port=80
+worker_log="$run_dir/rusty-shaper.log"
+status_file="$run_dir/rusty-shaper.status"
+
+find_raw_data() {
+    axis=$1
+    awk -v axis="$axis" '
+        /Writing raw accelerometer data to/ && $0 ~ ("raw_data_" axis "_") {
+            if (match($0, /\/[^ ]+\.csv/))
+                file = substr($0, RSTART, RLENGTH)
+        }
+        END { print file }
+    ' "$log_file"
+}
+
+mkdir -p "$run_dir"
+rm -f "$status_file"
+
+# RUN_SHELL_COMMAND waits for its child.  Rusty Shaper reports progress and
+# applies settings through Moonraker, which requires Klipper's reactor to be
+# free, so detach the worker before it issues those callbacks.
+(
+    x_file=$(find_raw_data x)
+    y_file=$(find_raw_data y)
+
+    if [ -z "$x_file" ] || [ -z "$y_file" ]; then
+        echo "Rusty Shaper could not find the X and Y raw resonance captures in $log_file" >&2
+        result=error
+    else
+        work_dir=$(dirname "$x_file")
+        set -- --workdir "$work_dir" --output csv --output klippy \
+            --log-macro M125 --moonraker-host "$moonraker_host" --moonraker-port "$moonraker_port"
+
+        if [ -n "$shapers" ]; then
+            set -- "$@" --shapers "$shapers"
+        fi
+
+        if /usr/bin/rusty-shaper "$@" "$x_file" "$y_file"; then
+            result=success
+        else
+            result=error
+        fi
+    fi
+
+    printf '%s\n' "$result" > "$status_file"
+    curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
+        --data-urlencode "script=RUSTY_SHAPER_FINISHED RESULT=$result FULL=$full_calibration" \
+        "http://$moonraker_host:$moonraker_port/printer/gcode/script" >/dev/null || \
+        echo "Rusty Shaper could not report completion to Klipper" >&2
+) > "$worker_log" 2>&1 < /dev/null &
+
+exit 0

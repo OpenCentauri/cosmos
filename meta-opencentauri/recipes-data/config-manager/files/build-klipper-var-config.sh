@@ -21,6 +21,8 @@ full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_tempe
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
 toolhead_led=$(get_config_value toolhead_led)
+input_shaper=$(get_config_value input_shaper)
+input_shapers=$(get_config_value input_shapers)
 
 mkdir -p "${OUTPUT_DIR}"
 
@@ -40,7 +42,11 @@ variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
 variable_toolhead_led: ${toolhead_led}
+variable_input_shaper: '${input_shaper}'
+variable_input_shapers: '${input_shapers}'
+variable_toolhead_led: ${toolhead_led}
+variable_input_shaper: '${input_shaper}'
+variable_input_shapers: '${input_shapers}'
 gcode:
 
 EOF
-
