@@ -10,12 +10,14 @@
 
 GRUMPYSCREEN_EXEC=/usr/bin/grumpyscreen
 PIDFILE=/var/run/gui.pid
-CONFIG_FILE="/etc/klipper/config/grumpyscreen.cfg"
+CONFIG_FILE="/etc/klipper/config/klipper-readonly/grumpyscreen.cfg"
+CONFIG_OVERRIDE_FILE="/etc/klipper/config/grumpyscreen.cfg"
 CONFIG_VERSION="20260518"
 CONFIG_VERSION_FILE="/etc/grumpyscreen-config.ver"
 CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
 export CONFIG_FILE
+export CONFIG_OVERRIDE_FILE
 
 ensure_grumpyscreen_config_version() {
     current_version=""
@@ -31,13 +33,13 @@ ensure_grumpyscreen_config_version() {
         return 0
     fi
 
-    if [ -f "$CONFIG_FILE" ]; then
+    if [ -f "$CONFIG_OVERRIDE_FILE" ]; then
         backup_timestamp="$(date +%Y%m%d_%H%M%S)" || return 1
         backup_file="$CONFIG_BACKUP_DIR/grumpyscreen-$backup_timestamp.cfg"
 
         mkdir -p "$CONFIG_BACKUP_DIR" || return 1
-        cp "$CONFIG_FILE" "$backup_file" || return 1
-        rm -f /data/overlay-etc/upper/klipper/config/grumpyscreen.cfg && sync && echo 3 > /proc/sys/vm/drop_caches
+        cp "$CONFIG_OVERRIDE_FILE" "$backup_file" || return 1
+        echo "# Add other extra configuration here.\n" > "$CONFIG_OVERRIDE_FILE"
     fi
 
     printf '%s\n' "$CONFIG_VERSION" > "$CONFIG_VERSION_FILE" || return 1
