@@ -1,0 +1,38 @@
+From 0d1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a Mon Sep 17 00:00:00 2001
+From: Paul Swenson <paul@swenson.co>
+Date: Sat, 18 Jul 2026 19:50:00 +0000
+Subject: [PATCH] input_shaper: persist SET_INPUT_SHAPER values for SAVE_CONFIG
+
+Klipper's SET_INPUT_SHAPER updates the live shaper parameters but never
+marks the config file as dirty, so a later SAVE_CONFIG does not write the
+updated shaper_type_*/shaper_freq_* values. This breaks Rusty Shaper and any
+other flow that expects the user to hit SAVE_CONFIG after setting shapers via
+G-code.
+
+Call configfile.set() for each axis when the command actually changes
+parameters, mirroring the behaviour of shaper_calibrate.save_params().
+
+Upstream-Status: Pending
+
+---
+ klippy/extras/input_shaper.py | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/klippy/extras/input_shaper.py b/klippy/extras/input_shaper.py
+index 1600d034..179632df 100644
+--- a/klippy/extras/input_shaper.py
++++ b/klippy/extras/input_shaper.py
+@@ -212,6 +212,14 @@ class InputShaper:
+             for shaper in self.shapers:
+                 shaper.update(gcmd)
+             self._update_input_shaping()
++            configfile = self.printer.lookup_object('configfile')
++            for shaper in self.shapers:
++                status = shaper.params.get_status()
++                axis = shaper.axis
++                configfile.set("input_shaper", "shaper_type_" + axis,
++                               status["shaper_type"])
++                configfile.set("input_shaper", "shaper_freq_" + axis,
++                               status["shaper_freq"])
+         for shaper in self.shapers:
+             shaper.report(gcmd)

@@ -1,0 +1,51 @@
+From be88bd00a33ae93a813c21f48aed7a3f167dc35e Mon Sep 17 00:00:00 2001
+From: Paul Swenson <pdscomp@gmail.com>
+Date: Sat, 18 Jul 2026 16:07:49 -0400
+Subject: [PATCH] adxl345: stream raw accelerometer writes to avoid holding samples in RAM
+
+write_to_file() previously flattened all captured batches into a Python list
+of Accel_Measurement tuples before writing. For long resonance captures this
+doubles the peak memory: the batches already in msgs plus the new samples list.
+
+Stream the same batches directly to the CSV instead. The msgs are already
+filtered to the requested time window by handle_batch, so iterate them and
+skip samples outside request_start_time/request_end_time exactly as before.
+No new allocations for the full capture.
+
+Upstream-Status: Pending
+
+---
+
+diff --git a/klippy/extras/adxl345.py b/klippy/extras/adxl345.py
+index 7909e04a..478647b6 100644
+--- a/klippy/extras/adxl345.py
++++ b/klippy/extras/adxl345.py
+@@ -109,18 +109,18 @@ class AccelQueryHelper:
+     def write_to_file(self, filename):
+         def write_impl():
+             try:
+-                # Try to re-nice writing process
++                # ponytail: keep re-nice; IO-bound writer should not steal reactor time
+                 os.nice(20)
+-            except:
++            except Exception:
+                 pass
+-            f = open(filename, "w")
+-            f.write("#time,accel_x,accel_y,accel_z\n")
+-            samples = self.samples or self.get_samples()
+-            for t, accel_x, accel_y, accel_z in samples:
+-                f.write(
+-                    "%.6f,%.6f,%.6f,%.6f\n" % (t, accel_x, accel_y, accel_z)
+-                )
+-            f.close()
++            with open(filename, "w") as f:
++                f.write("#time,accel_x,accel_y,accel_z\n")
++                # ponytail: stream from msgs; avoid flattening whole capture into a list
++                for msg in self.msgs:
++                    for t, x, y, z in msg["data"]:
++                        if t < self.request_start_time or t > self.request_end_time:
++                            continue
++                        f.write("%.6f,%.6f,%.6f,%.6f\n" % (t, x, y, z))
+ 
+         write_proc = multiprocessing.Process(target=write_impl)
+         write_proc.daemon = True

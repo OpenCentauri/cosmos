@@ -13,6 +13,8 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
     file://0001-Memory-optimisation-in-shaper_calibrate.patch \
+    file://0002-persist-set-input-shaper.patch \
+    file://0003-adxl345-stream-raw-writes.patch \
 "
 SRCREV = "fa59d011f425c5aef6f06abc08efe43f7f6c569d"
 
