@@ -58,6 +58,40 @@ then
     mkdir -p $UPPER_DIR
     mkdir -p $WORK_DIR
 
+    # init.d overlay cleanup: BEGIN
+    # Remove local overlay edits to Cosmos-provided init scripts so upgrades
+    # use the new image versions. This runs at EVERY boot: the image always
+    # wins for scripts it ships, so edits to image-owned scripts do not
+    # persist — customize via /etc/default/<name> or add a new script.
+    # Init scripts that exist only in the overlay (user-created, not shipped
+    # by the image) are preserved, matching previous Cosmos behavior; if an
+    # update breaks one, it is the user's responsibility to fix or remove it.
+    # Kernel whiteouts (char device 0:0) hiding image-owned scripts are
+    # removed; Docker/OCI-style .wh.* files never occur in a live overlayfs
+    # upperdir. Opaque-directory xattrs (replaced whole init.d) unsupported.
+    LOWER_INITD=${{LOWER_INITD:-/etc/init.d}}
+    if [ -d "$UPPER_DIR/init.d" ]; then
+        for upper_entry in "$UPPER_DIR"/init.d/*; do
+            [ -e "$upper_entry" ] || continue
+            entry_name=${{upper_entry##*/}}
+
+            if [ -c "$upper_entry" ]; then
+                # Kernel overlayfs whiteout hiding a lower entry; resurrect
+                # it if the new image ships the script again.
+                if [ "$(stat -c '%t:%T' "$upper_entry" 2>/dev/null)" = "0:0" ] && \
+                   [ -f "$LOWER_INITD/$entry_name" ]; then
+                    rm -f "$upper_entry"
+                fi
+                continue
+            fi
+
+            [ -f "$upper_entry" ] || continue
+            [ -f "$LOWER_INITD/$entry_name" ] || continue
+            rm -f "$upper_entry"
+        done
+    fi
+    # init.d overlay cleanup: END
+
     if {OVERLAYFS_ETC_EXPOSE_LOWER}; then
         mkdir -p $LOWER_DIR
 
