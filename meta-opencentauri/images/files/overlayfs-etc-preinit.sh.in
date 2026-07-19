@@ -58,6 +58,34 @@ then
     mkdir -p $UPPER_DIR
     mkdir -p $WORK_DIR
 
+    # Remove local overlay edits to Cosmos-provided init scripts so upgrades
+    # use the new image versions. User-provided init scripts are preserved,
+    # matching previous Cosmos behavior; if an update breaks one, it is the
+    # user's responsibility to fix or remove it.
+    if [ -d "$UPPER_DIR/init.d" ]; then
+        for upper_script in "$UPPER_DIR"/init.d/*; do
+            [ -f "$upper_script" ] || continue
+            script_name=${{upper_script##*/}}
+            [ -f "/etc/init.d/$script_name" ] || continue
+            rm -f "$upper_script"
+        done
+
+        # Remove whiteouts only when they hide an image-owned init script.
+        for whiteout in "$UPPER_DIR"/init.d/.wh.*; do
+            [ -e "$whiteout" ] || continue
+            whiteout_name=${{whiteout##*/}}
+            case "$whiteout_name" in
+                .wh..wh..opq)
+                    rm -f "$whiteout"
+                    ;;
+                .wh.*)
+                    script_name=${{whiteout_name#.wh.}}
+                    [ -f "/etc/init.d/$script_name" ] && rm -f "$whiteout"
+                    ;;
+            esac
+        done
+    fi
+
     if {OVERLAYFS_ETC_EXPOSE_LOWER}; then
         mkdir -p $LOWER_DIR
 
