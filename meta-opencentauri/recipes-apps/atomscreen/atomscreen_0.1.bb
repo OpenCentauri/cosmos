@@ -12,6 +12,10 @@ S = "${WORKDIR}/git"
 DEPENDS += "fontconfig openssl pkgconfig-native"
 RDEPENDS:${PN} += "fontconfig gui-switcher"
 
+# linuxfb generates framebuffer bindings during compilation. Ensure bindgen
+# uses the target headers instead of headers from the build host.
+export BINDGEN_EXTRA_CLANG_ARGS = "--sysroot=${STAGING_DIR_TARGET}"
+
 INSANE_SKIP:${PN} = "already-stripped"
 
 INITSCRIPT_NAME = "atomscreen"
