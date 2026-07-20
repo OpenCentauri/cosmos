@@ -18,6 +18,7 @@ KLIPPER_CONFIG_VERSION_FILE="/etc/klipper-config.ver"
 KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
 export TMPDIR="/user-resource/.tmp"
+export MALLOC_ARENA_MAX=2
 
 ensure_klipper_config_version() {
     current_version=""
