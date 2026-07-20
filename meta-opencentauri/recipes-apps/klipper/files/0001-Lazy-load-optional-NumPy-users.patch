@@ -1,0 +1,107 @@
+From 7f1b2a37d5cb51aabbec6483588f6a58c91bcf31 Mon Sep 17 00:00:00 2001
+From: OpenCentauri <dev@opencentauri.io>
+Date: Mon, 20 Jul 2026 15:00:00 -0400
+Subject: [PATCH] Lazy-load optional NumPy users
+
+Upstream-Status: Pending
+
+Importing NumPy 1.26 brings a substantial set of numerical modules into the
+Klippy process.  Do not make every configuration pay that cost merely for JSON
+conversion or for temperature-fan control modes which do not use curves.
+
+Recognize NumPy values by their type metadata in the JSON fallback, which is
+only invoked for otherwise non-serializable objects.  Import NumPy from the
+curve controller itself so watermark and PID temperature fans remain free of
+that dependency.
+---
+ klippy/extras/temperature_fan.py | 13 +++++++------
+ klippy/webhooks.py               | 15 ++++++++-------
+ 2 files changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/klippy/extras/temperature_fan.py b/klippy/extras/temperature_fan.py
+index 757b494..a358d2c 100644
+--- a/klippy/extras/temperature_fan.py
++++ b/klippy/extras/temperature_fan.py
+@@ -4,8 +4,6 @@
+ #
+ # This file may be distributed under the terms of the GNU GPLv3 license.
+
+-import numpy as np
+-
+ from . import fan
+
+ KELVIN_TO_CELSIUS = -273.15
+@@ -250,7 +248,12 @@ class ControlPID:
+
+ class ControlCurve:
+     def __init__(self, temperature_fan, config):
++        # Curve control is the only temperature-fan mode which needs NumPy.
++        # Keep PID and watermark configurations from importing it at startup.
++        import numpy as np
++
+         self.temperature_fan = temperature_fan
++        self.numpy = np
+
+         points = list(
+             config.getlists("points", seps=(",", "\n"), parser=float, count=2)
+@@ -316,19 +319,19 @@ class ControlCurve:
+
+     def temperature_callback(self, read_time, temp):
+         current_speed = self.temperature_fan.last_speed_value
+-        upper_temp = np.interp(
++        upper_temp = self.numpy.interp(
+             current_speed, self.curve_heating[1], self.curve_heating[0]
+         )
+-        lower_temp = np.interp(
++        lower_temp = self.numpy.interp(
+             current_speed, self.curve_cooling[1], self.curve_cooling[0]
+         )
+
+         if temp < lower_temp:
+-            next_speed = np.interp(
++            next_speed = self.numpy.interp(
+                 temp, self.curve_cooling[0], self.curve_cooling[1]
+             )
+         elif temp > upper_temp:
+-            next_speed = np.interp(
++            next_speed = self.numpy.interp(
+                 temp, self.curve_heating[0], self.curve_heating[1]
+             )
+         else:
+diff --git a/klippy/webhooks.py b/klippy/webhooks.py
+index f53cd1b..3037f25 100644
+--- a/klippy/webhooks.py
++++ b/klippy/webhooks.py
+@@ -13,8 +13,6 @@ import pwd
+ import socket
+ import sys
+
+-import numpy
+-
+ from . import APP_NAME, gcode
+ from .extras.danger_options import get_danger_options
+
+@@ -322,13 +320,15 @@ class ClientConnection:
+         self.send(result)
+
+     def _json_convert(self, obj):
+-        # numpy bool/array objects aren't directly serializable;
+-        # convert to regular types in case they leak into state dicts
+-        # to avoid a shutdown
+-        if isinstance(obj, numpy.bool_):
+-            return bool(obj)
+-        elif isinstance(obj, numpy.ndarray):
++        # NumPy scalars and arrays are not directly serializable.  This
++        # fallback is only called for otherwise unsupported values, so avoid
++        # importing all of NumPy just to recognize them.  Both ndarray and
++        # NumPy scalar types provide one of these conversion methods.
++        obj_type = type(obj)
++        if obj_type.__module__.startswith("numpy") and hasattr(obj, "tolist"):
+             return obj.tolist()
++        if obj_type.__module__.startswith("numpy") and hasattr(obj, "item"):
++            return obj.item()
+         # anything else will fail
+         logging.warning(
+             f"_json_convert: can't serialize object of type {type(obj)}: '{str(obj)}'"
+--
+2.47.2
