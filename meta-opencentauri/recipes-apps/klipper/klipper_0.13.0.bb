@@ -12,7 +12,7 @@ SRCREV = "61c0c8d2ef40340781835dd53fb04cc7a454e37a"
 
 S = "${WORKDIR}/git"
 
-inherit python3-dir update-rc.d
+inherit python3-dir python3native update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -71,6 +71,11 @@ do_install() {
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
     find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+    # The target squashfs is read-only, so precompile the exact optimized,
+    # no-debug-ranges bytecode used by the -O service invocation.  Unchecked
+    # hashes avoid source-path invalidation on the immutable image.
+    PYTHONNODEBUGRANGES=1 ${PYTHON} -O -m compileall -q -s ${D} -o 1 \
+        --invalidation-mode unchecked-hash ${D}${datadir}/klipper
 
     # Config directory
     install -d ${D}${sysconfdir}/klipper
