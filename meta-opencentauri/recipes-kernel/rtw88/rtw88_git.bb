@@ -9,6 +9,7 @@ inherit module
 SRCREV = "4e777cb6088f95c16ab3da9458ef78db43010d04"
 SRC_URI = "git://github.com/lwfinger/rtw88.git;protocol=https;branch=master \
            file://0001-disable-led-support.patch \
+           file://0002-usb-retry-failed-control-messages.patch \
            "
 
 S = "${WORKDIR}/git"
