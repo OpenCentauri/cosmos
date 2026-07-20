@@ -23,7 +23,7 @@ S = "${WORKDIR}/git"
 
 PR = "r1"
 
-inherit python3-dir python3native update-rc.d
+inherit python3-dir update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -70,11 +70,6 @@ do_install() {
     # Install moonraker python package
     install -d ${D}${datadir}/moonraker
     cp -r ${S}/moonraker ${D}${datadir}/moonraker/
-    # The target squashfs is read-only, so ship matching level-0 bytecode and
-    # omit fine-grained debug ranges without changing Moonraker optimization
-    # semantics (its runtime assert checks remain enabled).
-    PYTHONNODEBUGRANGES=1 ${PYTHON} -m compileall -q -s ${D} \
-        --invalidation-mode unchecked-hash ${D}${datadir}/moonraker
 
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper
