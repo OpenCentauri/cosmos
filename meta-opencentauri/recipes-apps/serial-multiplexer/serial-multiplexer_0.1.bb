@@ -134,4 +134,4 @@ SRC_URI[windows_x86_64_msvc-0.52.6.sha256sum] = "589f6da84c646204747d1270a2a5661
 SRC_URI[winnow-0.7.14.sha256sum] = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 
 
-S = "${WORKDIR}/git/serial-multiplexer"
+S = "${UNPACKDIR}/git/serial-multiplexer"

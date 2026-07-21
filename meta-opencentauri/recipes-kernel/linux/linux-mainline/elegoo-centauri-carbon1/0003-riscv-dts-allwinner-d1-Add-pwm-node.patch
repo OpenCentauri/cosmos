@@ -14,7 +14,7 @@ Signed-off-by: Aleksandr Shubin <privatesub2@gmail.com>
  1 file changed, 12 insertions(+)
 
 diff --git a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
-index 822f022eec2d..92b6432f7734 100644
+index e4175adb028d..2c26cb8b2b07 100644
 --- a/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 +++ b/arch/riscv/boot/dts/allwinner/sunxi-d1s-t113.dtsi
 @@ -145,6 +145,18 @@ uart3_pb_pins: uart3-pb-pins {
@@ -27,7 +27,7 @@ index 822f022eec2d..92b6432f7734 100644
 +			clocks = <&ccu CLK_BUS_PWM>,
 +				 <&dcxo>,
 +				 <&ccu CLK_APB0>;
-+			clock-names = "bus", "hosc", "apb0";
++			clock-names = "bus", "hosc", "apb";
 +			resets = <&ccu RST_BUS_PWM>;
 +			status = "disabled";
 +			#pwm-cells = <0x3>;

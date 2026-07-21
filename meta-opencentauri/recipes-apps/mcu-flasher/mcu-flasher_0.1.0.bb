@@ -1,4 +1,4 @@
-inherit cargo
+inherit cargo pkgconfig
 
 SUMMARY = "Serial Multiplexer"
 HOMEPAGE = "https://github.com/OpenCentauri/OpenCentauri"
@@ -11,10 +11,10 @@ SRC_URI += " \
 SRCREV = "fb829bd0a469e1c54cb9d2aa1bd98e14afd9f351"
 PR = "r1"
 
-S = "${WORKDIR}/git/mcu-flasher"
+S = "${UNPACKDIR}/${PN}-${PV}/mcu-flasher"
 CARGO_SRC_DIR = ""
 
-DEPENDS += "eudev pkgconfig-native"
+DEPENDS += "eudev"
 
 INSANE_SKIP:${PN} += "already-stripped"
 

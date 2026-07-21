@@ -9,5 +9,5 @@ do_install:append() {
     install -d ${D}/board-resource
     install -d ${D}/boot-resource
     install -d ${D}/data
-    install -m 0644 ${WORKDIR}/motd-opencentauri ${D}${sysconfdir}/motd
+    install -m 0644 ${UNPACKDIR}/motd-opencentauri ${D}${sysconfdir}/motd
 }

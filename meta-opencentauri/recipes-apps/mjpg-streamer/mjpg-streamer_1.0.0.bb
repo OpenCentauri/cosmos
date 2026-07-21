@@ -9,11 +9,11 @@ SRC_URI = "git://github.com/jacksonliam/mjpg-streamer.git;protocol=https;branch=
 
 DEPENDS = "libgphoto2 v4l-utils"
 
-S = "${WORKDIR}/git/mjpg-streamer-experimental"
+S = "${UNPACKDIR}/git/mjpg-streamer-experimental"
 
 inherit cmake update-rc.d
 
-OECMAKE_GENERATOR="Unix Makefiles"
+OECMAKE_GENERATOR = "Unix Makefiles"
 TARGET_CFLAGS += "-fcommon"
 
 INITSCRIPT_NAME = "mjpg-streamer"
@@ -24,7 +24,7 @@ do_install() {
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
-    cp ${WORKDIR}/mjpg-streamer-init-d ${D}${sysconfdir}/init.d/mjpg-streamer
+    cp ${UNPACKDIR}/mjpg-streamer-init-d ${D}${sysconfdir}/init.d/mjpg-streamer
     chmod 0755 ${D}${sysconfdir}/init.d/mjpg-streamer
 }
 
