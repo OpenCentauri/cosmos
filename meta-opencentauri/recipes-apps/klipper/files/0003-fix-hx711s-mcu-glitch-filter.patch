@@ -20,8 +20,8 @@ framing-valid corrupt ADC frame from tripping the probe endstop.
 
 Upstream-Status: Pending
 ---
- src/sensor_hx711s.c | 54 +++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 40 insertions(+), 14 deletions(-)
+src/sensor_hx711s.c | 56 ++++++++++++++++++++++++++++++++++++++++--------------
+1 file changed, 41 insertions(+), 14 deletions(-)
 
 diff --git a/src/sensor_hx711s.c b/src/sensor_hx711s.c
 index a5f64de6..8ea24d22 100644
@@ -41,7 +41,7 @@ index a5f64de6..8ea24d22 100644
 +    int32_t pending_counts[MAX_SENSORS];
 +    uint8_t have_last_counts;
 +    uint8_t have_pending_counts;
-@@ -219,11 +221,12 @@ hx711s_read_adc(struct hx711s_adc *h, uint8_t oid)
+@@ -219,11 +221,14 @@ hx711s_read_adc(struct hx711s_adc *h, uint8_t oid)
 -        // Reject single-sample glitches that pass framing but jump
 -        // implausibly far from the last good reading - these would
 -        // otherwise fire a false probe trigger. Only the trigger is
@@ -65,7 +65,9 @@ index a5f64de6..8ea24d22 100644
 +            for (uint8_t i = 0; i < h->sensor_count; i++)
 +                h->last_good_counts[i] = counts_buf[i];
 +            h->have_last_counts = 1;
-@@ -231,0 +235,45 @@ hx711s_read_adc(struct hx711s_adc *h, uint8_t oid)
++            if (h->lce)
++                load_cell_probe_report_sample(h->lce, sum);
+@@ -231,0 +237,45 @@ hx711s_read_adc(struct hx711s_adc *h, uint8_t oid)
 +        } else {
 +            for (uint8_t i = 0; i < h->sensor_count; i++) {
 +                int32_t delta = counts_buf[i] - h->last_good_counts[i];
@@ -115,5 +117,3 @@ index a5f64de6..8ea24d22 100644
 -    h->have_last_sum = 0;
 +    h->have_last_counts = 0;
 +    h->have_pending_counts = 0;
---
-2.43.0
