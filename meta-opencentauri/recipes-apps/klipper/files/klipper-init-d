@@ -10,7 +10,7 @@
 
 KLIPPY_EXEC="/usr/bin/python3"
 KLIPPER_PRINTER_CONFIG="/etc/klipper/config/printer.cfg"
-KLIPPY_ARGS="-O /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
+KLIPPY_ARGS="-O -X no_debug_ranges /usr/share/klipper/klippy/klippy.py $KLIPPER_PRINTER_CONFIG -l /board-resource/klippy.log -a /run/klippy.sock"
 PIDFILE="/var/run/klipper.pid"
 KLIPPER_VAR_CONFIG_BUILDER="/usr/bin/build-klipper-var-config"
 KLIPPER_CONFIG_VERSION="0.0.8-2"
@@ -18,6 +18,9 @@ KLIPPER_CONFIG_VERSION_FILE="/etc/klipper-config.ver"
 KLIPPER_CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
 export TMPDIR="/user-resource/.tmp"
+# Limit glibc's per-thread arena retention.  This is particularly effective
+# for Klipper's threaded Python and native-extension workload on Centauri.
+export MALLOC_ARENA_MAX=1
 
 ensure_klipper_config_version() {
     current_version=""

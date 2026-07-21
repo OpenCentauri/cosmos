@@ -23,7 +23,7 @@ S = "${WORKDIR}/git"
 
 PR = "r1"
 
-inherit python3-dir update-rc.d
+inherit python3-dir python3native update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -70,6 +70,10 @@ do_install() {
     # Install moonraker python package
     install -d ${D}${datadir}/moonraker
     cp -r ${S}/moonraker ${D}${datadir}/moonraker/
+    # Ship target-version optimized bytecode.  Removing debug ranges makes
+    # code objects and their cache files smaller; -s keeps build paths out of
+    # tracebacks and avoids a TMPDIR-dependent cache.
+    PYTHONNODEBUGRANGES=1 ${PYTHON} -O -m compileall -q -s ${D} ${D}${datadir}/moonraker
 
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper

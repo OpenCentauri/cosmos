@@ -9,11 +9,17 @@
 ### END INIT INFO
 
 MOONRAKER_EXEC="/usr/bin/python3"
-MOONRAKER_ARGS="-m moonraker.moonraker -d /etc/klipper -l /board-resource/moonraker.log -u /run/moonraker.sock"
+# Match Klipper's optimization level and omit optional debug location ranges.
+# This reduces Python code-object overhead without changing Moonraker's
+# enabled component set or public API.
+MOONRAKER_ARGS="-O -X no_debug_ranges -m moonraker.moonraker -d /etc/klipper -l /board-resource/moonraker.log -u /run/moonraker.sock"
 PIDFILE="/var/run/moonraker.pid"
 
 export PYTHONPATH="/usr/share/moonraker"
 export TMPDIR="/user-resource/.tmp"
+# Limit glibc's per-thread arena retention.  On the live Centauri this reduced
+# Klipper PSS by about 3 MiB while the printer API remained healthy.
+export MALLOC_ARENA_MAX=1
 
 case "$1" in
     start)

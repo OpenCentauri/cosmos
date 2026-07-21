@@ -6,67 +6,414 @@
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
 # Short-Description: Increased Performance In Linux With zRam (Virtual Swap Compressed in RAM)
-# Description: Adapted from zram init script in meta-openembedded
+# Description: Reliable zram swap initialization for embedded SysV systems
 ### END INIT INFO
-set -e
+
+# Do not use set -e here.  A transient sysfs or device-node failure must be
+# logged and retried, not silently turn into a boot without swap.
+
+NAME=zram
+PATH=${ZRAM_PATH:-/sbin:/usr/sbin:/bin:/usr/bin}
+
+ZRAM_SYSFS=${ZRAM_SYSFS:-/sys/block/zram0}
+ZRAM_MODULE_SYSFS=${ZRAM_MODULE_SYSFS:-/sys/module/zram}
+ZRAM_DEV=${ZRAM_DEV:-/dev/zram0}
+PROC_SWAPS=${PROC_SWAPS:-/proc/swaps}
+MEMINFO=${MEMINFO:-/proc/meminfo}
+SYSCTL_DIR=${SYSCTL_DIR:-/proc/sys}
+ZRAM_DEFAULTS=${ZRAM_DEFAULTS:-/etc/default/zram}
+
+# Defaults selected for the CC1.  Every retry-related value is deliberately
+# capped below so a malformed /etc/default/zram cannot hang the boot forever.
+FACTOR=200
+ZRAM_ALGO="lz4 lzo-rle zstd lzo"
+ZRAM_MAX_ATTEMPTS=5
+ZRAM_READY_TIMEOUT=5
+ZRAM_RETRY_DELAY=1
+ZRAM_PRIORITY=100
+
+log() {
+    log_message="$*"
+    if command -v logger >/dev/null 2>&1; then
+        logger -t "$NAME" "$log_message" 2>/dev/null || true
+    fi
+    echo "$NAME: $log_message"
+}
+
+is_decimal() {
+    case "$1" in
+        ''|*[!0-9]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+is_active() {
+    grep -q "^${ZRAM_DEV}[[:space:]]" "$PROC_SWAPS" 2>/dev/null
+}
+
+load_defaults() {
+    if [ -f "$ZRAM_DEFAULTS" ]; then
+        # shellcheck disable=SC1090
+        if ! . "$ZRAM_DEFAULTS"; then
+            log "ERROR: could not source $ZRAM_DEFAULTS"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+validate_config() {
+    if ! is_decimal "$FACTOR" || [ "$FACTOR" -lt 1 ] || [ "$FACTOR" -gt 400 ]; then
+        log "ERROR: FACTOR must be an integer from 1 through 400 (got '$FACTOR')"
+        return 1
+    fi
+    if ! is_decimal "$ZRAM_MAX_ATTEMPTS" || [ "$ZRAM_MAX_ATTEMPTS" -lt 1 ] || [ "$ZRAM_MAX_ATTEMPTS" -gt 5 ]; then
+        log "ERROR: ZRAM_MAX_ATTEMPTS must be an integer from 1 through 5 (got '$ZRAM_MAX_ATTEMPTS')"
+        return 1
+    fi
+    if ! is_decimal "$ZRAM_READY_TIMEOUT" || [ "$ZRAM_READY_TIMEOUT" -lt 1 ] || [ "$ZRAM_READY_TIMEOUT" -gt 5 ]; then
+        log "ERROR: ZRAM_READY_TIMEOUT must be an integer from 1 through 5 (got '$ZRAM_READY_TIMEOUT')"
+        return 1
+    fi
+    if ! is_decimal "$ZRAM_RETRY_DELAY" || [ "$ZRAM_RETRY_DELAY" -gt 5 ]; then
+        log "ERROR: ZRAM_RETRY_DELAY must be an integer from 0 through 5 (got '$ZRAM_RETRY_DELAY')"
+        return 1
+    fi
+    if ! is_decimal "$ZRAM_PRIORITY" || [ "$ZRAM_PRIORITY" -gt 32767 ]; then
+        log "ERROR: ZRAM_PRIORITY must be an integer from 0 through 32767 (got '$ZRAM_PRIORITY')"
+        return 1
+    fi
+    return 0
+}
+
+read_value() {
+    if [ -r "$1" ]; then
+        cat "$1" 2>/dev/null
+    else
+        echo unavailable
+    fi
+}
+
+log_state() {
+    state_disksize=$(read_value "$ZRAM_SYSFS/disksize")
+    state_initstate=$(read_value "$ZRAM_SYSFS/initstate")
+    state_algorithm=$(read_value "$ZRAM_SYSFS/comp_algorithm")
+    if [ -r "$PROC_SWAPS" ]; then
+        state_swap=$(grep "^${ZRAM_DEV}[[:space:]]" "$PROC_SWAPS" 2>/dev/null || true)
+    else
+        state_swap=unavailable
+    fi
+    [ -n "$state_swap" ] || state_swap=inactive
+    log "state: disksize=$state_disksize initstate=$state_initstate algorithm=$state_algorithm swap=$state_swap"
+}
+
+wait_for_device() {
+    ready_count=0
+    while [ "$ready_count" -lt "$ZRAM_READY_TIMEOUT" ]; do
+        if [ -e "$ZRAM_SYSFS/disksize" ] && \
+           [ -e "$ZRAM_SYSFS/reset" ] && \
+           [ -e "$ZRAM_SYSFS/comp_algorithm" ] && \
+           [ -e "$ZRAM_DEV" ]; then
+            return 0
+        fi
+        sleep 1
+        ready_count=$((ready_count + 1))
+    done
+    log "ERROR: zram device did not become ready within ${ZRAM_READY_TIMEOUT}s"
+    log_state
+    return 1
+}
+
+ensure_module() {
+    command_output=$(modprobe zram num_devices=1 2>&1)
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        log "ERROR: modprobe zram failed (status $command_status): $command_output"
+        return 1
+    fi
+    [ -z "$command_output" ] || log "modprobe: $command_output"
+    return 0
+}
+
+reset_device() {
+    if [ ! -e "$ZRAM_SYSFS/reset" ]; then
+        log "ERROR: zram reset attribute is unavailable"
+        return 1
+    fi
+
+    command_output=$(printf '1\n' > "$ZRAM_SYSFS/reset" 2>&1)
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        log "ERROR: could not reset $ZRAM_DEV (status $command_status): $command_output"
+        return 1
+    fi
+
+    reset_count=0
+    while [ "$reset_count" -lt "$ZRAM_READY_TIMEOUT" ]; do
+        reset_disksize=$(read_value "$ZRAM_SYSFS/disksize")
+        if [ "$reset_disksize" = "0" ]; then
+            return 0
+        fi
+        sleep 1
+        reset_count=$((reset_count + 1))
+    done
+    log "ERROR: reset did not return $ZRAM_DEV to disksize=0"
+    return 1
+}
+
+cleanup_device() {
+    cleanup_status=0
+
+    if is_active; then
+        command_output=$(swapoff "$ZRAM_DEV" 2>&1)
+        command_status=$?
+        if [ "$command_status" -ne 0 ]; then
+            log "ERROR: swapoff $ZRAM_DEV failed (status $command_status): $command_output"
+            cleanup_status=1
+        fi
+    fi
+
+    if is_active; then
+        log "ERROR: $ZRAM_DEV is still active; refusing to reset it"
+        cleanup_status=1
+    elif [ -e "$ZRAM_SYSFS/reset" ]; then
+        reset_device || cleanup_status=1
+    fi
+
+    return "$cleanup_status"
+}
+
+reload_module_once() {
+    if is_active; then
+        log "note: swap became active during recovery; keeping the active device"
+        return 0
+    fi
+
+    if [ -d "$ZRAM_MODULE_SYSFS" ]; then
+        command_output=$(rmmod zram 2>&1)
+        command_status=$?
+        if [ "$command_status" -ne 0 ]; then
+            log "note: rmmod zram failed (status $command_status): $command_output"
+        else
+            log "module reload recovery: zram unloaded"
+            sleep 1
+        fi
+    fi
+
+    ensure_module || return 1
+    wait_for_device || return 1
+    return 0
+}
+
+select_algorithm() {
+    algorithm_selected=0
+    for algorithm in $ZRAM_ALGO; do
+        command_output=$(printf '%s\n' "$algorithm" > "$ZRAM_SYSFS/comp_algorithm" 2>&1)
+        command_status=$?
+        if [ "$command_status" -eq 0 ]; then
+            log "compressor: $algorithm"
+            algorithm_selected=1
+            break
+        fi
+        log "note: compressor '$algorithm' was rejected (status $command_status): $command_output"
+    done
+
+    if [ "$algorithm_selected" -eq 0 ]; then
+        current_algorithm=$(read_value "$ZRAM_SYSFS/comp_algorithm")
+        if [ -n "$current_algorithm" ] && [ "$current_algorithm" != unavailable ]; then
+            log "note: keeping kernel-selected compressor: $current_algorithm"
+            return 0
+        fi
+        log "ERROR: no usable zram compressor is available"
+        return 1
+    fi
+    return 0
+}
+
+configure_device() {
+    if ! reset_device; then
+        return 1
+    fi
+    if ! select_algorithm; then
+        return 1
+    fi
+
+    command_output=$(printf '%s\n' "$disksize" > "$ZRAM_SYSFS/disksize" 2>&1)
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        log "ERROR: could not set disksize=$disksize (status $command_status): $command_output"
+        return 1
+    fi
+
+    configured_disksize=$(read_value "$ZRAM_SYSFS/disksize")
+    if [ "$configured_disksize" != "$disksize" ]; then
+        log "ERROR: disksize verification failed (expected $disksize, got $configured_disksize)"
+        return 1
+    fi
+
+    command_output=$(mkswap "$ZRAM_DEV" 2>&1)
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        log "ERROR: mkswap $ZRAM_DEV failed (status $command_status): $command_output"
+        return 1
+    fi
+
+    command_output=$(swapon -p "$ZRAM_PRIORITY" "$ZRAM_DEV" 2>&1)
+    command_status=$?
+    if [ "$command_status" -ne 0 ]; then
+        log "ERROR: swapon $ZRAM_DEV failed (status $command_status): $command_output"
+        return 1
+    fi
+
+    if ! is_active; then
+        log "ERROR: swapon returned success but $ZRAM_DEV is absent from $PROC_SWAPS"
+        return 1
+    fi
+    return 0
+}
+
+tune_vm() {
+    for tuning in \
+        vm.swappiness=150 \
+        vm.watermark_boost_factor=0 \
+        vm.watermark_scale_factor=125 \
+        vm.page-cluster=0 \
+        vm.vfs_cache_pressure=500
+    do
+        tuning_key=${tuning%%=*}
+        tuning_value=${tuning#*=}
+        tuning_path="$SYSCTL_DIR/$(printf '%s' "$tuning_key" | tr '.' '/')"
+        if [ ! -e "$tuning_path" ]; then
+            log "note: $tuning_key is not present on this kernel (skipped)"
+            continue
+        fi
+        command_output=$(printf '%s\n' "$tuning_value" > "$tuning_path" 2>&1)
+        command_status=$?
+        if [ "$command_status" -ne 0 ]; then
+            log "note: could not set $tuning_key=$tuning_value (status $command_status): $command_output"
+        fi
+    done
+}
+
+get_memory_size() {
+    memtotal=$(awk '/^MemTotal:[[:space:]]+[0-9]+/ { print $2; exit }' "$MEMINFO" 2>/dev/null)
+    if ! is_decimal "$memtotal" || [ "$memtotal" -lt 1 ]; then
+        log "ERROR: could not read a valid MemTotal from $MEMINFO"
+        return 1
+    fi
+
+    # Multiply before converting kB to bytes, but keep the intermediate
+    # product bounded for the 32-bit shell used by the CC1.
+    disksize_kb=$((memtotal * FACTOR / 100))
+    disksize=$((disksize_kb * 1024))
+    if [ "$disksize" -lt 4096 ]; then
+        log "ERROR: calculated zram disksize is invalid: $disksize bytes"
+        return 1
+    fi
+    log "memory: ${memtotal}kB; zram disksize=${disksize} bytes (factor ${FACTOR}%)"
+    return 0
+}
 
 start() {
-    #default Factor % = 200 change this value here or create /etc/default/zram
-    FACTOR=200
-    #& put the above single line in /etc/default/zram with the value you want
-    [ -f /etc/default/zram ] && . /etc/default/zram || true
-    factor=$FACTOR # percentage
+    load_defaults || return 1
+    validate_config || return 1
 
-    # get the amount of memory in the machine
-    memtotal=$(grep MemTotal /proc/meminfo | awk ' { print $2 } ')
-    disksize=$(($memtotal*$factor/100*1024))
+    if is_active; then
+        log "zram swap already active; nothing to do"
+        log_state
+        return 0
+    fi
 
-    # load dependency modules
-    modprobe zram num_devices=1
-    echo "zram devices probed successfully"
+    get_memory_size || return 1
+    log "starting zram swap (up to $ZRAM_MAX_ATTEMPTS attempts; readiness timeout ${ZRAM_READY_TIMEOUT}s)"
 
-    echo 1 > /sys/block/zram0/reset
-    echo lz4 > /sys/block/zram0/comp_algorithm
-    echo $disksize > /sys/block/zram0/disksize
+    attempt=1
+    module_reload_used=0
+    while [ "$attempt" -le "$ZRAM_MAX_ATTEMPTS" ]; do
+        log "initialization attempt $attempt/$ZRAM_MAX_ATTEMPTS"
 
-    # Creating swap filesystems
-    mkswap /dev/zram0
+        if ensure_module && wait_for_device && configure_device; then
+            log "zram swap active: ${disksize} bytes at priority ${ZRAM_PRIORITY}"
+            log_state
+            tune_vm
+            return 0
+        fi
 
-    # zram tuning
-    echo 150 > /proc/sys/vm/swappiness
-    echo 0   > /proc/sys/vm/watermark_boost_factor
-    echo 125 > /proc/sys/vm/watermark_scale_factor
-    echo 0   > /proc/sys/vm/page-cluster
-    echo 500 > /proc/sys/vm/vfs_cache_pressure
+        log "ERROR: initialization attempt $attempt failed"
+        cleanup_device || true
 
-    # Switch the swaps on
-    swapon -p 100 /dev/zram0
+        if is_active; then
+            log "zram swap is active after recovery; treating initialization as successful"
+            log_state
+            tune_vm
+            return 0
+        fi
+
+        if [ "$module_reload_used" -eq 0 ] && [ "$attempt" -lt "$ZRAM_MAX_ATTEMPTS" ]; then
+            log "recovery: attempting one zram module unload/reload"
+            reload_module_once || log "note: module reload recovery did not complete"
+            module_reload_used=1
+        fi
+
+        if [ "$attempt" -lt "$ZRAM_MAX_ATTEMPTS" ] && [ "$ZRAM_RETRY_DELAY" -gt 0 ]; then
+            sleep "$ZRAM_RETRY_DELAY"
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    log "ERROR: zram swap unavailable after $ZRAM_MAX_ATTEMPTS attempts"
+    log_state
+    return 1
 }
 
 stop() {
-    # Switching off swap
-    if [ "$(grep /dev/zram0 /proc/swaps)" != "" ]; then
-        swapoff /dev/zram0
-        sleep 1
+    stop_status=0
+
+    if is_active; then
+        command_output=$(swapoff "$ZRAM_DEV" 2>&1)
+        command_status=$?
+        if [ "$command_status" -ne 0 ] || is_active; then
+            log "ERROR: could not disable swap on $ZRAM_DEV (status $command_status): $command_output"
+            stop_status=1
+        fi
     fi
-    sleep 1
-    rmmod zram
+
+    if ! is_active && [ -e "$ZRAM_SYSFS/reset" ]; then
+        reset_device || stop_status=1
+    fi
+
+    if [ -d "$ZRAM_MODULE_SYSFS" ]; then
+        command_output=$(rmmod zram 2>&1)
+        command_status=$?
+        if [ "$command_status" -ne 0 ]; then
+            log "ERROR: rmmod zram failed (status $command_status): $command_output"
+            stop_status=1
+        else
+            log "zram module unloaded"
+        fi
+    fi
+    return "$stop_status"
 }
 
+RETVAL=0
 case "$1" in
     start)
-        start
+        start || RETVAL=$?
         ;;
     stop)
-        stop
+        stop || RETVAL=$?
         ;;
     restart)
-        stop
-        sleep 3
-        start
+        if stop; then
+            sleep 1
+            start || RETVAL=$?
+        else
+            RETVAL=1
+        fi
         ;;
     *)
         echo "Usage: $0 {start|stop|restart}"
         RETVAL=1
+        ;;
 esac
-exit $RETVAL
+exit "$RETVAL"

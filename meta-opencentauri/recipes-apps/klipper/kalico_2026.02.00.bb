@@ -17,7 +17,7 @@ SRC_URI += " \
     file://client.cfg \
 "
 
-inherit python3-dir update-rc.d
+inherit python3-dir python3native update-rc.d
 
 RDEPENDS:${PN} = " \
     python3 \
@@ -82,9 +82,10 @@ do_install() {
     sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
     echo "Release - ${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
 
-    # Remove any .pyc files to avoid TMPDIR references
+    # Remove any source-tree caches, then ship target-version optimized
+    # bytecode without debug ranges.  Stripping ${D} avoids TMPDIR references.
     find ${D} -name '*.pyc' -delete
-    find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+    PYTHONNODEBUGRANGES=1 ${PYTHON} -O -m compileall -q -s ${D} ${D}${datadir}/klipper
 
     # Make config_examples to suppress moonraker warnings
     install -d ${D}${datadir}/klipper/config

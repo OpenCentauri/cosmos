@@ -1,0 +1,110 @@
+From 0e90d3d558a119af3239519e105778c8a5bd3d16 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Sat, 27 Jun 2026 10:50:56 +0200
+Subject: [PATCH] shaper_calibrate: bound Welch PSD memory use
+
+The previous Welch implementation materialised and transformed every
+overlapping window at once.  On the printer that makes its largest temporary
+arrays proportional to the complete accelerometer capture.
+
+Accumulate the FFT energy in fixed 64-window batches instead.  This preserves
+the original PSD calculation while bounding the window and FFT intermediates.
+Also pack the retained samples as float32 and keep timestamps relative to the
+first sample, avoiding precision loss from large absolute timestamps.
+
+This intentionally does not change accelerometer capture or raw CSV writing:
+it reduces the memory used while Kalico processes calibration data.
+
+Upstream-Status: Pending [OpenCentauri memory-constrained targets]
+
+---
+ klippy/extras/shaper_calibrate.py | 49 ++++++++++++++++++++++--------
+ 1 file changed, 35 insertions(+), 14 deletions(-)
+
+diff --git a/klippy/extras/shaper_calibrate.py b/klippy/extras/shaper_calibrate.py
+index 230e2f58..457d3632 100644
+--- a/klippy/extras/shaper_calibrate.py
++++ b/klippy/extras/shaper_calibrate.py
+@@ -147,25 +147,31 @@ class ShaperCalibrate:
+         window = np.kaiser(nfft, 6.0)
+         # Compensation for windowing loss
+         scale = 1.0 / (window**2).sum()
++        window = window[:, None]
+ 
+         # Split into overlapping windows of size nfft
+         overlap = nfft // 2
+         x = self._split_into_windows(x, nfft, overlap)
++        n_windows = x.shape[-1]
++
++        # Accumulate the response over windows in small batches to keep
++        # peak memory usage low
++        psd = np.zeros(nfft // 2 + 1)
++        batch = 64
++        for start in range(0, n_windows, batch):
++            win = x[:, start : start + batch]
++            # First detrend, then apply windowing function
++            win = window * (win - win.mean(axis=0))
++            # Calculate frequency response for each window using FFT
++            result = np.fft.rfft(win, n=nfft, axis=0)
++            psd += (result.real**2 + result.imag**2).sum(axis=-1)
+ 
+-        # First detrend, then apply windowing function
+-        x = window[:, None] * (x - np.mean(x, axis=0))
+-
+-        # Calculate frequency response for each window using FFT
+-        result = np.fft.rfft(x, n=nfft, axis=0)
+-        result = np.conjugate(result) * result
+-        result *= scale / fs
++        # Welch's algorithm: average response over windows
++        psd *= scale / (fs * n_windows)
+         # For one-sided FFT output the response must be doubled, except
+         # the last point for unpaired Nyquist frequency (assuming even nfft)
+         # and the 'DC' term (0 Hz)
+-        result[1:-1, :] *= 2.0
+-
+-        # Welch's algorithm: average response over windows
+-        psd = result.real.mean(axis=-1)
++        psd[1:-1] *= 2.0
+ 
+         # Calculate the frequency bins
+         freqs = np.fft.rfftfreq(nfft, 1.0 / fs)
+@@ -177,14 +183,19 @@ class ShaperCalibrate:
+             return None
+         if isinstance(raw_values, np.ndarray):
+             data = raw_values
++            N = data.shape[0]
++            T = float(data[-1, 0]) - float(data[0, 0])
+         else:
+             samples = raw_values.get_samples()
+             if not samples:
+                 return None
+-            data = np.array(samples)
++            # Determine the sampling interval before converting timestamps
++            # to a compact single-precision representation.
++            N = len(samples)
++            T = samples[-1][0] - samples[0][0]
++            data = np.asarray(samples, dtype=np.float32)
++            del samples
+ 
+-        N = data.shape[0]
+-        T = data[-1, 0] - data[0, 0]
+         SAMPLING_FREQ = N / T
+         # Round up to the nearest power of 2 for faster FFT
+         M = 1 << int(SAMPLING_FREQ * WINDOW_T_SEC - 1).bit_length()
+@@ -199,6 +210,16 @@ class ShaperCalibrate:
+         return CalibrationData(fx, px + py + pz, px, py, pz)
+ 
+     def process_accelerometer_data(self, data):
++        np = self.numpy
++        if not isinstance(data, np.ndarray):
++            samples = data.get_samples()
++            if samples:
++                # Keep timestamps relative to the first sample before packing
++                # into float32, preserving the sampling interval precision.
++                data = np.asarray(samples, dtype=np.float32)
++                data[0, 0] = 0.0
++                data[-1, 0] = samples[-1][0] - samples[0][0]
++                del samples
+         calibration_data = self.background_process_exec(
+             self.calc_freq_response, (data,)
+         )
