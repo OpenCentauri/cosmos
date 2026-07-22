@@ -23,4 +23,7 @@
 /* This is the color of the progress bar background */
 #define PSPLASH_BAR_BACKGROUND_COLOR 0x00,0x00,0x00
 
+/* This is the color of the animated progress bar highlight */
+#define PSPLASH_BAR_HIGHLIGHT_COLOR 0xff,0xff,0xff
+
 #endif
