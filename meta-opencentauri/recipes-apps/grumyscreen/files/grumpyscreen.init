@@ -10,13 +10,48 @@
 
 GRUMPYSCREEN_EXEC=/usr/bin/grumpyscreen
 PIDFILE=/var/run/gui.pid
+CONFIG_FILE="/etc/klipper/config/klipper-readonly/grumpyscreen.cfg"
+CONFIG_OVERRIDE_FILE="/etc/klipper/config/grumpyscreen.cfg"
+CONFIG_VERSION="20260518"
+CONFIG_VERSION_FILE="/etc/grumpyscreen-config.ver"
+CONFIG_BACKUP_DIR="/etc/klipper/config/config-backups"
 
-export CONFIG_FILE=/etc/klipper/config/grumpyscreen.cfg
+export CONFIG_FILE
+export CONFIG_OVERRIDE_FILE
+
+ensure_grumpyscreen_config_version() {
+    current_version=""
+
+    if [ -f "$CONFIG_VERSION_FILE" ]; then
+        current_version="$(tr -d '[:space:]' < "$CONFIG_VERSION_FILE" 2>/dev/null)"
+    else
+        current_version="" #reset configs
+        echo "$current_version" > "$CONFIG_VERSION_FILE" || return 1
+    fi
+
+    if [ "$current_version" = "$CONFIG_VERSION" ]; then
+        return 0
+    fi
+
+    if [ -f "$CONFIG_OVERRIDE_FILE" ]; then
+        backup_timestamp="$(date +%Y%m%d_%H%M%S)" || return 1
+        backup_file="$CONFIG_BACKUP_DIR/grumpyscreen-$backup_timestamp.cfg"
+
+        mkdir -p "$CONFIG_BACKUP_DIR" || return 1
+        cp "$CONFIG_OVERRIDE_FILE" "$backup_file" || return 1
+        echo "# Add other extra configuration here.\n" > "$CONFIG_OVERRIDE_FILE"
+    fi
+
+    printf '%s\n' "$CONFIG_VERSION" > "$CONFIG_VERSION_FILE" || return 1
+}
 
 case "$1" in
     start)
         echo "Starting grumpyscreen..."
-        # Start grumpyscreen in the background
+        if ! ensure_grumpyscreen_config_version; then
+            echo "Failed to update Grumpyscreen config version state"
+            exit 1
+        fi
         start-stop-daemon -S -b -m -p "$PIDFILE" -x "$GRUMPYSCREEN_EXEC"
         ;;
     stop)
