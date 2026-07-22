@@ -2,6 +2,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
     file://psplash-colors.h;subdir=git \
     file://psplash-bar.png \
+    file://0001-add-spinner.patch \
 "
 SPLASH_IMAGES = " \
     file://cosmos_1.png;outsuffix=default \
