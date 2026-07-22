@@ -1,0 +1,112 @@
+From 89cf1e6b90e6d663386ddbda7a07d79d09ff036c Mon Sep 17 00:00:00 2001
+From: OpenCentauri Developers <dev@opencentauri.org>
+Date: Sun, 19 Jul 2026 21:00:00 -0400
+Subject: [PATCH] wifi: rtw88: serialize USB vendor control requests
+
+Realtek's 8821cu vendor driver protects all vendor control requests with
+usb_vendor_req_mutex. Its source explicitly notes that retries must be
+atomically submitted relative to other requests. rtw88 only protects the
+shared buffer index; it releases that spinlock before submitting the request,
+so register requests and their RTL8821C reg-sec companion can interleave.
+
+Add equivalent serialization. Keep each primary register request and its
+0x4e0 reg-sec write in one critical section. Serialize firmware-page control
+messages on the same mutex, but do not retry them because the vendor driver
+warns that firmware download is checksummed and must be retried as a complete
+download rather than as an individual fragment.
+
+Signed-off-by: OpenCentauri Developers <dev@opencentauri.org>
+---
+ usb.c | 16 +++++++++++++++-
+ usb.h |  3 +++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/usb.c b/usb.c
+index 76ee172..b9a5734 100644
+--- a/usb.c
++++ b/usb.c
+@@ -128,8 +128,11 @@ static u32 rtw_usb_read(struct rtw_dev *rtwdev, u32 addr, u16 len)
+ 	__le32 *data;
+ 	unsigned long flags;
+ 	int idx, ret;
++	u32 value;
+ 	static int count;
+ 
++	mutex_lock(&rtwusb->ctrl_mutex);
++
+ 	spin_lock_irqsave(&rtwusb->usb_lock, flags);
+ 
+ 	idx = rtwusb->usb_data_index;
+@@ -152,7 +155,10 @@ static u32 rtw_usb_read(struct rtw_dev *rtwdev, u32 addr, u16 len)
+ 	    rtwdev->chip->id == RTW_CHIP_TYPE_8821C)
+ 		rtw_usb_reg_sec(rtwdev, addr, data);
+ 
+-	return le32_to_cpu(*data);
++	value = le32_to_cpu(*data);
++	mutex_unlock(&rtwusb->ctrl_mutex);
++
++	return value;
+ }
+ 
+ static u8 rtw_usb_read8(struct rtw_dev *rtwdev, u32 addr)
+@@ -179,6 +185,8 @@ static void rtw_usb_write(struct rtw_dev *rtwdev, u32 addr, u32 val, int len)
+ 	int idx, ret;
+ 	static int count;
+ 
++	mutex_lock(&rtwusb->ctrl_mutex);
++
+ 	spin_lock_irqsave(&rtwusb->usb_lock, flags);
+ 
+ 	idx = rtwusb->usb_data_index;
+@@ -202,6 +210,8 @@ static void rtw_usb_write(struct rtw_dev *rtwdev, u32 addr, u32 val, int len)
+ 	    rtwdev->chip->id == RTW_CHIP_TYPE_8822B ||
+ 	    rtwdev->chip->id == RTW_CHIP_TYPE_8821C)
+ 		rtw_usb_reg_sec(rtwdev, addr, data);
++
++	mutex_unlock(&rtwusb->ctrl_mutex);
+ }
+ 
+ static void rtw_usb_write8(struct rtw_dev *rtwdev, u32 addr, u8 val)
+@@ -254,9 +264,11 @@ static void rtw_usb_write_firmware_page(struct rtw_dev *rtwdev, u32 page,
+ 		else
+ 			n = 1;
+ 
++		mutex_lock(&rtwusb->ctrl_mutex);
+ 		ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+ 				      RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+ 				      addr, 0, buf, n, 500);
++		mutex_unlock(&rtwusb->ctrl_mutex);
+ 		if (ret != n) {
+ 			if (ret != -ENODEV)
+ 				rtw_err(rtwdev,
+@@ -1151,6 +1163,8 @@ static int rtw_usb_intf_init(struct rtw_dev *rtwdev,
+ 
+ 	SET_IEEE80211_DEV(rtwdev->hw, &intf->dev);
+ 	spin_lock_init(&rtwusb->usb_lock);
++	mutex_init(&rtwusb->ctrl_mutex);
++	atomic_set(&rtwusb->ctrl_broken, 0);
+ 
+ 	return 0;
+ }
+diff --git a/usb.h b/usb.h
+index 06e48c4..228e02a 100644
+--- a/usb.h
++++ b/usb.h
+@@ -7,5 +7,7 @@
+ #include <linux/atomic.h>
+ 
++#include <linux/mutex.h>
++
+ #define FW_8192C_START_ADDRESS		0x1000
+ #define FW_8192C_END_ADDRESS		0x5fff
+ 
+@@ -71,6 +73,7 @@ struct rtw_usb {
+ 	spinlock_t usb_lock;
+ 	__le32 *usb_data;
+ 	unsigned int usb_data_index;
++	struct mutex ctrl_mutex;
+ 	atomic_t ctrl_broken;
+ 
+ 	u8 pipe_interrupt;
+-- 
+2.48.1
