@@ -13,9 +13,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=paul/h
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
 "
-SRCREV = "8433f46d569694ab136fc90696031ec68ef4270d"
+SRCREV = "c368f84ec516f5d639aeddcb99d2c967957ab8e7"
 
-PR = "r9"
+PR = "r10"
 
 S = "${WORKDIR}/git"
 
