@@ -15,6 +15,7 @@ SRC_URI:append:elegoo-centauri-carbon1 = " \
 	file://fragment.cfg \
 	file://squashfs-overlayfs.cfg \
 	file://kernel-size-reduction.cfg \
+	file://runtime-memory.cfg \
 	file://usb-net-adapters.cfg \
 	file://0001-dt-bindings-pwm-Add-binding-for-Allwinner-D1-T113-S3.patch \
 	file://0002-pwm-Add-Allwinner-s-D1-T113-S3-R329-SoCs-PWM-support.patch \
