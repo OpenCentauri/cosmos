@@ -16,9 +16,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=paul/h
     file://0002-persist-set-input-shaper.patch \
     file://0003-adxl345-stream-raw-writes.patch \
 "
-SRCREV = "87f1c4f710242f9df4cb8d1b8b410d5b5f3f8efb"
+SRCREV = "c368f84ec516f5d639aeddcb99d2c967957ab8e7"
 
-PR = "r15"
+PR = "r16"
 
 S = "${WORKDIR}/git"
 
