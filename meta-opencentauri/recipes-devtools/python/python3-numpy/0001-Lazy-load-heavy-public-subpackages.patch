@@ -1,0 +1,69 @@
+From a9f7ee07c78910755311648026226644a3250c4f Mon Sep 17 00:00:00 2001
+From: OpenCentauri <dev@opencentauri.io>
+Date: Mon, 20 Jul 2026 15:00:00 -0400
+Subject: [PATCH] Lazy-load heavy public subpackages
+
+Upstream-Status: Backport [https://github.com/numpy/numpy/commit/250e1479ce342d9d7ab8a592508f6ce892d4c98b]
+
+NumPy 1.26 imports several independent numerical subpackages whenever the root
+package is imported.  Embedded users of core array operations consequently map
+FFT, linear algebra, polynomial, random-number, ctypes, and masked-array code
+which they may never call.
+
+Retain the public NumPy 1.26 API by importing these modules on first attribute
+access and caching them in the package globals.  This follows the lazy public
+submodule behavior used by newer NumPy releases while leaving core and lib
+namespace initialization unchanged.
+---
+ numpy/__init__.py | 27 ++++++++++++++++++++++-----
+ 1 file changed, 22 insertions(+), 5 deletions(-)
+
+diff --git a/numpy/__init__.py b/numpy/__init__.py
+index 63a63bf..54d6a97 100644
+--- a/numpy/__init__.py
++++ b/numpy/__init__.py
+@@ -141,12 +141,7 @@ else:
+     # See gh-14454 and gh-15672 for discussion.
+     from .lib import *
+
+-    from . import linalg
+-    from . import fft
+-    from . import polynomial
+-    from . import random
+-    from . import ctypeslib
+-    from . import ma
++    # Heavy public subpackages are loaded on first access in __getattr__.
+     from . import matrixlib as _mat
+     from .matrixlib import *
+
+@@ -289,6 +284,28 @@ else:
+     numarray = 'removed'
+
+     def __getattr__(attr):
++        # NumPy 1.26 historically imported these independent subpackages at
++        # root-package startup.  Preserve np.<submodule> while avoiding their
++        # code and extension mappings for core-only embedded workloads.
++        if attr == 'linalg':
++            import numpy.linalg as linalg
++            return linalg
++        elif attr == 'fft':
++            import numpy.fft as fft
++            return fft
++        elif attr == 'random':
++            import numpy.random as random
++            return random
++        elif attr == 'polynomial':
++            import numpy.polynomial as polynomial
++            return polynomial
++        elif attr == 'ma':
++            import numpy.ma as ma
++            return ma
++        elif attr == 'ctypeslib':
++            import numpy.ctypeslib as ctypeslib
++            return ctypeslib
++
+         # Warn for expired attributes, and return a dummy function
+         # that always raises an exception.
+         import warnings
+--
+2.47.2
