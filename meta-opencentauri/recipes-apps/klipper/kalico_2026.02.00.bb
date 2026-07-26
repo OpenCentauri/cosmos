@@ -7,6 +7,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
     file://klipper-init-d \
+    file://0001-Lazy-load-optional-NumPy-users.patch \
     file://printer.cfg \
     file://macros.cfg \
     file://machine.cfg \
