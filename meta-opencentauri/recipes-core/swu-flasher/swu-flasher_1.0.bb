@@ -7,12 +7,14 @@ SRC_URI = " \
     file://readonly-config-reset \
 "
 
+S = "${UNPACKDIR}"
+
 RDEPENDS:${PN} = "swupdate u-boot-fw-utils"
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/flash ${D}${bindir}/flash
-    install -m 0755 ${WORKDIR}/readonly-config-reset ${D}${bindir}/readonly-config-reset
+    install -m 0755 ${S}/flash ${D}${bindir}/flash
+    install -m 0755 ${S}/readonly-config-reset ${D}${bindir}/readonly-config-reset
 }
 
 FILES:${PN} = " \

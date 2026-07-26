@@ -14,7 +14,7 @@ RDEPENDS:${PN} = "zram util-linux-swaponoff util-linux-mkswap"
 
 do_install() {
     install -d ${D}${sysconfdir}/init.d
-    install -m 0755 ${WORKDIR}/zram-emmc-swap ${D}${sysconfdir}/init.d/
+    install -m 0755 ${UNPACKDIR}/zram-emmc-swap ${D}${sysconfdir}/init.d/
 }
 
 FILES:${PN} = "${sysconfdir}/init.d/zram-emmc-swap"

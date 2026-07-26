@@ -10,8 +10,6 @@ inherit pkgconfig update-rc.d
 
 PV = "6.55"
 
-S = "${WORKDIR}/git"
-
 INITSCRIPT_NAME = "ustreamer"
 INITSCRIPT_PARAMS = "defaults 97 5"
 
@@ -31,7 +29,7 @@ do_install() {
 	install -m 0755 ${S}/src/ustreamer.bin ${D}${bindir}/ustreamer
 
 	install -d ${D}${sysconfdir}/init.d
-	install -m 0755 ${WORKDIR}/ustreamer-init-d ${D}${sysconfdir}/init.d/ustreamer
+	install -m 0755 ${UNPACKDIR}/ustreamer-init-d ${D}${sysconfdir}/init.d/ustreamer
 }
 
 FILES:${PN} = " \
