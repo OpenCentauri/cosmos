@@ -39,6 +39,7 @@ case "$1" in
             echo "Firmware is already up to date."
             exit 0
         else
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing canvas. DO NOT POWER OFF"
             if mcu-flasher --canvas --timeout 10 --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
                 sleep 3
                 echo "Bootloader deployer flashed successfully, clearing installed version."
@@ -46,6 +47,7 @@ case "$1" in
             fi
 
             update
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;
     status)
