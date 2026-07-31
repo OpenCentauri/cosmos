@@ -3,12 +3,12 @@ DESCRIPTION = "Mainsail is the popular web interface for managing and \
     controlling 3D printers with Klipper."
 HOMEPAGE = "https://github.com/mainsail-crew/mainsail"
 LICENSE = "GPL-3.0-only"
-LIC_FILES_CHKSUM = "file://index.html;md5=cda929aa8b78d319a89b240b5df815f9"
+LIC_FILES_CHKSUM = "file://index.html;md5=e041ea1952fb60d9e673d6c3f4d16802"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "https://github.com/mainsail-crew/mainsail/releases/download/v${PV}/mainsail.zip;subdir=mainsail"
-SRC_URI[sha256sum] = "d010f4df25557d520ccdbb8e42fc381df2288e6a5c72d3838a5a2433c7a31d4e"
+SRC_URI[sha256sum] = "df2ba7c301f7bfc8ac9f122741a6ba08356d679ecfa1f62f898d0337802d5de5"
 
 S = "${WORKDIR}/mainsail"
 
