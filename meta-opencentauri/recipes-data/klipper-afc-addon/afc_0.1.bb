@@ -69,6 +69,10 @@ FILES:${PN} = " \
     ${datadir}/klipper/klippy/extras/AFC_functions.py \
     ${datadir}/klipper/klippy/extras/AFC_NightOwl.py \
     ${datadir}/klipper/klippy/extras/AFC_error.py \
+    ${datadir}/klipper/klippy/extras/temperature_oams.py \
+    ${datadir}/klipper/klippy/extras/AFC_OAMS.py \
+    ${datadir}/klipper/klippy/extras/AFC_Claymore.py \
+    ${datadir}/klipper/klippy/extras/AFC_EMU.py \
     ${sysconfdir}/klipper/config/extras-readonly/afc.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas.cfg \
 "
