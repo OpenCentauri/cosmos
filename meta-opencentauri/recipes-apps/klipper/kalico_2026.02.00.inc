@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s-new2 \
+SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=paul/hx711s-phantom \
     file://0001-remove-save-config-subfile-check.patch \
     file://0002-reduce-calibration-difference-tolerance.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
@@ -13,9 +13,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
 "
-SRCREV = "3f166182f82f95584112571b4f7b2258922be60d"
+SRCREV = "13c5cfc77db1b54043310517a25143f20e11c9c4"
 
-PR = "r9"
+PR = "r10"
 
 S = "${WORKDIR}/git"
 
