@@ -19,4 +19,5 @@ SRC_URI:append:elegoo-centauri-carbon1 = " \
 	file://0001-dt-bindings-pwm-Add-binding-for-Allwinner-D1-T113-S3.patch \
 	file://0002-pwm-Add-Allwinner-s-D1-T113-S3-R329-SoCs-PWM-support.patch \
 	file://0003-riscv-dts-allwinner-d1-Add-pwm-node.patch \
+	file://0004-usb-quirks-slow-reset-qinheng-8091.patch \
 "

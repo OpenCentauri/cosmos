@@ -1,0 +1,166 @@
+From 3c651ab09db5ad2000bd437305277fdb11ee6aa9 Mon Sep 17 00:00:00 2001
+From: OpenCentauri Developers <dev@opencentauri.org>
+Date: Sun, 19 Jul 2026 19:30:00 -0400
+Subject: [PATCH] wifi: rtw88: retry failed USB register control messages
+
+The RTL8821CU device can intermittently return -EPROTO during the vendor
+control transfers used to start its firmware. A blanket delay after every
+successful transfer improves the recurrence interval, but adds about 18
+seconds to boot and does not prevent the failure.
+
+Retry only -EPROTO failures, using 5, 20, 80, 320, and 1280 ms waits before
+five successive retries. This has no delay on the normal successful path. If
+all retries fail, latch the transport as broken so firmware initialization
+fails without issuing and logging thousands of additional control requests to
+an unresponsive device. The diagnostic includes both the operation and
+original register address; this is especially important for the RTL8821C
+reg-sec write, whose fixed target register 0x4e0 previously hid the access
+that triggered it.
+
+Signed-off-by: OpenCentauri Developers <dev@opencentauri.org>
+---
+ usb.c | 78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ usb.h |  3 +++
+ 2 files changed, 69 insertions(+), 12 deletions(-)
+
+diff --git a/usb.c b/usb.c
+index 5d3d5a5..cc656d0 100644
+--- a/usb.c
++++ b/usb.c
+@@ -2,6 +2,7 @@
+ /* Copyright(c) 2018-2019  Realtek Corporation
+  */
+ 
++#include <linux/delay.h>
+ #include <linux/module.h>
+ #include <linux/usb.h>
+ #include <linux/mutex.h>
+@@ -20,6 +21,56 @@ module_param_named(switch_usb_mode, rtw_switch_usb_mode, bool, 0644);
+ MODULE_PARM_DESC(switch_usb_mode,
+ 		 "Set to N to disable switching to USB 3 mode to avoid potential interference in the 2.4 GHz band (default: Y)");
+ 
++#define RTW_USB_CTRL_RETRIES	5
++
++static const unsigned int rtw_usb_ctrl_retry_delay_us[] = {
++	5000,
++	20000,
++	80000,
++	320000,
++	1280000,
++};
++
++static int rtw_usb_control_msg(struct rtw_dev *rtwdev, unsigned int pipe,
++			       u8 request, u8 requesttype, u16 value,
++			       u16 index, void *data, u16 size, int timeout,
++			       const char *operation, u32 addr)
++{
++	struct rtw_usb *rtwusb = rtw_get_usb_priv(rtwdev);
++	struct usb_device *udev = rtwusb->udev;
++	int attempt;
++	int ret;
++
++	if (atomic_read(&rtwusb->ctrl_broken))
++		return -EPROTO;
++
++	for (attempt = 0; attempt <= RTW_USB_CTRL_RETRIES; attempt++) {
++		ret = usb_control_msg(udev, pipe, request, requesttype, value,
++				      index, data, size, timeout);
++		if (ret != -EPROTO)
++			break;
++
++		if (attempt == RTW_USB_CTRL_RETRIES)
++			break;
++
++		usleep_range(rtw_usb_ctrl_retry_delay_us[attempt],
++			     rtw_usb_ctrl_retry_delay_us[attempt] + 1000);
++	}
++
++	if (attempt && ret >= 0) {
++		rtw_warn_once(rtwdev,
++			      "USB control %s for reg 0x%x recovered after %d retries\n",
++			      operation, addr, attempt);
++	} else if (ret == -EPROTO &&
++		   atomic_cmpxchg(&rtwusb->ctrl_broken, 0, 1) == 0) {
++		rtw_err(rtwdev,
++			"USB control %s for reg 0x%x failed with %d after %u retries; suppressing further register transfers\n",
++			operation, addr, ret, RTW_USB_CTRL_RETRIES);
++	}
++
++	return ret;
++}
++
+ #define RTW_USB_MAX_RXQ_LEN	512
+ 
+ struct rtw_usb_txcb {
+@@ -60,11 +111,12 @@ static void rtw_usb_reg_sec(struct rtw_dev *rtwdev, u32 addr, __le32 *data)
+ 	if (!reg_on_section)
+ 		return;
+ 
+-	status = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+-				 RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+-				 t_reg, 0, data, t_len, 500);
++	status = rtw_usb_control_msg(rtwdev, usb_sndctrlpipe(udev, 0),
++				     RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
++				     t_reg, 0, data, t_len, 500,
++				     "reg-sec write", addr);
+ 
+-	if (status != t_len && status != -ENODEV)
++	if (status != t_len && status != -ENODEV && status != -EPROTO)
+ 		rtw_err(rtwdev, "%s: reg 0x%x, usb write %u fail, status: %d\n",
+ 			__func__, t_reg, t_len, status);
+ }
+@@ -87,10 +139,11 @@ static u32 rtw_usb_read(struct rtw_dev *rtwdev, u32 addr, u16 len)
+ 
+ 	data = &rtwusb->usb_data[idx];
+ 
+-	ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+-			      RTW_USB_CMD_REQ, RTW_USB_CMD_READ, addr,
+-			      RTW_USB_VENQT_CMD_IDX, data, len, 1000);
+-	if (ret < 0 && ret != -ENODEV && count++ < 4)
++	ret = rtw_usb_control_msg(rtwdev, usb_rcvctrlpipe(udev, 0),
++				  RTW_USB_CMD_REQ, RTW_USB_CMD_READ, addr,
++				  RTW_USB_VENQT_CMD_IDX, data, len, 1000,
++				  "read", addr);
++	if (ret < 0 && ret != -ENODEV && ret != -EPROTO && count++ < 4)
+ 		rtw_err(rtwdev, "read register 0x%x failed with %d\n",
+ 			addr, ret);
+ 
+@@ -137,10 +190,11 @@ static void rtw_usb_write(struct rtw_dev *rtwdev, u32 addr, u32 val, int len)
+ 
+ 	*data = cpu_to_le32(val);
+ 
+-	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+-			      RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
+-			      addr, 0, data, len, 500);
+-	if (ret < 0 && ret != -ENODEV && count++ < 4)
++	ret = rtw_usb_control_msg(rtwdev, usb_sndctrlpipe(udev, 0),
++				  RTW_USB_CMD_REQ, RTW_USB_CMD_WRITE,
++				  addr, 0, data, len, 500,
++				  "write", addr);
++	if (ret < 0 && ret != -ENODEV && ret != -EPROTO && count++ < 4)
+ 		rtw_err(rtwdev, "write register 0x%x failed with %d\n",
+ 			addr, ret);
+ 
+diff --git a/usb.h b/usb.h
+index ae0af4f..06e48c4 100644
+--- a/usb.h
++++ b/usb.h
+@@ -5,6 +5,8 @@
+ #ifndef __RTW_USB_H_
+ #define __RTW_USB_H_
+
++#include <linux/atomic.h>
++
+ #define FW_8192C_START_ADDRESS		0x1000
+ #define FW_8192C_END_ADDRESS		0x5fff
+
+@@ -69,6 +71,7 @@ struct rtw_usb {
+ 	spinlock_t usb_lock;
+ 	__le32 *usb_data;
+ 	unsigned int usb_data_index;
++	atomic_t ctrl_broken;
+ 
+ 	u8 pipe_interrupt;
+ 	u8 pipe_in;
+-- 
+2.48.1
