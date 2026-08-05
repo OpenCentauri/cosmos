@@ -2,6 +2,11 @@
 # /usr/local/bin/usb-mount
 # Called by udev to mount/unmount USB storage partitions
 
+reload_wifi() {
+    /sbin/ifdown wlan0 2>/dev/null || true
+    /sbin/ifup wlan0
+}
+
 copy_wpa_config() {
     SRC_DIR="$1"
     WPA_FILE="$SRC_DIR/wpa_supplicant.conf"
@@ -9,6 +14,7 @@ copy_wpa_config() {
     if [ -f "$WPA_FILE" ]; then
         cp "$WPA_FILE" /etc/wpa_supplicant.conf || return 1
         rm "$WPA_FILE" || return 1
+        reload_wifi || return 1
     fi
 }
 
