@@ -35,6 +35,18 @@ case "$1" in
         echo $GPIO > /sys/class/gpio/unexport
         sleep 3
 
+        if [ -e "$SERIALPORT" ]; then
+            VENDOR=$(
+                udevadm info -q property -n "$SERIALPORT" |
+                sed -n 's/^ID_VENDOR=//p'
+            )
+
+            if [ "$VENDOR" = "ShenZhenCBD" ]; then
+                echo "Detected Elegoo bootloader, resetting saved version..."
+                rm -f $INSTALLED_VERSION
+            fi
+        fi
+
         if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
             echo "Firmware is already up to date."
             exit 0
