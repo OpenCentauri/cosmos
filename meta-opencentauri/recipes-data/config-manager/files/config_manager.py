@@ -11,7 +11,7 @@ VALIDATORS = {
         'release': ['stable', 'nightly'],
         'check_for_updates': ['True', 'False'],
     },
-    'flash_mcu': {
+    'extras': {
         'elegoo_canvas': ['True', 'False'],
     },
     'klipper': {

@@ -2,7 +2,7 @@
 
 set -e
 
-FLASH_CANVAS="$(config-manager flash_mcu elegoo_canvas 2>/dev/null)"
+FLASH_CANVAS="$(config-manager extras elegoo_canvas 2>/dev/null)"
 
 SERIALPORT_BED="/dev/ttyS4"
 VERSION_BED="/etc/bed.ver"

@@ -13,7 +13,7 @@ FIRMWARE_VERSION="/lib/firmware/klipper-canvas.bin.ver"
 KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-canvas.bin"
 INSTALLED_VERSION="/etc/canvas.ver"
 SERIALPORT="/dev/serial/by-path/platform-4200000.usb-usb-0:1.4:1.0"
-FLASH_ENABLED="$(config-manager flash_mcu elegoo_canvas 2>/dev/null)"
+FLASH_ENABLED="$(config-manager extras elegoo_canvas 2>/dev/null)"
 
 update(){
     if flashtool -d $SERIALPORT -f $FIRMWARE; then
@@ -31,7 +31,7 @@ case "$1" in
         echo "Starting klipper-firmware-canvas..."
 
         if [ "$FLASH_ENABLED" != "True" ]; then
-            echo "Skipping canvas firmware flash because flash_mcu.elegoo_canvas is not enabled."
+            echo "Skipping canvas firmware flash because extras.elegoo_canvas is not enabled."
             exit 0
         fi
 
