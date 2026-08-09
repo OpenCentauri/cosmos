@@ -14,10 +14,11 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
     file://0001-force-specific-input-shaper.patch \
     file://0003-drv8833-motor-control.patch \
     file://0004-allow-config-exclude.patch \
+    file://0001-tmc2209-allow-static-threshold-registers.patch \
 "
 SRCREV = "3f166182f82f95584112571b4f7b2258922be60d"
 
-PR = "r9"
+PR = "r10"
 
 S = "${WORKDIR}/git"
 

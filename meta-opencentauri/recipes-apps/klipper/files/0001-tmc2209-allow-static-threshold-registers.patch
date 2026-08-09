@@ -1,0 +1,47 @@
+diff --git a/docs/Config_Reference.md b/docs/Config_Reference.md
+index 0c0d30de..569518b4 100644
+--- a/docs/Config_Reference.md
++++ b/docs/Config_Reference.md
+@@ -4551,6 +4551,12 @@ sense_resistor:
+ #   code may temporarily override this setting during homing
+ #   operations. The default is 0, which disables "stealthChop" mode.
+ #driver_MULTISTEP_FILT: True
++#driver_EN_SPREADCYCLE:
++#driver_TPWMTHRS:
++#driver_TCOOLTHRS:
++#   These optional fields directly override the values derived from
++#   stealthchop_threshold and coolstep_threshold. The default is to
++#   use the values derived from those velocity-based options.
+ #driver_IHOLDDELAY: 8
+ #driver_TPOWERDOWN: 20
+ #driver_TBL: 2
+diff --git a/klippy/extras/tmc2209.py b/klippy/extras/tmc2209.py
+index bd244de6..e2e763f5 100644
+--- a/klippy/extras/tmc2209.py
++++ b/klippy/extras/tmc2209.py
+@@ -73,6 +73,11 @@ class TMC2209:
+         set_config_field = self.fields.set_config_field
+         # GCONF
+         set_config_field(config, "multistep_filt", True)
++        set_config_field(config, "en_spreadcycle", None)
++        # TPWMTHRS
++        set_config_field(config, "tpwmthrs", None)
++        # TCOOLTHRS
++        set_config_field(config, "tcoolthrs", None)
+         # CHOPCONF
+         set_config_field(config, "toff", 3)
+         set_config_field(config, "hstrt", 5)
+diff --git a/test/klippy/tmc.cfg b/test/klippy/tmc.cfg
+index 521e2093..d40701d0 100644
+--- a/test/klippy/tmc.cfg
++++ b/test/klippy/tmc.cfg
+@@ -63,6 +63,9 @@ uart_pin: PA5
+ diag_pin: PH6
+ run_current: .5
+ sense_resistor: 0.075
++driver_EN_SPREADCYCLE: True
++driver_TPWMTHRS: 1048575
++driver_TCOOLTHRS: 313
+ 
+ [stepper_z]
+ step_pin: PC2
