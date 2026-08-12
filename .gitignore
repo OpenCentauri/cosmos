@@ -2,3 +2,5 @@
 
 # Yocto build artifacts (generated locally)
 /build
+
+__pycache__

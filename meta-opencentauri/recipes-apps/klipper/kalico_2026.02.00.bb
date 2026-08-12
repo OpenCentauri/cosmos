@@ -33,6 +33,8 @@ RDEPENDS:${PN} = " \
     kalico-firmware-dsp \
     kalico-firmware-toolhead \
     kalico-firmware-bed \
+    check-update \
+    kalico-firmware-canvas \
 "
 
 RPROVIDES:${PN} += "klipper"

@@ -87,7 +87,10 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/
+    echo "# Add other extra configuration here.\n" > ${D}${sysconfdir}/klipper/config/grumpyscreen.cfg
+
+    install -d ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly
+    install -m 0644 ${WORKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly/
 
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/grumpyscreen.init ${D}${sysconfdir}/init.d/grumpyscreen
@@ -97,7 +100,11 @@ FILES:${PN} = " \
     ${bindir}/grumpyscreen \
     ${datadir}/grumpyscreen \
     ${sysconfdir}/klipper/config/grumpyscreen.cfg \
+    ${sysconfdir}/klipper/config/grumpyscreen-readonly/grumpyscreen.cfg \
     ${sysconfdir}/init.d/grumpyscreen \
 "
 
-CONFFILES:${PN} = "${sysconfdir}/klipper/config/grumpyscreen.cfg"
+CONFFILES:${PN} = " \
+    ${sysconfdir}/klipper/config/grumpyscreen.cfg \
+    ${sysconfdir}/klipper/config/grumpyscreen-readonly/grumpyscreen.cfg \
+"

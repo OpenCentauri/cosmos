@@ -9,6 +9,10 @@ VALIDATORS = {
     },
     'update': {
         'release': ['stable', 'nightly'],
+        'check_for_updates': ['True', 'False'],
+    },
+    'extras': {
+        'elegoo_canvas': ['True', 'False'],
     },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
@@ -17,12 +21,15 @@ VALIDATORS = {
         'heatsoak': [str(x / 10) for x in range(100)] + [str(x) for x in range(31)],
         'adaptive_mesh': ['True', 'False'],
         'adaptive_purge': ['True', 'False'],
+        'unload_after_print': ['True', 'False'],
         'nozzle_z_homing': ['True', 'False'],
         'z_ideal_lifting_distance': [str(i) for i in range(257)],
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(40, 101)],
         'load_skew_profile' : ['True', 'False'],
         'skew_profile_name': None,  
+        'full_calibrate_bed_temperature': [str(i) for i in range(30, 111)],
+        'toolhead_led': ['True', 'False'],
     },
 }
 

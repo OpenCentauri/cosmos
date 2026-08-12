@@ -41,7 +41,9 @@ case "$1" in
             exit 0
         else
             echo "Firmware version mismatch or not installed, flashing firmware..."
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing bed. DO NOT POWER OFF"
             if update; then
+                PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
                 exit 0
             else
                 echo "Attempting bootloader upgrade..."
@@ -61,6 +63,7 @@ case "$1" in
                     echo "Cannot update bootloader."
                 fi
             fi
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;
     stop)
