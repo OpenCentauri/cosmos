@@ -1,6 +1,10 @@
 name: Build OpenCentauri Image (on PR)
+
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -20,7 +24,9 @@ jobs:
           AUTO_APPROVE: ${{ vars.AUTO_APPROVE }}
         with:
           script: |
-            const username = context.payload.pull_request.user.login;
+            const username = context.payload.pull_request?.user?.login
+              || context.payload.issue?.user?.login
+              || 'unknown';
             const autoApproveUsers = (process.env.AUTO_APPROVE || '')
               .split(',')
               .map((value) => value.trim().toLowerCase())
@@ -31,7 +37,6 @@ jobs:
               : 'approval-needed';
 
             core.info(`Selected ${environment} for ${username}.`);
-
             core.setOutput('environment', environment);
 
   approve:
@@ -41,18 +46,104 @@ jobs:
     steps:
       - run: echo "Using environment ${{ needs.select-approval-environment.outputs.environment }}"
 
-  build:
-    needs: approve
+  # Resolve PR info for issue_comment triggers (comment payload lacks PR head/ref).
+  resolve-pr:
+    if: github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+    steps:
+      - name: Resolve PR from comment
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue.pull_request) {
+              core.setOutput('number', '');
+              return;
+            }
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: issue.number,
+            });
+            core.setOutput('number', pr.number.toString());
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('head_ref', pr.head.ref);
+
+  # Decide which build(s) to run based on the event.
+  decide-build-type:
+    needs: resolve-pr
+    if: always() && (github.event_name != 'issue_comment' || needs.resolve-pr.outputs.number != '')
+    runs-on: ubuntu-latest
+    outputs:
+      test_build: ${{ steps.decide.outputs.test_build }}
+      release_build: ${{ steps.decide.outputs.release_build }}
+      pr_number: ${{ steps.decide.outputs.pr_number }}
+      head_sha: ${{ steps.decide.outputs.head_sha }}
+      head_ref: ${{ steps.decide.outputs.head_ref }}
+    steps:
+      - name: Decide build type
+        id: decide
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const eventName = context.eventName;
+            const action = context.payload.action;
+            const pr = context.payload.pull_request;
+            const resolvedNumber = '${{ needs.resolve-pr.outputs.number }}';
+            const resolvedSha = '${{ needs.resolve-pr.outputs.head_sha }}';
+            const resolvedRef = '${{ needs.resolve-pr.outputs.head_ref }}';
+
+            const labels = pr?.labels?.map(l => l.name) || [];
+            const body = context.payload.comment?.body?.trim() || '';
+
+            const isPrSync = eventName === 'pull_request' && ['opened', 'synchronize', 'reopened'].includes(action);
+            const isReleaseLabel = eventName === 'pull_request' && action === 'labeled' && context.payload.label?.name === 'release-build';
+            const isReleaseComment = eventName === 'issue_comment' && body === '/release-build';
+            const hasReleaseLabel = labels.includes('release-build');
+
+            // Auto test build on every PR push. If release-build label is present,
+            // run only the release build (not both).
+            const testBuild = isPrSync && !hasReleaseLabel;
+            const releaseBuild = isReleaseLabel || isReleaseComment || (isPrSync && hasReleaseLabel);
+            core.setOutput('test_build', testBuild.toString());
+            core.setOutput('release_build', releaseBuild.toString());
+            core.setOutput('pr_number', pr?.number?.toString() || resolvedNumber || '');
+            core.setOutput('head_sha', pr?.head?.sha || resolvedSha || '');
+            core.setOutput('head_ref', pr?.head?.ref || resolvedRef || '');
+            core.info(`test_build=${testBuild}, release_build=${releaseBuild}`);
+
+  test-build:
+    needs: [approve, decide-build-type]
+    if: ${{ needs.decide-build-type.outputs.test_build == 'true' }}
     uses: ./.github/workflows/build.yml
     with:
       use_cache: true
-      write_back_cache: false
       upload_all_artifacts: false
-      version: PR-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      version: PR-${{ needs.decide-build-type.outputs.pr_number }}-${{ needs.decide-build-type.outputs.head_sha }}
+    concurrency:
+      group: pr-test-${{ needs.decide-build-type.outputs.pr_number }}
+      cancel-in-progress: true
+
+  release-build:
+    needs: [approve, decide-build-type]
+    if: ${{ needs.decide-build-type.outputs.release_build == 'true' }}
+    uses: ./.github/workflows/build.yml
+    with:
+      use_cache: false
+      upload_all_artifacts: true
+      version: PR-${{ needs.decide-build-type.outputs.pr_number }}-${{ needs.decide-build-type.outputs.head_sha }}
+    concurrency:
+      group: pr-release-${{ needs.decide-build-type.outputs.pr_number }}
+      cancel-in-progress: true
 
   comment:
-    needs: build
-    if: always() && needs.build.result == 'success'
+    needs: [decide-build-type, test-build, release-build]
+    if: always() && (needs.test-build.result == 'success' || needs.release-build.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Get workflow run info
@@ -60,8 +151,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const headSha = context.payload.pull_request.head.sha.substring(0, 7);
-            const branch = context.payload.pull_request.head.ref;
+            const prNumber = parseInt('${{ needs.decide-build-type.outputs.pr_number }}', 10);
+            const headSha = '${{ needs.decide-build-type.outputs.head_sha }}'.substring(0, 7);
+            const branch = '${{ needs.decide-build-type.outputs.head_ref }}';
 
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
@@ -84,7 +176,7 @@ jobs:
 
             const body = `## ✅ Build Artifacts\n\n` +
               `**Branch:** \`${branch}\`\n` +
-              `**Build:** \`${headSha}\` (merge into \`${context.payload.pull_request.base.ref}\`)\n\n` +
+              `**Build:** \`${headSha}\`\n\n` +
               `| Artifact | Size |\n` +
               `| --- | --- |\n` +
               artifactRows + `\n` +
@@ -96,5 +188,5 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         continue-on-error: true
         with:
-          issue-number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ needs.decide-build-type.outputs.pr_number }}
           body: ${{ steps.run_info.outputs.body }}
