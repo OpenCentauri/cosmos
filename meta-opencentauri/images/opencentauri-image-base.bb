@@ -47,6 +47,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     chrony \
     afc \
     dragonbreath \
+    tmc-autotune \ 
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"

@@ -17,7 +17,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=hx711s
 "
 SRCREV = "3f166182f82f95584112571b4f7b2258922be60d"
 
-PR = "r9"
+PR = "r10"
 
 S = "${WORKDIR}/git"
 
