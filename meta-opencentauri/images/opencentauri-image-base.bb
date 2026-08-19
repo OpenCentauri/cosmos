@@ -46,6 +46,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     iproute2 \
     chrony \
     afc \
+    dragonbreath \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
