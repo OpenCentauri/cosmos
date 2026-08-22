@@ -18,6 +18,7 @@ INITSCRIPT_PARAMS = "defaults 97 5"
 SRC_URI = " \
 	git://github.com/pikvm/ustreamer.git;protocol=https;branch=master \
 	file://0001-retry-http-bind.patch \
+	file://0002-reduce-memory-usage.patch \
 	file://ustreamer-init-d \
 "
 SRCREV = "88460b72e191035d04355e25106af817cbfe069e"
