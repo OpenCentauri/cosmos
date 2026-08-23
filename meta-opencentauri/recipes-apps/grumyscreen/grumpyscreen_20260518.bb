@@ -11,13 +11,11 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "gitsm://github.com/pellcorp/grumpyscreen.git;protocol=https;branch=main \
-    file://0001-Use-printer_data-config-folder.patch \
-    file://0002-Change-wording-in-settings-screen.patch \
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
-SRCREV = "bdb8c481bd49b13f9c496434977acf85adbcc451"
-PR = "r0"
+SRCREV = "ea5c74f8a8f40384fcae79f75d58456123d296c7"
+PR = "r3"
 
 S = "${WORKDIR}/git"
 
@@ -37,7 +35,10 @@ EXTRA_OEMAKE = " \
     CXX='${CXX}' \
     AR='${AR}' \
     OBJCOPY='${OBJCOPY}' \
+    STRIP='${STRIP}' \
 "
+
+INSANE_SKIP:${PN} += "already-stripped"
 
 do_compile[vardeps] += "DISTRO DISTRO_VERSION"
 
@@ -59,7 +60,20 @@ do_compile() {
             ${LDFLAGS}" \
             GUPPY_SMALL_SCREEN="y" \
             GUPPYSCREEN_BRANCH="${DISTRO}" \
-            GUPPYSCREEN_VERSION="${DISTRO_VERSION}"
+            GUPPYSCREEN_VERSION="${DISTRO_VERSION}" \
+            UPDATE_CMD=cosmos_update_cmd \
+            UPDATE_TEXT="Update\nCOSMOS" \
+            UPDATE_PROMPT="Are you sure you want to update COSMOS?\n\nThis will download and update to the latest version of COSMOS!" \
+            UPDATE_SUCCESS="Your printer will restart shortly!" \
+            UPDATE_FAILURE="Failed to initiate update COSMOS!" \
+            SWITCH_TO_STOCK_TEXT="Switch to OC\nPatched" \
+            SWITCH_TO_STOCK_PROMPT="Are you sure you want to switch to OpenCentauri patched firmware?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot." \
+            SWITCH_TO_STOCK_FAILURE="Failed to initiate switch to OC Patched!" \
+            SWITCH_TO_STOCK_SUCCESS="Your printer will restart shortly!" \
+            FACTORY_RESET_TEXT="Factory\nReset" \
+            FACTORY_RESET_PROMPT="Are you sure you want factory reset?\n\nThis will reset all printer setting but it will stay using COSMOS, it will not switch back to stock." \
+            FACTORY_RESET_FAILURE="Failed to factory reset!" \
+            FACTORY_RESET_SUCCESS="Your printer will restart shortly!"
 }
 
 do_install() {
@@ -73,7 +87,10 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    install -m 0644 ${WORKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/
+    echo "# Add other extra configuration here.\n" > ${D}${sysconfdir}/klipper/config/grumpyscreen.cfg
+
+    install -d ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly
+    install -m 0644 ${WORKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly/
 
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${WORKDIR}/grumpyscreen.init ${D}${sysconfdir}/init.d/grumpyscreen
@@ -83,7 +100,11 @@ FILES:${PN} = " \
     ${bindir}/grumpyscreen \
     ${datadir}/grumpyscreen \
     ${sysconfdir}/klipper/config/grumpyscreen.cfg \
+    ${sysconfdir}/klipper/config/grumpyscreen-readonly/grumpyscreen.cfg \
     ${sysconfdir}/init.d/grumpyscreen \
 "
 
-CONFFILES:${PN} = "${sysconfdir}/klipper/config/grumpyscreen.cfg"
+CONFFILES:${PN} = " \
+    ${sysconfdir}/klipper/config/grumpyscreen.cfg \
+    ${sysconfdir}/klipper/config/grumpyscreen-readonly/grumpyscreen.cfg \
+"

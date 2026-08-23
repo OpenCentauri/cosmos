@@ -4,21 +4,21 @@ DESCRIPTION = "Fluidd is a free and open-source Klipper web interface for \
     tablets and mobile with customizable layouts."
 HOMEPAGE = "https://github.com/fluidd-core/fluidd"
 LICENSE = "GPL-3.0-only"
-LIC_FILES_CHKSUM = "file://index.html;md5=3b00ecfc948a3467a588bf3a3eb33a00"
+LIC_FILES_CHKSUM = "file://index.html;md5=4b86906913a0847d07c33e3a67f2094d"
 
 inherit python3native
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = "https://github.com/fluidd-core/fluidd/releases/download/v${PV}/fluidd.zip;downloadfilename=fluidd-${PV}.zip;subdir=fluidd \
-    file://fluidd.cfg \
     file://opencentauri-fluidd-theme \
 "
-SRC_URI[sha256sum] = "f08e9d438fdce472553e1ce46a9be62f5ababb4b0f64f65efbd4561d9379653c"
+SRC_URI[sha256sum] = "48e712e5f2cc59f7cfebd458174ddedff60e532ebcba3f9b844167fa27a22571"
 
 S = "${WORKDIR}/fluidd"
 
 RDEPENDS:${PN} = " \
+    klipper \
     moonraker \
 "
 
@@ -42,18 +42,8 @@ do_install() {
         ${D}/var/www/fluidd/
     ${PYTHON} ${WORKDIR}/opencentauri-fluidd-theme/apply-opencentauri-fluidd-theme.py ${D}/var/www/fluidd
 
-    # Install default fluidd config
-    install -d ${D}${sysconfdir}/klipper
-    install -d ${D}${sysconfdir}/klipper/config
-    install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${WORKDIR}/fluidd.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/
 }
 
 FILES:${PN} = " \
     /var/www/fluidd \
-    ${sysconfdir}/klipper/config/klipper-readonly/fluidd.cfg \
-"
-
-CONFFILES:${PN} = " \
-    ${sysconfdir}/klipper/config/klipper-readonly/fluidd.cfg \
 "

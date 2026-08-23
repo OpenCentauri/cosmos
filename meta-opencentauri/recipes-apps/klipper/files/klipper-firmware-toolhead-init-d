@@ -35,12 +35,26 @@ case "$1" in
         echo $GPIO > /sys/class/gpio/unexport
         sleep 3
 
+        if [ -e "$SERIALPORT" ]; then
+            VENDOR=$(
+                udevadm info -q property -n "$SERIALPORT" |
+                sed -n 's/^ID_VENDOR=//p'
+            )
+
+            if [ "$VENDOR" = "ShenZhenCBD" ]; then
+                echo "Detected Elegoo bootloader, resetting saved version..."
+                rm -f $INSTALLED_VERSION
+            fi
+        fi
+
         if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
             echo "Firmware is already up to date."
             exit 0
         else
             echo "Firmware version mismatch or not installed, flashing firmware..."
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing toolhead. DO NOT POWER OFF"
             if update; then
+                PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
                 exit 0
             else
                 echo "Attempting bootloader upgrade..."
@@ -59,6 +73,7 @@ case "$1" in
                     echo "Cannot update bootloader."
                 fi
             fi
+            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;
     stop)

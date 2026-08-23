@@ -1,11 +1,13 @@
-From f7509be601c2b965b5c6e5e720d1748f36355179 Mon Sep 17 00:00:00 2001
+From a58e279c48b07017bffff20a922e7db88d6dca4d Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
-Date: Thu, 7 May 2026 23:41:05 +0200
+Date: Tue, 30 Jun 2026 22:17:58 +0200
 Subject: [PATCH] Reduce log rotate threshold
 
 ---
- moonraker/loghelper.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ moonraker/components/application.py | 2 +-
+ moonraker/components/simplyprint.py | 4 ++--
+ moonraker/loghelper.py              | 6 +++---
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/moonraker/components/application.py b/moonraker/components/application.py
 index 22a8ee5..5f2c369 100644
@@ -20,16 +22,42 @@ index 22a8ee5..5f2c369 100644
          ):
              # don't log successful requests in release mode
              return
+diff --git a/moonraker/components/simplyprint.py b/moonraker/components/simplyprint.py
+index 0338d42..e96d5a3 100644
+--- a/moonraker/components/simplyprint.py
++++ b/moonraker/components/simplyprint.py
+@@ -1632,8 +1632,8 @@ class ProtoLogger:
+         self._logger = logging.getLogger("simplyprint")
+         self._logger.addHandler(self.queue_handler)
+         self._logger.propagate = False
+-        file_hdlr = logging.handlers.TimedRotatingFileHandler(
+-            log_path, when='midnight', backupCount=2)
++        file_hdlr = logging.handlers.RotatingFileHandler(
++            log_path, maxBytes=5 * 1024 * 1024, backupCount=2)
+         formatter = logging.Formatter(
+             '%(asctime)s [%(funcName)s()] - %(message)s')
+         file_hdlr.setFormatter(formatter)
 diff --git a/moonraker/loghelper.py b/moonraker/loghelper.py
-index 74435e0..401e33f 100644
+index 74435e0..6fe6821 100644
 --- a/moonraker/loghelper.py
 +++ b/moonraker/loghelper.py
+@@ -71,8 +71,8 @@ class LocalQueueHandler(logging.handlers.QueueHandler):
+         except Exception:
+             self.handleError(record)
+ 
+-# Timed Rotating File Handler, based on Klipper's implementation
+-class MoonrakerLoggingHandler(logging.handlers.TimedRotatingFileHandler):
++# Rotating File Handler, based on Klipper's implementation
++class MoonrakerLoggingHandler(logging.handlers.RotatingFileHandler):
+     def __init__(self, app_args: Dict[str, Any], **kwargs) -> None:
+         super().__init__(app_args['log_file'], **kwargs)
+         self.app_args = app_args
 @@ -137,7 +137,7 @@ class LogManager:
          if log_file:
              try:
                  self.file_hdlr = MoonrakerLoggingHandler(
 -                    app_args, when='midnight', backupCount=2)
-+                    app_args, when='H', backupCount=2)
++                    app_args, maxBytes=5 * 1024 * 1024, backupCount=2)
                  if app_args["structured_logging"]:
                      formatter: logging.Formatter = StructuredFormatter()
                  else:
