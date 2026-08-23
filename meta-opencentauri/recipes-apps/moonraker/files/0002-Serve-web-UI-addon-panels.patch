@@ -1,0 +1,109 @@
+From 09690233af003b2057263ed8b804f7b580f4041d Mon Sep 17 00:00:00 2001
+From: Shawn Rains <shawn.rains@area9.dk>
+Date: Sun, 23 Aug 2026 10:35:59 +0300
+Subject: [PATCH] Serve web UI addon panels
+
+Add addons_path option to [server] to serve web UI addon files from
+a directory (e.g. /var/www/addons) at /addons/. A manifest of
+installed dashboard panels (subdirectories of <addons_path>/panels/
+containing a panel.js) is served at /addons/manifest.json, allowing
+a loader script injected into the web frontend to discover and load
+custom panels contributed by other packages.
+
+Example moonraker.conf:
+
+  [server]
+  addons_path: /var/www/addons
+---
+ moonraker/components/application.py | 71 +++++++++++++++++++++++++++++
+ 1 file changed, 71 insertions(+)
+
+diff --git a/moonraker/components/application.py b/moonraker/components/application.py
+index 22a8ee5..078124d 100644
+--- a/moonraker/components/application.py
++++ b/moonraker/components/application.py
+@@ -300,6 +300,32 @@ class MoonrakerApp:
+                 {"upstream": webcam_uri}
+             )
+ 
++        # Serve web UI addons (e.g. custom dashboard panels). The option
++        # accepts one root per line; later roots let runtime-installed
++        # addons (on writable storage) add panels next to the ones baked
++        # into the image. Roots are checked per request, so a directory
++        # created after startup works without a restart.
++        adp = config.get("addons_path", None)
++        if adp is not None:
++            roots = [
++                os.path.expanduser(line.strip())
++                for line in adp.splitlines() if line.strip()
++            ]
++            if roots:
++                self.mutable_router.add_handler(
++                    "/addons/manifest.json",
++                    AddonManifestHandler,
++                    {"roots": roots}
++                )
++                self.mutable_router.add_handler(
++                    "/addons/(.*)",
++                    AddonFileHandler,
++                    {"roots": roots}
++                )
++                logging.info(
++                    f"Web UI addons enabled, roots: {', '.join(roots)}"
++                )
++
+         # Register handlers
+         logfile = self.server.get_app_args().get('log_file')
+         if logfile:
+@@ -1132,6 +1158,51 @@ class WebClientRootHandler(tornado.web.RequestHandler):
+         with open(index, "rb") as f:
+             self.finish(f.read())
+ 
++# Serves web UI addon files (loader, panel scripts and their assets)
++# from the first configured root containing the requested file
++class AddonFileHandler(tornado.web.RequestHandler):
++    def initialize(self, roots: List[str]) -> None:
++        self.roots = roots
++
++    def get(self, rel_path: str) -> None:
++        rel = os.path.normpath(url_unescape(rel_path, plus=False))
++        if os.path.isabs(rel) or rel.startswith(".."):
++            raise tornado.web.HTTPError(404)
++        for root in self.roots:
++            full = os.path.join(root, rel)
++            if os.path.isfile(full):
++                ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
++                self.set_header("Content-Type", ctype)
++                # Addon files are small and change on updates, don't cache
++                self.set_header("Cache-Control", "no-cache")
++                with open(full, "rb") as f:
++                    self.finish(f.read())
++                return
++        raise tornado.web.HTTPError(404)
++
++# Lists installed addon panels found under <root>/panels/ of every
++# configured root; the first root wins on duplicate panel names
++class AddonManifestHandler(tornado.web.RequestHandler):
++    def initialize(self, roots: List[str]) -> None:
++        self.roots = roots
++
++    def get(self) -> None:
++        panels: Dict[str, Any] = {}
++        for root in self.roots:
++            pdir = os.path.join(root, "panels")
++            if not os.path.isdir(pdir):
++                continue
++            for name in os.listdir(pdir):
++                if name in panels:
++                    continue
++                if os.path.isfile(os.path.join(pdir, name, "panel.js")):
++                    panels[name] = {
++                        "name": name,
++                        "script": f"/addons/panels/{name}/panel.js"
++                    }
++        self.set_header("Cache-Control", "no-cache")
++        self.finish({"panels": [panels[n] for n in sorted(panels)]})
++
+ class WebcamRedirectHandler(tornado.web.RequestHandler):
+     def initialize(self, upstream: str) -> None:
+         self.upstream = upstream.rstrip("/")
