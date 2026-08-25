@@ -14,8 +14,8 @@ SRC_URI = "gitsm://github.com/pellcorp/grumpyscreen.git;protocol=https;branch=ma
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
-SRCREV = "ea5c74f8a8f40384fcae79f75d58456123d296c7"
-PR = "r3"
+SRCREV = "c84630a67e055de30712c90f648449d94c75bc83"
+PR = "r4"
 
 S = "${WORKDIR}/git"
 
@@ -78,7 +78,7 @@ do_compile() {
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${S}/build/bin/guppyscreen ${D}${bindir}/grumpyscreen
+    install -m 0755 ${S}/build/bin/grumpyscreen ${D}${bindir}
 
     install -d ${D}${datadir}/grumpyscreen/themes
     if [ -d ${S}/themes ]; then
