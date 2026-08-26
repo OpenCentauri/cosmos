@@ -62,12 +62,6 @@ do_install() {
         cp -r ${S}/extras/* ${D}${datadir}/klipper/klippy/extras/ 2>/dev/null || true
     fi
 
-    # Install Konfigurations-Vorlagen für FYSETC ERB V2.0
-    install -d ${D}${sysconfdir}/klipper/config/happy-hare
-    install -m 0644 ${WORKDIR}/mmu.cfg.erb-v2 ${D}${sysconfdir}/klipper/config/happy-hare/mmu.cfg
-    install -m 0644 ${WORKDIR}/mmu_hardware.cfg.erb-v2 ${D}${sysconfdir}/klipper/config/happy-hare/mmu_hardware.cfg
-    install -m 0644 ${WORKDIR}/mmu_parameters.cfg.erb-v2 ${D}${sysconfdir}/klipper/config/happy-hare/mmu_parameters.cfg
-
     # Install MMU config from local mmu folder
     install -d ${D}${sysconfdir}/klipper/config/mmu/base
     install -d ${D}${sysconfdir}/klipper/config/mmu/addons

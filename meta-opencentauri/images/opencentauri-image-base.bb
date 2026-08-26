@@ -24,7 +24,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     moonraker \
     mainsail \
     fluidd \
-    atomscreen \
     guppyscreen \
     grumpyscreen \
     htop \

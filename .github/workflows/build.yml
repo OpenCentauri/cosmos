@@ -65,13 +65,13 @@ jobs:
       - name: Build image
         run: |
           source poky/oe-init-build-env build
-          bitbake opencentauri-upgrade
+          bitbake opencentauri-upgrade-hh-minimal
 
       - name: Upload build artifacts (SWU only)
         uses: actions/upload-artifact@v4
         with:
           name: CC1 Firmware
-          path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
+          path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-hh-minimal-elegoo-centauri-carbon1.rootfs.swu
 
       - name: Upload build artifacts
         if: ${{ inputs.upload_all_artifacts }}

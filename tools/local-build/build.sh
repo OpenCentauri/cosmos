@@ -25,26 +25,70 @@ echo "Starting Docker container..."
 echo ""
 
 # Run Docker container with volume mounts
-docker run --rm -i \
-    -v "$REPO_DIR:/home/builder/opencentauri-repo" \
-    -v "$CACHE_DIR:/home/builder/cache" \
-    -w /home/builder/opencentauri-repo \
-    opencentauri-build \
-    /bin/bash -c '
-        set -e
-        echo ""
+# Build as host user so output files (build/, cache/) remain writable
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+
+# The container command is written to a temp file (mounted into the container)
+# so it runs as bash's argv[0] script. Running it via stdin heredoc instead
+# would leave BASH_SOURCE empty, which makes poky/oe-init-build-env resolve
+# OEROOT to a bogus path and fail silently under set -e.
+CONTAINER_CMD_FILE="$(mktemp)"
+cat > "$CONTAINER_CMD_FILE" << 'EOF'
+set -e
+# Pass-through arguments (build targets) arrive as $1..$N of this script
+ARGS="$*"
+echo ""
         echo "========================================"
         echo "Initializing Yocto Build Environment"
         echo "========================================"
 
         # Initialize submodules if not already done
-        if [ ! -d "poky" ]; then
+        if [ ! -d "poky" ] && [ -f ".gitmodules" ]; then
             echo "Initializing git submodules..."
+            git config --global --add safe.directory /home/builder/opencentauri-repo || true
             git submodule update --init --recursive
         fi
 
-        # Source Yocto environment
-        source poky/oe-init-build-env build
+        # Source Yocto environment (trace it so a silent failure shows the failing line)
+        if [ "${DEBUG:-}" = "1" ]; then set -x; fi
+        if ! source poky/oe-init-build-env build; then
+            echo "ERROR: sourcing poky/oe-init-build-env failed (see trace above)" >&2
+            exit 1
+        fi
+        [ "${DEBUG:-}" = "1" ] && set +x
+
+        # Remove stale bitbake locks left by previous runs (may be root-owned;
+        # the mount point is not root-owned inside the container, so we can delete it)
+        rm -f /home/builder/opencentauri-repo/build/bitbake.lock
+
+        # Configure bblayers.conf with project layers (oe-init-build-env only creates poky defaults)
+        REPO=/home/builder/opencentauri-repo
+        cat > "$REPO/build/conf/bblayers.conf" << BBLAYERS
+# POKY_BBLAYERS_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+POKY_BBLAYERS_CONF_VERSION = "2"
+
+BBPATH = "\${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  ${REPO}/poky/meta \
+  ${REPO}/poky/meta-poky \
+  ${REPO}/poky/meta-yocto-bsp \
+  ${REPO}/meta-arm/meta-arm-toolchain \
+  ${REPO}/meta-arm/meta-arm \
+  ${REPO}/meta-openembedded/meta-oe \
+  ${REPO}/meta-openembedded/meta-networking \
+  ${REPO}/meta-openembedded/meta-python \
+  ${REPO}/meta-sunxi \
+  ${REPO}/meta-swupdate \
+  ${REPO}/meta-opencentauri \
+  "
+BBLAYERS
+        # Set target machine in local.conf
+        sed -i 's/^MACHINE ??= .*/MACHINE ?= "elegoo-centauri-carbon1"/' "$REPO/build/conf/local.conf"
+        echo "Configured bblayers.conf and MACHINE=elegoo-centauri-carbon1"
 
         # Create site.conf for bindgen cross-compilation (not in repo, auto-included by bitbake)
         cat > /home/builder/opencentauri-repo/build/conf/site.conf << 'SITECONF'
@@ -67,8 +111,9 @@ SITECONF
         bitbake backlight-off
 
         # Build SWUpdate images (pass any arguments or build all)
-        if [ -n "$1" ]; then
-            bitbake "$@"
+        if [ -n "$ARGS" ]; then
+            # shellcheck disable=SC2086
+            bitbake $ARGS
         else
             bitbake \
                 opencentauri-upgrade \
@@ -87,6 +132,18 @@ SITECONF
         ls -la /home/builder/opencentauri-repo/build/tmp/deploy/images/elegoo-centauri-carbon1/*.swu 2>/dev/null || true
 
         # Cleanup: remove site.conf
-        rm -f /home/builder/opencentauri-repo/build/conf/site.conf
-        echo "Cleaned up site.conf"
-    ' -- "$@"
+rm -f /home/builder/opencentauri-repo/build/conf/site.conf
+echo "Cleaned up site.conf"
+EOF
+# Mount the command file into the container and run it as a script, not stdin.
+# (DEBUG=1 is forwarded so `set -x` inside also applies to sourcing oe-init-build-env.)
+trap 'rm -f "$CONTAINER_CMD_FILE"' EXIT
+if [ "${DEBUG:-}" != "" ]; then export DEBUG; fi
+docker run --rm \
+    --user "$HOST_UID:$HOST_GID" \
+    -v "$REPO_DIR:/home/builder/opencentauri-repo" \
+    -v "$CACHE_DIR:/home/builder/cache" \
+    -v "$CONTAINER_CMD_FILE:/tmp/oe-build-cmd.sh:ro" \
+    -w /home/builder/opencentauri-repo \
+    opencentauri-build \
+    /bin/bash /tmp/oe-build-cmd.sh "${@}"
