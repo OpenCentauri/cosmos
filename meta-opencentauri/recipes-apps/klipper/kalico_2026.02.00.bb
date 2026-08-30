@@ -79,6 +79,11 @@ do_install() {
     install -d ${D}${datadir}/klipper
     cp -r ${S}/klippy ${D}${datadir}/klipper/
 
+    # Kalico imports every module in extras/ at startup regardless of config,
+    # and telemetry.py pulls in urllib.request (email/http/ssl) for ~2.5MB of
+    # extra memory usage that we can't afford to use.
+    rm -f ${D}${datadir}/klipper/klippy/extras/telemetry.py
+
     # Set our ver
     sed -i 's/APP_NAME = "Kalico"/APP_NAME = "${DISTRO_NAME}"/' ${D}${datadir}/klipper/klippy/__init__.py
     echo "Release - ${DISTRO_VERSION}" > ${D}${datadir}/klipper/klippy/.version
