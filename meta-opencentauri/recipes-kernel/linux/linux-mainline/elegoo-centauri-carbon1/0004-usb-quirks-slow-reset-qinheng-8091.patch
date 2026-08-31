@@ -1,0 +1,36 @@
+From 5c30578f0583ad23dcd9ce39806c8b799ce42ae2 Mon Sep 17 00:00:00 2001
+From: OpenCentauri <dev@opencentauri.org>
+Date: Sun, 19 Jul 2026 22:30:00 -0400
+Subject: [PATCH] usb: quirks: use slow reset for QinHeng 1a86:8091 hub
+
+The Elegoo Centauri Carbon 1 connects its RTL8821CU Wi-Fi module below a
+QinHeng 1a86:8091 USB 2.0 hub.  The module can fail SET_ADDRESS with
+-EPROTO after a warm reboot.
+
+Give devices below this hub an additional 100 ms of recovery time after a
+port reset.  This uses the existing USB_QUIRK_HUB_SLOW_RESET mechanism and
+does not disconnect or power-cycle the hub and its other children.
+
+Upstream-Status: Inappropriate [board-specific workaround pending wider hardware validation]
+Signed-off-by: OpenCentauri <dev@opencentauri.org>
+---
+ drivers/usb/core/quirks.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/core/quirks.c b/drivers/usb/core/quirks.c
+index 6cf233837ae7..b7f4c857101c 100644
+--- a/drivers/usb/core/quirks.c
++++ b/drivers/usb/core/quirks.c
+@@ -491,6 +491,9 @@ static const struct usb_device_id usb_quirk_list[] = {
+ 	/* Terminus Technology Inc. Hub */
+ 	{ USB_DEVICE(0x1a40, 0x0101), .driver_info = USB_QUIRK_HUB_SLOW_RESET },
+ 
++	/* QinHeng hub on the Elegoo Centauri Carbon 1 */
++	{ USB_DEVICE(0x1a86, 0x8091), .driver_info = USB_QUIRK_HUB_SLOW_RESET },
++
+ 	/* Corsair K70 RGB */
+ 	{ USB_DEVICE(0x1b1c, 0x1b13), .driver_info = USB_QUIRK_DELAY_INIT |
+ 	  USB_QUIRK_DELAY_CTRL_MSG },
+-- 
+2.50.1
+
