@@ -13,14 +13,55 @@ case "$RELEASE" in
 esac
 
 SWUFILE="/user-resource/update.swu"
+STATUS_FILE="/run/cosmos-update.status"
+
+# Publish progress so the on screen UI can show what is happening. Written to a
+# temp file and renamed so a reader never observes a partially written line.
+# Format: <state>|<percent>
+# state: downloading | flashing | rebooting | failed
+write_status() {
+    echo "$1|$2" > "${STATUS_FILE}.tmp" 2>/dev/null \
+        && mv "${STATUS_FILE}.tmp" "$STATUS_FILE" 2>/dev/null \
+        || true
+}
+
+write_status downloading 0
+
+# Size of the asset after redirects, so bytes on disk can be turned into a
+# percentage. If this fails we simply report 0 and the UI shows an
+# indeterminate download rather than failing the update.
+TOTAL=$(curl -k -sIL "$FW_URL" \
+    | awk '/^[Cc]ontent-[Ll]ength:/ {v=$2} END {gsub(/\r/,"",v); print v+0}')
 
 # Download firmware
-curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+curl -k -f -S -o "$SWUFILE" -L "$FW_URL" &
+CURL_PID=$!
+
+while kill -0 "$CURL_PID" 2>/dev/null; do
+    if [ "$TOTAL" -gt 0 ] && [ -f "$SWUFILE" ]; then
+        CUR=$(wc -c < "$SWUFILE" || echo 0)
+        write_status downloading $(( CUR * 100 / TOTAL ))
+    fi
+    sleep 1
+done
+
+if ! wait "$CURL_PID"; then
+    write_status failed 0
+    exit 1
+fi
+
+write_status downloading 100
 
 # Install firmware
-flash "$SWUFILE"
+write_status flashing 0
+if ! flash "$SWUFILE"; then
+    write_status failed 0
+    exit 1
+fi
 
 # Clean up firmware file
 rm "$SWUFILE"
+
+write_status rebooting 100
 
 reboot
