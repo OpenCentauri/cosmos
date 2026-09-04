@@ -1,0 +1,6 @@
+#!/bin/sh
+# Start a COSMOS update through Moonraker's update_manager and return at once.
+# Every UI that speaks the update_manager API then shows the progress; the
+# update itself runs under Moonraker, outside Klipper's command queue.
+curl -s -X POST "http://localhost/machine/update/client?name=cosmos" >/dev/null 2>&1 &
+exit 0

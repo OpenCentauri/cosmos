@@ -64,7 +64,7 @@ do_compile() {
             UPDATE_CMD=cosmos_update_cmd \
             UPDATE_TEXT="Update\nCOSMOS" \
             UPDATE_PROMPT="Are you sure you want to update COSMOS?\n\nThis will download and update to the latest version of COSMOS!" \
-            UPDATE_SUCCESS="Your printer will restart shortly!" \
+            UPDATE_SUCCESS="Update started. Progress is shown in Mainsail, the printer restarts when it is done." \
             UPDATE_FAILURE="Failed to initiate update COSMOS!" \
             SWITCH_TO_STOCK_TEXT="Switch to OC\nPatched" \
             SWITCH_TO_STOCK_PROMPT="Are you sure you want to switch to OpenCentauri patched firmware?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot." \
