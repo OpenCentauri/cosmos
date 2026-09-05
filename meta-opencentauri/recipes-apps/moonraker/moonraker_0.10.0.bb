@@ -13,7 +13,7 @@ SRC_URI = " \
     file://moonraker-init-d \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
-    file://cosmos_update.py \
+    file://cosmos_update.py;subdir=git/moonraker/components \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
 "
@@ -71,9 +71,6 @@ do_install() {
     # Install moonraker python package
     install -d ${D}${datadir}/moonraker
     cp -r ${S}/moonraker ${D}${datadir}/moonraker/
-    # COSMOS updater for update_manager
-    install -m 0644 ${WORKDIR}/cosmos_update.py ${D}${datadir}/moonraker/moonraker/components/
-
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
