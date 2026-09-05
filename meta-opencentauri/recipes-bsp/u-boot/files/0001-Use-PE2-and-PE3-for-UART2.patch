@@ -1,0 +1,24 @@
+From 16b487cfd2264eea6088bccc3c3825d7660ad2dd Mon Sep 17 00:00:00 2001
+From: James Turton <james@titv.se>
+Date: Sat, 5 Sep 2026 23:36:01 +0200
+Subject: [PATCH] Use PE2 and PE3 for UART2
+
+---
+ arch/arm/mach-sunxi/board.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm/mach-sunxi/board.c b/arch/arm/mach-sunxi/board.c
+index d9c4c87e8bf..3027ac25258 100644
+--- a/arch/arm/mach-sunxi/board.c
++++ b/arch/arm/mach-sunxi/board.c
+@@ -174,6 +174,10 @@ static int gpio_init(void)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(0), SUN8I_H3_GPA_UART2);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPA(1), SUN8I_H3_GPA_UART2);
+ 	sunxi_gpio_set_pull(SUNXI_GPA(1), SUNXI_GPIO_PULL_UP);
++#elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I_R528)
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(2), 3);
++	sunxi_gpio_set_cfgpin(SUNXI_GPE(3), 3);
++	sunxi_gpio_set_pull(SUNXI_GPE(3), SUNXI_GPIO_PULL_UP);
+ #elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I)
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_GPB_UART2);
+ 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_GPB_UART2);
