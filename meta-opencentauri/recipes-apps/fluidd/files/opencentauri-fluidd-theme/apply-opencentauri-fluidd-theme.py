@@ -174,8 +174,6 @@ def patch_main_bundle(webroot):
 def patch_state_chunk(webroot):
     """Patch the initial Vuex state so OpenCentauri is the default theme."""
     chunks = sorted((webroot / "assets").glob("state-*.js"))
-    if not chunks:
-        return  # Not all builds have this chunk
 
     old_theme = "theme:{isDark:!0,logo:{src:`logo_fluidd.svg`},color:`#2196F3`,backgroundLogo:!0}"
     new_theme = f"theme:{{isDark:!0,logo:{{src:`{LOGO_SRC}`}},color:`{PRIMARY_COLOR}`,backgroundLogo:!0}}"
@@ -188,6 +186,59 @@ def patch_state_chunk(webroot):
             return  # Patched successfully
 
     raise RuntimeError(f"{webroot}/assets: expected hardcoded default theme not found in any state chunk")
+
+
+def patch_screws_tilt_default(webroot):
+    """Default off Fluidd's built-in Screws Tilt Adjust auto-popup.
+
+    The MANUAL_LEVELING/_SCREWS_TILT_PROMPT macros (cosmos#248) are the
+    leveling UX; Fluidd's native dialog stacks on top of them. Users can
+    re-enable via Settings -> Toolhead.
+    """
+    old = "showScrewsTiltAdjustDialogAutomatically:!0"
+    new = "showScrewsTiltAdjustDialogAutomatically:!1"
+    for path in sorted((webroot / "assets").glob("state-*.js")):
+        text = path.read_text(encoding="utf-8")
+        if old in text:
+            if text.count(old) != 1:
+                raise RuntimeError(f"{path}: expected 1x {old!r}, found {text.count(old)}")
+            path.write_text(text.replace(old, new), encoding="utf-8")
+            return
+    raise RuntimeError(f"{webroot}/assets: fluidd screws-tilt default not found in any state chunk")
+
+
+def verify_final(webroot):
+    """Fail the build if any OpenCentauri patch is missing from the final webroot.
+
+    Checks end state (not the pre-patch strings) so it also catches a patch
+    that matched the wrong occurrence in a newer upstream build.
+    """
+    errors = []
+
+    index = (webroot / "index.html").read_text(encoding="utf-8")
+    if f'data-fluidd-theme="{APP_NAME}"' not in index:
+        errors.append("index.html: missing data-fluidd-theme")
+    if THEME_CSS not in index:
+        errors.append("index.html: missing theme css link")
+
+    config = json.loads((webroot / "config.json").read_text(encoding="utf-8"))
+    if config.get("theme", {}).get("logo", {}).get("src") != LOGO_SRC:
+        errors.append("config.json: default theme is not OpenCentauri")
+
+    bundle = "".join(p.read_text(encoding="utf-8") for p in (webroot / "assets").glob("index-*.js"))
+    if "dataset.fluiddTheme" not in bundle:
+        errors.append("main bundle: onThemeChange patch missing")
+
+    state = "".join(p.read_text(encoding="utf-8") for p in (webroot / "assets").glob("state-*.js"))
+    if f"logo:{{src:`{LOGO_SRC}`}}" not in state:
+        errors.append("state chunk: default theme logo not patched")
+    if "showScrewsTiltAdjustDialogAutomatically:!0" in state:
+        errors.append("state chunk: screws-tilt dialog default still ON")
+    if state.count("showScrewsTiltAdjustDialogAutomatically:!1") != 1:
+        errors.append("state chunk: screws-tilt dialog default not patched exactly once")
+
+    if errors:
+        raise RuntimeError("fluidd webroot verification failed:\n  - " + "\n  - ".join(errors))
 
 
 def verify_assets(webroot):
@@ -208,6 +259,8 @@ def main():
     patch_config(webroot)
     patch_main_bundle(webroot)
     patch_state_chunk(webroot)
+    patch_screws_tilt_default(webroot)
+    verify_final(webroot)
 
 
 if __name__ == "__main__":
