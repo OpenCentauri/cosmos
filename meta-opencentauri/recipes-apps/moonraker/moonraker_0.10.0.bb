@@ -16,6 +16,7 @@ SRC_URI = " \
     file://cosmos_update.py;subdir=git/moonraker/components \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
+    file://0001-update_manager-skip-placeholder-applications.patch \
 "
 
 SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"

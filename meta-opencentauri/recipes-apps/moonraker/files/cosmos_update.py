@@ -3,8 +3,8 @@
 # Registers a "cosmos" entry with update_manager so Mainsail, Fluidd and any
 # other client that speaks the update_manager API can see the installed and
 # latest COSMOS version, start an update, and follow its progress through the
-# standard notify_update_response stream. No changes to update_manager itself
-# are needed: the updater is added to its table from this component.
+# standard notify_update_response stream. The updater is added to
+# update_manager's table from this component.
 #
 # Configuration (moonraker.conf):
 #
@@ -19,11 +19,11 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 from __future__ import annotations
+import calendar
 import configparser
-import logging
 import pathlib
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from .update_manager.base_deploy import BaseDeploy
 
@@ -82,9 +82,6 @@ class CosmosDeploy(BaseDeploy):
                 channel = "stable"
         self.channel = channel or "stable"
 
-    def _api(self):
-        return self.cmd_helper.get_http_client()
-
     async def refresh(self) -> None:
         await self._read_local_state()
         self.last_error = ""
@@ -99,7 +96,7 @@ class CosmosDeploy(BaseDeploy):
         self._save_state()
 
     async def _refresh_stable(self) -> None:
-        resp = await self._api().github_api_request(
+        resp = await self.cmd_helper.get_http_client().github_api_request(
             f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases?per_page=10"
         )
         if resp.has_error():
@@ -119,7 +116,7 @@ class CosmosDeploy(BaseDeploy):
 
     async def _refresh_nightly(self) -> None:
         # Nightly builds are identified by a short commit hash
-        resp = await self._api().github_api_request(
+        resp = await self.cmd_helper.get_http_client().github_api_request(
             f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/compare/{self.version}...main"
         )
         if resp.has_error():
@@ -132,8 +129,9 @@ class CosmosDeploy(BaseDeploy):
             author = commit.get("author", {})
             msg = commit.get("message", "")
             try:
-                date = time.mktime(time.strptime(
-                    author.get("date", ""), "%Y-%m-%dT%H:%M:%SZ")) - time.timezone
+                date = calendar.timegm(
+                    time.strptime(author.get("date", ""), "%Y-%m-%dT%H:%M:%SZ")
+                )
             except Exception:
                 date = 0
             behind.append({
@@ -217,35 +215,10 @@ class CosmosUpdate:
         self.server = config.get_server()
         um: UpdateManager = self.server.load_component(config, "update_manager")
         updaters = um.get_updaters()
-        # Neither Klipper nor Moonraker is a git checkout on this image, so
-        # update_manager holds placeholder entries for them that show up as
-        # empty rows in the UIs. Drop them; COSMOS updates both anyway.
-        for name in ("klipper", "moonraker"):
-            if type(updaters.get(name)) is BaseDeploy:
-                updaters.pop(name, None)
         if "cosmos" in updaters:
             raise config.error("update_manager already has a 'cosmos' entry")
         self.deploy = CosmosDeploy(config)
         updaters["cosmos"] = self.deploy
-        # update_manager re-creates its klipper entry (as a background task)
-        # every time Klippy connects, so prune the placeholder again shortly
-        # after that happens.
-        self.server.register_event_handler(
-            "server:klippy_identified", self._schedule_prune
-        )
-        logging.info("cosmos_update: registered COSMOS updater with update_manager")
-
-    def _schedule_prune(self) -> None:
-        loop = self.server.get_event_loop()
-        loop.delay_callback(2., self._prune_placeholders)
-        loop.delay_callback(15., self._prune_placeholders)
-
-    def _prune_placeholders(self, eventtime: float = 0.) -> None:
-        um: UpdateManager = self.server.lookup_component("update_manager")
-        updaters = um.get_updaters()
-        for name in ("klipper", "moonraker"):
-            if type(updaters.get(name)) is BaseDeploy:
-                updaters.pop(name, None)
 
 
 def load_component(config: ConfigHelper) -> CosmosUpdate:
