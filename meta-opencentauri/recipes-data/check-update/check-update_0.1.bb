@@ -18,7 +18,7 @@ do_install[vardeps] += "DISTRO_VERSION"
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/check-update.py ${D}${bindir}/check-update
+    install -m 0755 ${UNPACKDIR}/check-update.py ${D}${bindir}/check-update
 }
 
 FILES:${PN} = "${bindir}/check-update"

@@ -11,8 +11,6 @@ SRC_URI = "git://github.com/plastikman/dragonbreath-klipper.git;protocol=https;b
 # Requires API v2: device firmware 1.0.0 or newer, unchanged through v1.1.10.
 SRCREV = "c5f531b656599e3574571e534c83ec39a78de0b5"
 
-S = "${WORKDIR}/git"
-
 RDEPENDS:${PN} = " \
     klipper \
 "
