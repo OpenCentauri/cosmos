@@ -67,8 +67,8 @@ index b990a118594..5934f5b9fb3 100644
  	[CLK_BUS_OTG]		= GATE(0xa8c, BIT(8)),
  	[CLK_BUS_LRADC]		= GATE(0xa9c, BIT(0)),
 +	[CLK_BUS_DPSS_TOP]	= GATE(0xabc, BIT(0)),
-+	[CLK_MIPI_DSI]		= GATE(0xb40, BIT(31)),
-+	[CLK_BUS_MIPI_DSI]	= GATE(0xb5c, BIT(1)),
++	[CLK_MIPI_DSI]		= GATE(0xb24, BIT(31)),
++	[CLK_BUS_MIPI_DSI]	= GATE(0xb4c, BIT(0)),
 +	[CLK_TCON_LCD0]		= GATE(0xb60, BIT(31)),
 +	[CLK_BUS_TCON_LCD0]	= GATE(0xb7c, BIT(0)),
  
@@ -79,7 +79,7 @@ index b990a118594..5934f5b9fb3 100644
  	[RST_BUS_OTG]		= RESET(0xa8c, BIT(24)),
  	[RST_BUS_LRADC]		= RESET(0xa9c, BIT(16)),
 +	[RST_BUS_DPSS_TOP]	= RESET(0xabc, BIT(16)),
-+	[RST_BUS_MIPI_DSI]	= RESET(0xb5c, BIT(16)),
++	[RST_BUS_MIPI_DSI]	= RESET(0xb4c, BIT(16)),
 +	[RST_BUS_TCON_LCD0]	= RESET(0xb7c, BIT(16)),
  };
  
@@ -892,7 +892,7 @@ new file mode 100644
 index 00000000000..3ccbe2fa287
 --- /dev/null
 +++ b/drivers/video/sunxi/sunxi_mipi_dsi.c
-@@ -0,0 +1,1229 @@
+@@ -0,0 +1,1239 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Allwinner sun6i/sun50i MIPI-DSI host driver for U-Boot
@@ -1367,7 +1367,7 @@ index 00000000000..3ccbe2fa287
 +{
 +	u16 vtotal = timings->vactive.typ + timings->vback_porch.typ +
 +		     timings->vfront_porch.typ + timings->vsync_len.typ;
-+	u16 delay = vtotal - (timings->vfront_porch.typ + timings->vsync_len.typ) + 1;
++	u16 delay = vtotal - timings->vfront_porch.typ + 1;
 +
 +	if (delay > vtotal)
 +		delay = delay % vtotal;
@@ -1872,6 +1872,16 @@ index 00000000000..3ccbe2fa287
 +	sun6i_dsi_start(dsi, DSI_START_HSC);
 +	udelay(1000);
 +	sun6i_dsi_start(dsi, DSI_START_HSD);
++
++	dsi_write(dsi, SUN6I_DSI_BASIC_SIZE0_REG,
++		  SUN6I_DSI_BASIC_SIZE0_VSA(dsi->timings.vsync_len.typ) |
++		  SUN6I_DSI_BASIC_SIZE0_VBP(dsi->timings.vback_porch.typ));
++	dsi_write(dsi, SUN6I_DSI_BASIC_SIZE1_REG,
++		  SUN6I_DSI_BASIC_SIZE1_VACT(dsi->timings.vactive.typ) |
++		  SUN6I_DSI_BASIC_SIZE1_VT(dsi->timings.vactive.typ +
++					   dsi->timings.vback_porch.typ +
++					   dsi->timings.vfront_porch.typ +
++					   dsi->timings.vsync_len.typ));
 +
 +	dsi->video_started = true;
 +	return 0;
