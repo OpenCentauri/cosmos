@@ -140,11 +140,10 @@
 	status = "okay";
 
 	panel@0 {
-		/* ===== CHANGE THIS to match your actual panel ===== */
-		compatible = "simple-panel";
+		compatible = "sitronix,st77922";
 		reg = <0>;
 		backlight = <&backlight>;
-		enable-gpios = <&pio 1 8 GPIO_ACTIVE_HIGH>; /* PB8 - panel enable */
+		reset-gpios = <&pio 1 8 GPIO_ACTIVE_LOW>;	/* PB8 - panel reset */
 		power-supply = <&reg_3v3>;
 
 		display-timings {
