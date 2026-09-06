@@ -14,8 +14,6 @@ SRC_URI = " \
 
 SRCREV = "033d148c86bc2114d5abe44827001bc4c9d424d4"
 
-S = "${WORKDIR}/git"
-
 DEPENDS = " \
     python3-native \
 "
@@ -35,7 +33,7 @@ do_install() {
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
-    install -m 0644 ${WORKDIR}/canvas.cfg ${WORKDIR}/afc.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${UNPACKDIR}/canvas.cfg ${UNPACKDIR}/afc.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
 }
 
 FILES:${PN} = " \

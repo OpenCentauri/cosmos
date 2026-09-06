@@ -32,7 +32,7 @@ do_install() {
     echo "${SRCREV}-${PR}" > ${D}/lib/firmware/klipper-canvas.bin.ver
 
     install -d ${D}${sysconfdir}/init.d
-    cp ${WORKDIR}/klipper-firmware-canvas-init-d ${D}${sysconfdir}/init.d/klipper-firmware-canvas
+    cp ${UNPACKDIR}/klipper-firmware-canvas-init-d ${D}${sysconfdir}/init.d/klipper-firmware-canvas
     chmod 0755 ${D}${sysconfdir}/init.d/klipper-firmware-canvas
 }
 
