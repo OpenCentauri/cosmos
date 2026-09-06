@@ -23,7 +23,24 @@
 	};
 
 	chosen {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
 		stdout-path = "serial2:115200n8";
+
+		framebuffer-lcd0 {
+			compatible = "allwinner,simple-framebuffer", "simple-framebuffer";
+			allwinner,pipeline = "mixer0-lcd0";
+			clocks = <&display_clocks CLK_BUS_MIXER0>,
+				 <&display_clocks CLK_MIXER0>,
+				 <&ccu CLK_BUS_TCON_LCD0>,
+				 <&ccu CLK_TCON_LCD0>,
+				 <&ccu CLK_BUS_MIPI_DSI>,
+				 <&ccu CLK_MIPI_DSI>,
+				 <&tcon_top CLK_TCON_TOP_DSI>;
+			status = "disabled";
+		};
 	};
 
 	/* board wide 5V supply directly from the USB-C socket */
@@ -347,32 +364,23 @@
 };
 
 &de {
-	status = "okay";
+	status = "disabled";
 };
 
 &mixer0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &tcon_lcd0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &dphy {
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi {
-	status = "okay";
-
-	panel@0 {
-		compatible = "sitronix,st77922";
-		reg = <0>;
-		reset-gpios = <&pio 1 8 GPIO_ACTIVE_LOW>;	/* PB8, reset active-low */
-		vdd-supply = <&reg_3v3>;
-		iovcc-supply = <&reg_3v3>;
-		backlight = <&backlight>;
-	};
+	status = "disabled";
 };
 
 &syscon {
