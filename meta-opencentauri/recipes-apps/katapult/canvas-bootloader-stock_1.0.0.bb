@@ -5,14 +5,14 @@ DESCRIPTION = "Builds the Katapult deployer binary for reverting the canvas boot
 
 SRC_URI += " \
     file://config.canvas \
-    file://canvas-cc1-bootloader-stock.bin \
+    file://canvas-bootloader-stock.bin \
 "
 
 DEPENDS += "gcc-arm-none-eabi-native"
 
 EXTRA_OEMAKE += " \
     KCONFIG_CONFIG=../config.canvas \
-    DEPLOYER_PAYLOAD=../canvas-cc1-bootloader-stock.bin \
+    DEPLOYER_PAYLOAD=../canvas-bootloader-stock.bin \
 "
 
 do_install() {
