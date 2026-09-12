@@ -8,7 +8,6 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=wildta
     file://0001-remove-save-config-subfile-check.patch \
     file://0002-reduce-calibration-difference-tolerance.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
-    file://0001-Don-t-write-tmp-files-to-ramdisk.patch \
     file://0001-implement-pulldown-resistor-in-thermistor-calc.patch \
     file://0001-probe-home-z-includes-z-offset.patch \
     file://0001-force-specific-input-shaper.patch \
