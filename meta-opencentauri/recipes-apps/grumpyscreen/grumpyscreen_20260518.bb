@@ -14,8 +14,8 @@ SRC_URI = "gitsm://github.com/pellcorp/grumpyscreen.git;protocol=https;branch=ma
     file://grumpyscreen.init \
     file://grumpyscreen.cfg \
 "
-SRCREV = "f3ba46bed0ac27c12afdf5e4086480c47d8f0ae9"
-PR = "r5"
+SRCREV = "c84630a67e055de30712c90f648449d94c75bc83"
+PR = "r6"
 
 S = "${WORKDIR}/git"
 
@@ -58,22 +58,11 @@ do_compile() {
             -L${S}/wpa_supplicant/wpa_supplicant/ -l:libwpa_client.a \
             -lstdc++fs \
             ${LDFLAGS}" \
-            GUPPY_SMALL_SCREEN="y" \
+            GUPPY_SMALL_SCREEN="true" \
             GUPPYSCREEN_BRANCH="${DISTRO}" \
             GUPPYSCREEN_VERSION="${DISTRO_VERSION}" \
-            UPDATE_CMD=cosmos_update_cmd \
-            UPDATE_TEXT="Update\nCOSMOS" \
-            UPDATE_PROMPT="Are you sure you want to update COSMOS?\n\nThis will download and update to the latest version of COSMOS!" \
-            UPDATE_SUCCESS="Your printer will restart shortly!" \
-            UPDATE_FAILURE="Failed to initiate update COSMOS!" \
-            SWITCH_TO_STOCK_TEXT="Switch to OC\nPatched" \
-            SWITCH_TO_STOCK_PROMPT="Are you sure you want to switch to OpenCentauri patched firmware?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot." \
-            SWITCH_TO_STOCK_FAILURE="Failed to initiate switch to OC Patched!" \
-            SWITCH_TO_STOCK_SUCCESS="Your printer will restart shortly!" \
-            FACTORY_RESET_TEXT="Factory\nReset" \
-            FACTORY_RESET_PROMPT="Are you sure you want factory reset?\n\nThis will reset all printer setting but it will stay using COSMOS, it will not switch back to stock." \
-            FACTORY_RESET_FAILURE="Failed to factory reset!" \
-            FACTORY_RESET_SUCCESS="Your printer will restart shortly!"
+            COSMOS="true" \
+            MMU_BACKENDS="afc"
 }
 
 do_install() {
