@@ -16,9 +16,8 @@ SERIALPORT="/dev/ttyS0"
 GPIO="43"
 
 update(){
-    flashtool -d $SERIALPORT -b 250000 -r
-    flashtool -d $SERIALPORT -b 115200 -r
-    if flashtool -d $SERIALPORT -f $FIRMWARE -b 115200; then
+    flashtool -d $SERIALPORT -b 500000 -r
+    if flashtool -d $SERIALPORT -f $FIRMWARE -b 250000; then
         cp $FIRMWARE_VERSION $INSTALLED_VERSION
         echo "Firmware flashed and version recorded."
     else
@@ -36,35 +35,35 @@ case "$1" in
         echo $GPIO > /sys/class/gpio/unexport
         sleep 1
 
-        if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
-            echo "Firmware is already up to date."
-            exit 0
-        else
-            echo "Firmware version mismatch or not installed, flashing firmware..."
-            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing bed. DO NOT POWER OFF"
-            if update; then
-                PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
-                exit 0
-            else
-                echo "Attempting bootloader upgrade..."
-                echo $GPIO > /sys/class/gpio/export
-                echo out > /sys/class/gpio/gpio$GPIO/direction
-                echo 0 > /sys/class/gpio/gpio$GPIO/value
-                sleep 2
-                echo 1 > /sys/class/gpio/gpio$GPIO/value
-                sleep 1
-                echo $GPIO > /sys/class/gpio/unexport
-                if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
-                    echo "Bootloader deployer flashed successfully, clearing installed version."
-                    rm -f $INSTALLED_VERSION
-                    sleep 1
-                    update
-                else
-                    echo "Cannot update bootloader."
-                fi
-            fi
-            PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
-        fi
+        # if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
+        #     echo "Firmware is already up to date."
+        #     exit 0
+        # else
+        #     echo "Firmware version mismatch or not installed, flashing firmware..."
+        #     PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing bed. DO NOT POWER OFF"
+        #     if update; then
+        #         PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
+        #         exit 0
+        #     else
+        #         echo "Attempting bootloader upgrade..."
+        #         echo $GPIO > /sys/class/gpio/export
+        #         echo out > /sys/class/gpio/gpio$GPIO/direction
+        #         echo 0 > /sys/class/gpio/gpio$GPIO/value
+        #         sleep 2
+        #         echo 1 > /sys/class/gpio/gpio$GPIO/value
+        #         sleep 1
+        #         echo $GPIO > /sys/class/gpio/unexport
+        #         if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --cc2 --cc2-request --app-baud 500000 --timeout 10; then
+        #             echo "Bootloader deployer flashed successfully, clearing installed version."
+        #             rm -f $INSTALLED_VERSION
+        #             sleep 1
+        #             update
+        #         else
+        #             echo "Cannot update bootloader."
+        #         fi
+        #     fi
+        #     PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
+        # fi
         ;;
     stop)
         echo "Stopping klipper-firmware-bed..."
