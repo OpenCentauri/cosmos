@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=wildtangent-test \
+SRC_URI = "git://github.com/jamesturton/kalico.git;protocol=https;branch=cs123x \
     file://0001-remove-save-config-subfile-check.patch \
     file://0002-reduce-calibration-difference-tolerance.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
@@ -15,9 +15,9 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=wildta
     file://0004-allow-config-exclude.patch \
     file://0001-Increase-max-velocity-in-resonance-tester.patch \
 "
-SRCREV = "0b8b97d3ac3ada328aed6bb59d3f88d180520f42"
+SRCREV = "4bb79cd0b790ba3bb6dba3db277e16ebe16dfc19"
 
-PR = "r11"
+PR = "r12"
 
 DEPENDS = " \
     python3-native \
