@@ -16,6 +16,7 @@ setup() {
     : > "$CASE/sys/block/zram0/comp_algorithm"
     : > "$CASE/sys/block/zram0/disksize"
     : > "$CASE/log"
+    : > "$CASE/udevadm.log"
     rm -f "$CASE"/fail-* "$CASE"/always-fail-*
 
     for key in swappiness watermark_boost_factor watermark_scale_factor page-cluster vfs_cache_pressure; do
@@ -30,6 +31,11 @@ EOF
 #!/bin/sh
 [ -f "$CASE/fail-modprobe-once" ] && { rm -f "$CASE/fail-modprobe-once"; exit 1; }
 [ -f "$CASE/always-fail-modprobe" ] && exit 1
+exit 0
+EOF
+    cat > "$CASE/bin/udevadm" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >> "$CASE/udevadm.log"
 exit 0
 EOF
     cat > "$CASE/bin/mkswap" <<'EOF'
@@ -81,6 +87,7 @@ check() {
 setup
 run_init start >/dev/null
 check "start succeeds" grep -q "$CASE/zram0" "$CASE/proc/swaps"
+check "settles udev before reset" grep -qx "settle --timeout=3 --quiet" "$CASE/udevadm.log"
 check "logs success" grep -q "active:" "$CASE/log"
 run_init start >/dev/null
 check "second start is no-op" grep -q "already active" "$CASE/log"
