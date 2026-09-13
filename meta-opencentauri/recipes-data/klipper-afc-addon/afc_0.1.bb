@@ -1,4 +1,4 @@
-HOMEPAGE = "https://github.com/suchmememanyskill/AFC-Klipper-Add-On"
+HOMEPAGE = "https://github.com/Atomique13/AFC-Klipper-Add-On"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=db95b6e40dc7d26d8308b6b7375637b6"
 SUMMARY = "AFC-Klipper-Add-On"
@@ -7,12 +7,12 @@ DESCRIPTION = "Automated Filament Changer Software."
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
-    git://github.com/suchmememanyskill/AFC-Klipper-Add-On.git;protocol=https;branch=DEV \
+    git://github.com/Atomique13/AFC-Klipper-Add-On.git;protocol=https;branch=DEV \
     file://afc.cfg \
     file://canvas.cfg \
 "
 
-SRCREV = "61d43626a167b40824638ea4cd82ce884541e35e"
+SRCREV = "ad572bd49c1cb682324b4a11a588082fc85ed535"
 
 S = "${WORKDIR}/git"
 
