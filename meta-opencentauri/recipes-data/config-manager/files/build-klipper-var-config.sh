@@ -25,6 +25,7 @@ full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_tempe
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
 toolhead_led=$(get_config_value toolhead_led)
+knock=$(get_config_value knock)
 elegoo_canvas=$("${CONFIG_MANAGER}" extras elegoo_canvas)
 check_for_updates=$("${CONFIG_MANAGER}" update check_for_updates)
 release=$("${CONFIG_MANAGER}" update release)
@@ -66,6 +67,10 @@ fi
 
 if [ "${enclosed}" = "True" ]; then
 	echo "[include ../extras-readonly/enclosed.cfg]" >> "${EXTRAS_OUTPUT_FILE}"
+fi
+
+if [ "${knock}" = "True" ]; then
+	echo "[include ../extras-readonly/knock.cfg]" >> "${EXTRAS_OUTPUT_FILE}"
 fi
 
 cat > "${MOONRAKER_UPDATE_FILE}" <<EOF

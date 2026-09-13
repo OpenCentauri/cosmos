@@ -20,7 +20,7 @@ SRC_URI += " \
     file://client.cfg \
 "
 
-SRC_URI:append:centauri-carbon-1 = " file://canvas-toolhead.cfg"
+SRC_URI:append:centauri-carbon-1 = " file://canvas-toolhead.cfg file://knock.py file://knock.cfg"
 SRC_URI:append:centauri-carbon-2 = " file://enclosed.cfg"
 
 inherit python3-dir update-rc.d
@@ -120,6 +120,9 @@ do_install() {
 do_install:append:centauri-carbon-1() {
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
     install -m 0644 ${UNPACKDIR}/canvas-toolhead.cfg ${D}${sysconfdir}/klipper/config/extras-readonly/
+    # Knock gestures (uses the toolhead LIS2DW); knock.cfg is included from zextras.cfg when cosmos.conf knock = True
+    install -m 0644 ${UNPACKDIR}/knock.py ${D}${datadir}/klipper/klippy/extras/
+    install -m 0644 ${UNPACKDIR}/knock.cfg ${D}${sysconfdir}/klipper/config/extras-readonly/
 }
 
 do_install:append:centauri-carbon-2() {
