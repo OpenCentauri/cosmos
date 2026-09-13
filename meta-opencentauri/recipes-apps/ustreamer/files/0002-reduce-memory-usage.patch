@@ -1,0 +1,371 @@
+From 144318c470cb5512227f24d217a7539de47be201 Mon Sep 17 00:00:00 2001
+From: Paul Swenson <pdscomp@gmail.com>
+Date: Fri, 10 Jul 2026 10:15:31 -0400
+Subject: [PATCH] ustreamer: reduce camera streamer memory use
+
+The Centauri Carbon camera service shares a 128 MiB system with the
+printer-control stack, so its steady-state frame buffering matters.  At
+864x480 camera-MJPEG and 8 FPS on carbon2u, the stock ustreamer measured
+4.67 MiB PSS and 5.76 MiB RSS.  This change measured 3.17 MiB PSS and
+4.30 MiB RSS while snapshots and a live stream remained functional.
+
+Reduce long-lived allocations without changing the service architecture:
+
+* cap internal thread stacks;
+* retain only the newest JPEG in the streamer backlog and let HTTP clients
+  borrow a frame while it remains valid;
+* avoid allocating a permanent RGB canvas for the blank frame;
+* start generic frame buffers smaller and grow them on demand; and
+* use bounded USERPTR buffers when supported, with an MMAP retry when a UVC
+  camera rejects USERPTR.
+
+The CC2 UVC camera rejects USERPTR queueing, so MMAP remains the validated
+capture method on this device.  The fallback keeps the safer low-allocation
+default for cameras that do support USERPTR without sacrificing operation on
+the deployed camera.
+
+Signed-off-by: Paul Swenson <pdscomp@gmail.com>
+Upstream-Status: Pending [Not submitted to upstream yet]
+---
+ src/libs/capture.c                  | 37 ++++++++++++++++++++++++++++---
+ src/libs/frame.c                    | 44 +++++++++++++++++++++++++++++++++++--
+ src/libs/frame.h                    |  3 +++
+ src/libs/frametext.c                |  1 +
+ src/libs/queue.c                    |  2 +-
+ src/libs/threading.h                | 36 +++++++++++++++++++++++++++++-
+ src/ustreamer/blank.c               |  1 +
+ src/ustreamer/encoders/hw/encoder.c |  4 +++-
+ src/ustreamer/options.c             |  2 +-
+ src/ustreamer/stream.c              | 13 ++++++++---
+ 10 files changed, 131 insertions(+), 12 deletions(-)
+
+diff --git a/src/libs/capture.c b/src/libs/capture.c
+index ee2021e17dd23083d45dd7a37678efff1adcc817..2614e117120d1a9fdb1c109c62758d526873cd71 100644
+--- a/src/libs/capture.c
++++ b/src/libs/capture.c
+@@ -94,6 +94,8 @@ static int _capture_open_dv_timings(us_capture_s *cap, bool apply);
+ static int _capture_open_format(us_capture_s *cap, bool first);
+ static void _capture_open_hw_fps(us_capture_s *cap);
+ static void _capture_open_jpeg_quality(us_capture_s *cap);
++static uz _capture_get_userptr_buffer_size(const us_capture_runtime_s *run);
++static int _capture_open_impl(us_capture_s *cap);
+ static int _capture_open_io_method(us_capture_s *cap);
+ static int _capture_open_io_method_mmap(us_capture_s *cap);
+ static int _capture_open_io_method_userptr(us_capture_s *cap);
+@@ -144,7 +146,7 @@ us_capture_s *us_capture_init(void) {
+ 	cap->format = V4L2_PIX_FMT_YUYV;
+ 	cap->jpeg_quality = 80;
+ 	cap->standard = V4L2_STD_UNKNOWN;
+-	cap->io_method = V4L2_MEMORY_MMAP;
++	cap->io_method = V4L2_MEMORY_USERPTR;
+ 	cap->n_bufs = us_get_cores_available() + 1;
+ 	cap->min_frame_size = 128;
+ 	cap->timeout = 1;
+@@ -185,6 +187,27 @@ int us_capture_parse_io_method(const char *str) {
+ }
+ 
+ int us_capture_open(us_capture_s *cap) {
++	const enum v4l2_memory requested_io_method = cap->io_method;
++	int result = _capture_open_impl(cap);
++
++	if (result >= 0) {
++		return result;
++	}
++
++	if (requested_io_method != V4L2_MEMORY_USERPTR) {
++		return result;
++	}
++
++	_LOG_INFO("USERPTR capture failed, retrying with MMAP");
++	cap->io_method = V4L2_MEMORY_MMAP;
++	result = _capture_open_impl(cap);
++	if (result < 0) {
++		cap->io_method = requested_io_method;
++	}
++	return result;
++}
++
++static int _capture_open_impl(us_capture_s *cap) {
+ 	us_capture_runtime_s *const run = cap->run;
+ 
+ 	if (access(cap->path, R_OK | W_OK) < 0) {
+@@ -1009,12 +1032,11 @@ static int _capture_open_io_method_userptr(us_capture_s *cap) {
+ 	US_CALLOC(run->bufs, req.count);
+ 
+ 	const uint page_size = getpagesize();
+-	const uint buf_size = us_align_size(run->raw_size, page_size);
++	const uint buf_size = _capture_get_userptr_buffer_size(run);
+ 
+ 	for (run->n_bufs = 0; run->n_bufs < req.count; ++run->n_bufs) {
+ 		us_capture_hwbuf_s *hw = &run->bufs[run->n_bufs];
+ 		US_A((hw->raw.data = aligned_alloc(page_size, buf_size)) != NULL);
+-		memset(hw->raw.data, 0, buf_size);
+ 		hw->raw.allocated = buf_size;
+ 		if (run->capture_mplane) {
+ 			US_CALLOC(hw->buf.m.planes, VIDEO_MAX_PLANES);
+@@ -1023,6 +1045,15 @@ static int _capture_open_io_method_userptr(us_capture_s *cap) {
+ 	return 0;
+ }
+ 
++static uz _capture_get_userptr_buffer_size(const us_capture_runtime_s *run) {
++	// The driver-reported sizeimage is much larger than the actual MJPEG payload
++	// we observe on this target. Cap USERPTR to keep the resident capture buffer
++	// small while still leaving a conservative safety margin.
++	const uz raw_size = run->raw_size;
++	const uz cap_size = 256 * 1024UL;
++	return us_align_size(US_MIN(raw_size, cap_size), getpagesize());
++}
++
+ static int _capture_open_queue_buffers(us_capture_s *cap) {
+ 	us_capture_runtime_s *const run = cap->run;
+ 
+diff --git a/src/libs/frame.c b/src/libs/frame.c
+index a770969e9ad7134e2c98328c9b906782090aafcf..222eb06cd7e4e803d429c6c54c4152d2f1a75acf 100644
+--- a/src/libs/frame.c
++++ b/src/libs/frame.c
+@@ -35,27 +35,67 @@
+ us_frame_s *us_frame_init(void) {
+ 	us_frame_s *frame;
+ 	US_CALLOC(frame, 1);
+-	us_frame_realloc_data(frame, 32 * 1024);
++	// Most live JPEG buffers settle well below 32 KiB in this deployment,
++	// so keep the startup floor small and grow only when needed.
++	us_frame_realloc_data(frame, 8 * 1024);
+ 	frame->dma_fd = -1;
+ 	return frame;
+ }
+ 
+ void us_frame_destroy(us_frame_s *frame) {
+-	US_DELETE(frame->data, free);
++	if (!frame->external_data) {
++		US_DELETE(frame->data, free);
++	}
+ 	free(frame);
+ }
+ 
+ void us_frame_realloc_data(us_frame_s *frame, uz size) {
++	if (frame->external_data) {
++		u8 *owned;
++		US_CALLOC(owned, size);
++		if (frame->data != NULL && frame->used > 0) {
++			memcpy(owned, frame->data, frame->used);
++		}
++		frame->data = owned;
++		frame->external_data = false;
++		frame->allocated = size;
++		return;
++	}
+ 	if (frame->allocated < size) {
+ 		US_REALLOC(frame->data, size);
+ 		frame->allocated = size;
+ 	}
+ }
+ 
++void us_frame_release_data(us_frame_s *frame) {
++	if (frame->external_data) {
++		frame->data = NULL;
++		frame->used = 0;
++		frame->allocated = 0;
++		frame->external_data = false;
++		return;
++	}
++
++	US_DELETE(frame->data, free);
++	frame->used = 0;
++	frame->allocated = 0;
++}
++
++void us_frame_set_external_data(us_frame_s *frame, const u8 *data, uz size) {
++	if (!frame->external_data) {
++		US_DELETE(frame->data, free);
++	}
++	frame->data = (u8*)data;
++	frame->used = size;
++	frame->allocated = 0;
++	frame->external_data = true;
++}
++
+ void us_frame_set_data(us_frame_s *frame, const u8 *data, uz size) {
+ 	us_frame_realloc_data(frame, size);
+ 	memcpy(frame->data, data, size);
+ 	frame->used = size;
++	frame->external_data = false;
+ }
+ 
+ void us_frame_append_data(us_frame_s *frame, const u8 *data, uz size) {
+diff --git a/src/libs/frame.h b/src/libs/frame.h
+index 74c45512c6fa1fd0755b621483294ffb61e0292d..a24ce4bf994edf24748ed1e1cbc0e736f0641df7 100644
+--- a/src/libs/frame.h
++++ b/src/libs/frame.h
+@@ -49,6 +49,7 @@ typedef struct {
+ 	uz		used;
+ 	uz		allocated;
+ 	int		dma_fd;
++	bool	external_data;
+ 
+ 	US_FRAME_META_DECLARE;
+ } us_frame_s;
+@@ -102,6 +103,8 @@ us_frame_s *us_frame_init(void);
+ void us_frame_destroy(us_frame_s *frame);
+ 
+ void us_frame_realloc_data(us_frame_s *frame, uz size);
++void us_frame_release_data(us_frame_s *frame);
++void us_frame_set_external_data(us_frame_s *frame, const u8 *data, uz size);
+ void us_frame_set_data(us_frame_s *frame, const u8 *data, uz size);
+ void us_frame_append_data(us_frame_s *frame, const u8 *data, uz size);
+ 
+diff --git a/src/libs/frametext.c b/src/libs/frametext.c
+index d5adfc73765558dd3f7e0b5052dec9c4678b1041..9daa61f02666a588c3d63378aeede9d1faee6393 100644
+--- a/src/libs/frametext.c
++++ b/src/libs/frametext.c
+@@ -92,6 +92,7 @@ void us_frametext_draw(us_frametext_s *ft, const char *text, uint width, uint he
+ 	if (
+ 		frame->width == width && frame->height == height
+ 		&& ft->text != NULL && !strcmp(ft->text, text)
++		&& frame->data != NULL && frame->used > 0
+ 	) {
+ 		return;
+ 	}
+diff --git a/src/libs/queue.c b/src/libs/queue.c
+index d72f656a7fdfde16c6e7f83202f8914a8cd808c7..854ecb11556a441b632a8365886e16ca9c22f5e1 100644
+--- a/src/libs/queue.c
++++ b/src/libs/queue.c
+@@ -107,5 +107,5 @@ bool us_queue_is_empty(us_queue_s *q) {
+ 	US_MUTEX_LOCK(q->mutex);
+ 	const uint size = q->size;
+ 	US_MUTEX_UNLOCK(q->mutex);
+-	return (bool)(q->capacity - size);
++	return (size == 0);
+ }
+diff --git a/src/libs/threading.h b/src/libs/threading.h
+index 2f161af24c9c78702a6eaca2ad6438f3df7783f2..be145e1407259bf9a9088ecb8295034248cd0988 100644
+--- a/src/libs/threading.h
++++ b/src/libs/threading.h
+@@ -46,7 +46,41 @@
+ #	define US_THREAD_NAME_SIZE ((uz)16)
+ #endif
+ 
+-#define US_THREAD_CREATE(x_tid, x_func, x_arg)	US_A(!pthread_create(&(x_tid), NULL, (x_func), (x_arg)))
++#ifndef US_THREAD_STACK_SIZE
++#	define US_THREAD_STACK_SIZE (32 * 1024UL)
++#endif
++
++INLINE int us_thread_create(pthread_t *tid, void *(*func)(void*), void *arg) {
++#if (US_THREAD_STACK_SIZE > 0)
++	pthread_attr_t attr;
++	US_A(!pthread_attr_init(&attr));
++
++	// These threads are long-lived but have shallow call stacks, so cap the
++	// default pthread stack reservation to keep memory overhead predictable.
++	uz stack_size = US_THREAD_STACK_SIZE;
++	const uz min_stack_size = (uz)PTHREAD_STACK_MIN;
++	if (stack_size < min_stack_size) {
++		stack_size = min_stack_size;
++	}
++#	if defined(_SC_PAGESIZE)
++	{
++		const long page_size = sysconf(_SC_PAGESIZE);
++		if (page_size > 0 && (stack_size % (uz)page_size) != 0) {
++			stack_size += (uz)page_size - (stack_size % (uz)page_size);
++		}
++	}
++#	endif
++	US_A(!pthread_attr_setstacksize(&attr, stack_size));
++
++	const int retval = pthread_create(tid, &attr, func, arg);
++	US_A(!pthread_attr_destroy(&attr));
++	return retval;
++#else
++	return pthread_create(tid, NULL, func, arg);
++#endif
++}
++
++#define US_THREAD_CREATE(x_tid, x_func, x_arg)	US_A(!us_thread_create(&(x_tid), (x_func), (x_arg)))
+ #define US_THREAD_JOIN(x_tid)					US_A(!pthread_join((x_tid), NULL))
+ 
+ #ifdef WITH_PTHREAD_NP
+diff --git a/src/ustreamer/blank.c b/src/ustreamer/blank.c
+index 09b1b0008c406d43ffba1d78b7f1664b749d63ea..50fb5af947acabeee2b78e8be9746d3ab8a13b43 100644
+--- a/src/ustreamer/blank.c
++++ b/src/ustreamer/blank.c
+@@ -43,6 +43,7 @@ us_blank_s *us_blank_init(void) {
+ void us_blank_draw(us_blank_s *blank, const char *text, uint width, uint height) {
+ 	us_frametext_draw(blank->ft, text, width, height);
+ 	us_cpu_encoder_compress(blank->raw, blank->jpeg, 95);
++	us_frame_release_data(blank->raw);
+ }
+ 
+ void us_blank_destroy(us_blank_s *blank) {
+diff --git a/src/ustreamer/encoders/hw/encoder.c b/src/ustreamer/encoders/hw/encoder.c
+index 7e35495954e16d6ca5473c6d09b00220784c7c6c..32791083f107a7196885325bf3b5cd25bf7d0e2c 100644
+--- a/src/ustreamer/encoders/hw/encoder.c
++++ b/src/ustreamer/encoders/hw/encoder.c
+@@ -69,7 +69,9 @@ void _copy_plus_huffman(const us_frame_s *src, us_frame_s *dest) {
+ 		us_frame_append_data(dest, src_ptr, src->used - paste);
+ 
+ 	} else {
+-		us_frame_set_data(dest, src->data, src->used);
++		// Borrow the camera JPEG buffer directly when it is already complete.
++		// The caller keeps the capture buffer alive until after exposure.
++		us_frame_set_external_data(dest, src->data, src->used);
+ 	}
+ 
+ 	us_frame_encoding_end(dest);
+diff --git a/src/ustreamer/options.c b/src/ustreamer/options.c
+index 048e6c50854edbf369c39e9ca4128205364d4993..2d36e1277c0b6ba0768562f41f2da7c52f0e7ae4 100644
+--- a/src/ustreamer/options.c
++++ b/src/ustreamer/options.c
+@@ -703,7 +703,7 @@ static void _help(
+ 	SAY("                                           Available: %s; default: disabled.\n", US_STANDARDS_STR);
+ 	SAY("    -I|--io-method <method>  ───────────── Set V4L2 IO method (see kernel documentation).");
+ 	SAY("                                           Changing of this parameter may increase the performance. Or not.");
+-	SAY("                                           Available: %s; default: MMAP.\n", US_IO_METHODS_STR);
++	SAY("                                           Available: %s; default: USERPTR, with MMAP fallback if needed.\n", US_IO_METHODS_STR);
+ 	SAY("    -f|--desired-fps <N>  ──────────────── Desired FPS. Default: maximum possible.\n");
+ 	SAY("    -z|--min-frame-size <N>  ───────────── Drop frames smaller than this limit. Useful if the device");
+ 	SAY("                                           produces small-sized garbage frames. Default: %zu bytes.\n", cap->min_frame_size);
+diff --git a/src/ustreamer/stream.c b/src/ustreamer/stream.c
+index 9ae94e42b35d355df43d449a595810eefb06d501..dd28e3e64589d916e96f37d67fbeb0feaf8f3be8 100644
+--- a/src/ustreamer/stream.c
++++ b/src/ustreamer/stream.c
+@@ -58,6 +58,11 @@
+ #endif
+ 
+ 
++#ifndef US_HTTP_JPEG_RING_SIZE
++#	define US_HTTP_JPEG_RING_SIZE 1
++#endif
++
++
+ typedef struct {
+ 	pthread_t		tid;
+ 	us_capture_s	*cap;
+@@ -104,7 +109,9 @@ us_stream_s *us_stream_init(us_capture_s *cap, us_encoder_s *enc) {
+ 	http->drm_fpsi = us_fpsi_init("DRM", true);
+ #	endif
+ 	http->h264_fpsi = us_fpsi_init("H264", true);
+-	US_RING_INIT_WITH_ITEMS(http->jpeg_ring, 4, us_frame_init);
++	// Keep a minimal HTTP JPEG backlog: the refresher copies the newest frame
++	// into the stable exposed buffer, so extra slots mostly retain stale copies.
++	US_RING_INIT_WITH_ITEMS(http->jpeg_ring, US_HTTP_JPEG_RING_SIZE, us_frame_init);
+ 	atomic_init(&http->has_clients, false);
+ 	atomic_init(&http->snapshot_requested, 0);
+ 	atomic_init(&http->last_req_ts, 0);
+@@ -331,8 +338,6 @@ static void *_jpeg_thread(void *v_ctx) {
+ 		us_encoder_job_s *const job = wr->job;
+ 
+ 		if (job->hw != NULL) {
+-			us_capture_hwbuf_decref(job->hw);
+-			job->hw = NULL;
+ 			if (wr->job_failed) {
+ 				// pass
+ 			} else if (wr->job_timely) {
+@@ -345,6 +350,8 @@ static void *_jpeg_thread(void *v_ctx) {
+ 			} else {
+ 				US_LOG_PERF("JPEG: ----- Encoded JPEG dropped; worker=%s", wr->name);
+ 			}
++			us_capture_hwbuf_decref(job->hw);
++			job->hw = NULL;
+ 		}
+ 
+ 		us_capture_hwbuf_s *hw = _get_latest_hw(ctx->q);
