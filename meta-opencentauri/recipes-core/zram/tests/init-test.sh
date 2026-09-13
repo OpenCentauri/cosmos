@@ -87,7 +87,7 @@ check() {
 setup
 run_init start >/dev/null
 check "start succeeds" grep -q "$CASE/zram0" "$CASE/proc/swaps"
-check "settles udev before reset" grep -qx "settle --timeout=3 --quiet" "$CASE/udevadm.log"
+check "settles udev before reset" grep -qx "settle --timeout=3" "$CASE/udevadm.log"
 check "logs success" grep -q "active:" "$CASE/log"
 run_init start >/dev/null
 check "second start is no-op" grep -q "already active" "$CASE/log"

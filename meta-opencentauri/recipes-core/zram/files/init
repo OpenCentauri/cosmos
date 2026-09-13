@@ -49,7 +49,7 @@ start() {
 
         err=$( {
             modprobe zram num_devices=1 && \
-            udevadm settle --timeout=3 --quiet && \
+            udevadm settle --timeout=3 && \
             echo 1 > "$SYSFS/reset" && \
             echo lz4 > "$SYSFS/comp_algorithm" && \
             echo "$disksize" > "$SYSFS/disksize" && \
