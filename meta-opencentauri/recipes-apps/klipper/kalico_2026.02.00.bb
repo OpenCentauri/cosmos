@@ -35,6 +35,7 @@ RDEPENDS:${PN} = " \
     kalico-firmware-bed \
     check-update \
     kalico-firmware-canvas \
+    kalico-firmware-afc-lite-usb \
 "
 
 RPROVIDES:${PN} += "klipper"
