@@ -9,7 +9,6 @@ VALIDATORS = {
     },
     'update': {
         'release': ['stable', 'nightly'],
-        'check_for_updates': ['True', 'False'],
     },
     'extras': {
         'elegoo_canvas': ['True', 'False'],
