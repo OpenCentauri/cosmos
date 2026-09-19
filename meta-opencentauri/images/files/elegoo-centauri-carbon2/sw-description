@@ -75,7 +75,7 @@ software =
                 },
                 {
                     name = "preboot";
-                    value = "load mmc 0:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                    value = "load mmc 0:2 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
                 },
                 {
                     name = "stdin";
