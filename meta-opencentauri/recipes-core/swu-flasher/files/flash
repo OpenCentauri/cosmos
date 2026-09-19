@@ -1,15 +1,65 @@
 #!/bin/sh
 
 if [ ! -f "$1" ]; then
-    echo "Usage: $0 path/to/update.swu"
+    echo "Usage: $0 path/to/update.swu (or Elegoo .zip.sig bundle on CC2)"
     exit 1
 fi
 
+INPUT="$1"
+case "$INPUT" in
+*.sig)
+    echo "Elegoo bundle detected, unwrapping..."
+    INPUT=$(python3 - "$INPUT" <<'EOF'
+import io
+import struct
+import subprocess
+import sys
+import zipfile
+
+# Elegoo OTA AES-256 key (public: CentauriCarbon2 signtools, daemon-000)
+KEY = 'D14E150843E9D16893890756D8F77F674E161A8BEBB8F720737EE60E7F8C7E68'
+
+def header(f):
+    h = f.read(512)
+    if h[0:4] != b'ELEG':
+        sys.exit('not an Elegoo ELEG package')
+    return {'encrypted': bool(h[4] & 0x80),
+            'size': struct.unpack('<Q', h[8:16])[0],
+            'iv': h[0xA0:0xB0].hex()}
+
+with open(sys.argv[1], 'rb') as f:
+    outer = header(f)
+    blob = f.read()
+if outer['encrypted']:
+    sys.exit('outer bundle unexpectedly encrypted')
+
+zf = zipfile.ZipFile(io.BytesIO(blob))
+member = next((n for n in zf.namelist() if n.endswith('.swu.sig')), None)
+if not member:
+    sys.exit('no .swu.sig member in bundle')
+with zf.open(member) as f:
+    inner = header(f)
+    enc = f.read()
+if not inner['encrypted']:
+    sys.exit('inner swu is not encrypted; refusing')
+
+dec = subprocess.run(['openssl', 'enc', '-d', '-aes-256-cbc', '-nopad', '-K', KEY,
+                      '-iv', inner['iv']],
+                     input=enc, capture_output=True, check=True).stdout
+out = '/tmp/update-unwrapped.swu'
+with open(out, 'wb') as f:
+    f.write(dec[:inner['size']])
+print(out)
+EOF
+    ) || exit 1
+    ;;
+esac
+
 curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
-if [[ "$curr" == "A" ]]; then
+if [ "$curr" = "A" ]; then
     boot_partition="now_A_next_B"
-elif [[ "$curr" == "B" ]]; then
+elif [ "$curr" = "B" ]; then
     boot_partition="now_B_next_A"
 else
     exit 1
@@ -19,6 +69,6 @@ echo "$boot_partition"
 
 set -e
 readonly-config-reset
-swupdate -v -i "$1" -e stable,${boot_partition}
+swupdate -v -i "$INPUT" -e stable,${boot_partition}
 sync
 echo "Update finished, run 'reboot' to finalize"

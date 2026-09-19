@@ -10,6 +10,9 @@ SRC_URI = " \
 S = "${UNPACKDIR}"
 
 RDEPENDS:${PN} = "swupdate u-boot-fw-utils"
+# for unwrapping Elegoo .zip.sig bundles (CC2); already in the image via klippy,
+# declared so the script's dependencies are explicit
+RDEPENDS:${PN}:append:elegoo-centauri-carbon2 = " python3-core python3-compression openssl-bin"
 
 do_install() {
     install -d ${D}${bindir}
