@@ -1,0 +1,37 @@
+# short-description: Create CC2 eMMC image matching the stock partition layout
+# long-description:
+# Image for the Elegoo Centauri Carbon 2 (Allwinner R528) that reproduces the
+# stock CC2 eMMC GPT exactly, so /dev/by-name/* and swupdate A/B keep working.
+#
+# Geometry verified against:
+#  - live fdisk -l /dev/mmcblk0 on the CC2 test unit (7.3 GiB, 15307776 sectors)
+#  - stock test update2/update.swu in cc-fw-tools-cc2 (boot-resourceA/B, bootA/B,
+#    rootfsA/B; resource 666K, kernel 3.9M, rootfs 78.4M all fit their slots)
+#
+# wic offsets/sizes are in KiB (1 KiB = 2 sectors). Layout:
+#  p1  boot-resourceA  1M      p7  rootfsA      128M
+#  p2  boot-resourceB  1M      p8  rootfsB      128M
+#  p3  env             252K    p9  rootfs_data  512M
+#  p4  env-redund      252K    p10 dsp0         1008K
+#  p5  bootA           6.2M    p11 private      1008K
+#  p6  bootB           6.2M    p12 UDISK        ~6.5G (rest of eMMC)
+#
+# Partition names verified against live `ls -l /dev/by-name` on the CC2 unit.
+# Note: p10 is dsp0 (single, no A/B); CC2 has no "user"-named partition (that is
+# CC1's /board-resource); UDISK remains the user-data store on both.
+
+part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"           --no-table                             --align 8
+part /boot-resourceA --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceA --label bootresA      --fixed-size 1024k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part /boot-resourceB --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceB --label bootresB      --fixed-size 1024k    --offset 21756k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env       --fixed-size 252k     --offset 22780k  --align 1
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env-redund    --fixed-size 252k     --offset 23032k  --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA               --fixed-size 6300k    --offset 23284k  --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootB               --fixed-size 6300k    --offset 29584k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs --part-name rootfsA             --fixed-size 131072k  --offset 35884k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs --part-name rootfsB             --fixed-size 131072k  --offset 166956k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label rootfs_data         --fixed-size 524288k  --offset 298028k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0                --fixed-size 1008k    --offset 822316k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label private             --fixed-size 1008k    --offset 823324k --align 1
+part /opt/usr        --source empty             --ondisk mmcblk0 --fstype=ext4     --label UDISK               --fixed-size 6829539k --offset 824332k --align 1
+
+bootloader --ptable gpt
