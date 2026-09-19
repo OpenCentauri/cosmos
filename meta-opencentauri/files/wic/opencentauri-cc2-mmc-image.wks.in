@@ -21,8 +21,8 @@
 # CC1's /board-resource); UDISK remains the user-data store on both.
 
 part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"           --no-table                             --align 8
-part /boot-resourceA --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceA --label bootresA      --fixed-size 1024k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
-part /boot-resourceB --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceB --label bootresB      --fixed-size 1024k    --offset 21756k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part /boot-resourceA --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceA --label bootlogos     --fixed-size 1024k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part /boot-resourceB --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceB --label bootlogosB    --fixed-size 1024k    --offset 21756k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
 part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env       --fixed-size 252k     --offset 22780k  --align 1
 part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env-redund    --fixed-size 252k     --offset 23032k  --align 1
 part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA               --fixed-size 6300k    --offset 23284k  --align 1

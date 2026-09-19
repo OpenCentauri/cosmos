@@ -14,11 +14,9 @@ WKS_FILES:elegoo-centauri-carbon2 = "opencentauri-cc2-mmc-image.wks.in"
 WKS_FILE_DEPENDS += "squashfs-tools-native"
 
 EXTRACT_PARTITION_LABELS = "bootA bootlogos"
-EXTRACT_PARTITION_LABELS:elegoo-centauri-carbon2 = "bootA bootresA"
 
 OVERLAYFS_ETC_MOUNT_POINT = "/data"
 OVERLAYFS_ETC_DEVICE:elegoo-centauri-carbon1 = "/dev/mmcblk0p10"
-# CC2: p10 is dsp0; rootfs_data is p9
 OVERLAYFS_ETC_DEVICE:elegoo-centauri-carbon2 = "/dev/mmcblk0p9"
 OVERLAYFS_ETC_FSTYPE ?= "ext4"
 OVERLAYFS_ETC_CREATE_MOUNT_DIRS = "0"
