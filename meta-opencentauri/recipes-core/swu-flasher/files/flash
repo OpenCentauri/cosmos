@@ -9,8 +9,10 @@ INPUT="$1"
 case "$INPUT" in
 *.sig)
     echo "Elegoo bundle detected, unwrapping..."
+    UNWRAP=1
     INPUT=$(python3 - "$INPUT" <<'EOF'
 import io
+import os
 import struct
 import subprocess
 import sys
@@ -43,10 +45,19 @@ with zf.open(member) as f:
 if not inner['encrypted']:
     sys.exit('inner swu is not encrypted; refusing')
 
-dec = subprocess.run(['openssl', 'enc', '-d', '-aes-256-cbc', '-nopad', '-K', KEY,
-                      '-iv', inner['iv']],
-                     input=enc, capture_output=True, check=True).stdout
-out = '/tmp/update-unwrapped.swu'
+try:
+    dec = subprocess.run(['openssl', 'enc', '-d', '-aes-256-cbc', '-nopad',
+                          '-K', KEY, '-iv', inner['iv']],
+                         input=enc, capture_output=True, check=True).stdout
+except subprocess.CalledProcessError:
+    sys.exit('inner swu decryption failed')
+
+# scratch on UDISK: /tmp is tmpfs and a 100MB+ swu would OOM the 128MB box
+# (.tmp is the existing klippy/moonraker scratch dir on /user-resource)
+if not os.path.ismount('/user-resource'):
+    sys.exit('/user-resource is not mounted; nowhere safe to unwrap')
+os.makedirs('/user-resource/.tmp', exist_ok=True)
+out = os.path.join('/user-resource/.tmp', member[:-4])
 with open(out, 'wb') as f:
     f.write(dec[:inner['size']])
 print(out)
@@ -70,5 +81,6 @@ echo "$boot_partition"
 set -e
 readonly-config-reset
 swupdate -v -i "$INPUT" -e stable,${boot_partition}
+[ "$UNWRAP" = 1 ] && rm -f "$INPUT"
 sync
 echo "Update finished, run 'reboot' to finalize"
