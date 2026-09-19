@@ -46,6 +46,14 @@ def validate_config(config : dict):
                 print(f"Warning: Invalid value '{value}' for '{option}' in section '{section}'. Valid options are: {valid_values}", file=sys.stderr)
                 del config[section][option]
 
+def normalize_boolean_values(config : dict):
+    for options in config.values():
+        for option, value in options.items():
+            if value.lower() == 'true':
+                options[option] = 'True'
+            elif value.lower() == 'false':
+                options[option] = 'False'
+
 def load_config(path : str) -> dict:
     parser = configparser.ConfigParser()
     if os.path.exists(path):
@@ -143,6 +151,7 @@ def main(section : str, option : str):
     default_comments = load_config_comments(DEFAULT_CONFIG_PATH)
     default_header = load_config_header(DEFAULT_CONFIG_PATH)
     user_config = load_config(VARIABLE_CONFIG_PATH)
+    normalize_boolean_values(user_config)
     validate_config(user_config)
     merged_config = merge_configs(default_config, user_config)
 
