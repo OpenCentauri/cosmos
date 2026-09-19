@@ -1,7 +1,8 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
-SRC_URI += " \
-	file://fw_env.config \
-"
+
+PACKAGE_ARCH:class-target = "${MACHINE_ARCH}"
+
+SRC_URI:append:class-target = " file://fw_env.config"
 
 do_install:append () {
 	install -d ${D}${sysconfdir}
