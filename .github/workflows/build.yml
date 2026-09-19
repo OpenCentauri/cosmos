@@ -78,11 +78,13 @@ jobs:
           name: CC1 Firmware
           path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
 
-      - name: Upload build artifacts CC2 (SWU only)
+      - name: Upload build artifacts CC2 (SWU + Elegoo bundle)
         uses: actions/upload-artifact@v4
         with:
           name: CC2 Firmware
-          path: build/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
+          path: |
+            build/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
+            build/tmp/deploy/images/elegoo-centauri-carbon2/cc2_eeb001_*.zip.sig
 
       - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}
