@@ -1,0 +1,10 @@
+/dev/root            /                    auto       defaults              1  1
+proc                 /proc                proc       defaults              0  0
+devpts               /dev/pts             devpts     mode=0620,ptmxmode=0666,gid=5      0  0
+tmpfs                /run                 tmpfs      mode=0755,nodev,nosuid,strictatime 0  0
+tmpfs                /var/volatile        tmpfs      defaults              0  0
+# UDISK: real mount at CC2 stock path, CC1-compatible path as bind
+/dev/mmcblk0p12      /opt/usr             auto       defaults              0  0
+/opt/usr             /user-resource       none       bind                  0  0
+# boot-resourceA (slot-B systems see A's logos here; B is /dev/mmcblk0p2)
+/dev/mmcblk0p1       /boot-resource       auto       defaults              0  0
