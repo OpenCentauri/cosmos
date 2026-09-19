@@ -1,7 +1,7 @@
-# short-description: Create MMC image with a boot partition
+# short-description: Create MMC image for Elegoo Centauri Carbon 2
 # long-description:
-# Create an image that can be written onto the MMC using dd for use
-# with Allwinner arm (32-bit) SoC family
+# Image for the Elegoo Centauri Carbon 1 (Allwinner R528) that reproduces the
+# stock eMMC partition layout.
 #
 
 part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"           --no-table                             --align 8
