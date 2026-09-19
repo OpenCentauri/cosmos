@@ -4,5 +4,4 @@ devpts               /dev/pts             devpts     mode=0620,ptmxmode=0666,gid
 tmpfs                /run                 tmpfs      mode=0755,nodev,nosuid,strictatime 0  0
 tmpfs                /var/volatile        tmpfs      defaults              0  0
 /dev/mmcblk0p12      /user-resource       auto       defaults              0  0
-/dev/mmcblk0p1       /boot-resource       auto       defaults              0  0
 /user-resource       /board-resource      none       bind                  0  0
