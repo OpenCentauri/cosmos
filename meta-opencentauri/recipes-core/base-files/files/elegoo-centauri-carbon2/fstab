@@ -5,3 +5,4 @@ tmpfs                /run                 tmpfs      mode=0755,nodev,nosuid,stri
 tmpfs                /var/volatile        tmpfs      defaults              0  0
 /dev/mmcblk0p12      /user-resource       auto       defaults              0  0
 /user-resource       /board-resource      none       bind                  0  0
+/user-resource       /opt/usr             none       bind                  0  0
