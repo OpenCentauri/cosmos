@@ -43,5 +43,11 @@ bootB) NEXT=now_B_next_A ;;
 esac
 echo "current slot $curr -> flashing $NEXT"
 
+# swupdate_cmd.sh resumes any staged swu_* env over our args; clear leftovers
+# from aborted runs so the mode we pass actually wins
+fw_setenv swu_param
+fw_setenv swu_software
+fw_setenv swu_mode
+
 # stock CC2 swupdate is v2019.11 with no -k (signature member is ignored)
 swupdate_cmd.sh -i "$1" -e stable,$NEXT
