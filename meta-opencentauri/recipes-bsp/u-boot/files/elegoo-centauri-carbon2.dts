@@ -12,6 +12,8 @@
 
 	aliases {
 		serial2 = &uart2;
+		/* keep the eMMC at index 1 for env/bootcmd; the legacy SPL finds it via MMC_SUNXI_SLOT_EXTRA */
+		mmc1 = &mmc2;
 	};
 
 	chosen {
