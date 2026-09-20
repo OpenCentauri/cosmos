@@ -3,6 +3,8 @@ require katapult_${PV}.inc
 SUMMARY = "Stock Bed Bootloader Deployer"
 DESCRIPTION = "Builds the Katapult deployer binary for upgrading the bed bootloader to stock."
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI += " \
     file://config.bed \
     file://bed-bootloader-stock.bin \
