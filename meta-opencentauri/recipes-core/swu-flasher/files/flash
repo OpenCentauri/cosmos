@@ -86,6 +86,7 @@ if [ "$curr" = "A" ]; then
 elif [ "$curr" = "B" ]; then
     boot_partition="now_B_next_A"
 else
+    echo "unexpected systemAB_next: '$curr'"
     exit 1
 fi
 
