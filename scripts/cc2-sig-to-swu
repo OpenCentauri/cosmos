@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Takes in a signed .zip.sig firmware update for CC2 and decrypts/outputs
+the .swu contained therein.
+
+Verifies the sha256 and RSA-2048 signature on both layers with Elegoo's
+public key (public: CentauriCarbon2 signtools, daemon-000).
+
+usage: cc2-sig-to-swu <bundle.zip.sig>
+Writes <bundle>.swu next to the input. Temp files are removed on success;
+on failure they are kept and their paths printed for debugging.
+"""
+import hashlib
+import io
+import os
+import struct
+import subprocess
+import sys
+import tempfile
+import zipfile
+
+KEY = 'D14E150843E9D16893890756D8F77F674E161A8BEBB8F720737EE60E7F8C7E68'
+
+PUBKEY = """-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoBE/qDYFANWnAL8hEpzb
+E8vgHvpOkPyyzOW4eLC3xXrtE0/SmuEkGui33wyyb2qo7fvo7Adj8D72XHJR3Buc
+gtmzYpM/sdlmhwkDiNur88vKIfMfsCyO+xn1RvNplqaOoB38rudSwbwg6Gg34IUl
+C+wfZSGgg29HWwX6Y0060K9FHFBE/Ub7K4zJMiyOY3wZ3dVTU7xQ/YJ4HMAJme7O
+uVCBJCo5kGR/sSvoA2vqGQSaY8+74FxHsyFUg7mUCkBQf+BOWBK37UcDaYe654A0
+6chWI2gLw/WaDPdHsRVrUVjL47dhzbQ1Dh40SOAuV06KpvxXz8WAKa6CVD8hOnJB
+awIDAQAB
+-----END PUBLIC KEY-----
+"""
+
+tmps = []
+
+
+def header(f):
+    h = f.read(512)
+    if h[0:4] != b'ELEG':
+        die('not an Elegoo ELEG package')
+    return {'encrypted': bool(h[4] & 0x80),
+            'size': struct.unpack('<Q', h[8:16])[0],
+            'iv': h[0xA0:0xB0].hex(),
+            'sha256': h[0xE0:0x100],
+            'sig': h[0x100:0x200]}
+
+
+def tmp(data):
+    f = tempfile.NamedTemporaryFile(delete=False)
+    f.write(data)
+    f.close()
+    tmps.append(f.name)
+    return f.name
+
+
+def die(msg, code=1):
+    print(msg, file=sys.stderr)
+    for t in tmps:
+        print(f'kept: {t}', file=sys.stderr)
+    sys.exit(code)
+
+
+def verify(hdr, payload, what):
+    if hashlib.sha256(payload).digest() != hdr['sha256']:
+        die(f'{what}: sha256 mismatch')
+    pub = tmp(PUBKEY.encode())
+    sig = tmp(hdr['sig'])
+    r = subprocess.run(['openssl', 'dgst', '-sha256', '-verify', pub, '-signature', sig],
+                       input=payload, capture_output=True)
+    if r.returncode != 0 or b'Verified OK' not in r.stdout:
+        die(f'{what}: RSA signature invalid')
+
+
+def main():
+    if len(sys.argv) != 2 or not sys.argv[1].endswith('.zip.sig'):
+        sys.exit('usage: cc2-sig-to-swu <bundle.zip.sig>')
+    src = sys.argv[1]
+    out = src[:-len('.zip.sig')] + '.swu'
+
+    with open(src, 'rb') as f:
+        outer = header(f)
+        blob = f.read()
+    if outer['encrypted']:
+        die('outer bundle unexpectedly encrypted')
+    verify(outer, blob, 'outer bundle')
+
+    zf = zipfile.ZipFile(io.BytesIO(blob))
+    member = next((n for n in zf.namelist() if n.endswith('.swu.sig')), None)
+    if not member:
+        die('no .swu.sig member in bundle')
+
+    with zf.open(member) as f:
+        inner = header(f)
+        enc = f.read()
+    if not inner['encrypted']:
+        die('inner swu is not encrypted; refusing')
+    verify(inner, enc, 'inner swu')
+
+    r = subprocess.run(['openssl', 'enc', '-d', '-aes-256-cbc', '-nopad',
+                        '-K', KEY, '-iv', inner['iv']],
+                       input=enc, capture_output=True)
+    if r.returncode != 0:
+        die('inner swu decryption failed')
+
+    with open(out, 'wb') as f:
+        f.write(r.stdout[:inner['size']])
+
+    for t in tmps:
+        os.unlink(t)
+    print(f'{out} (signatures verified)')
+
+
+if __name__ == '__main__':
+    main()

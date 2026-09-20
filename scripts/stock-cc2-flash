@@ -1,0 +1,47 @@
+#!/bin/sh
+# Used on a rooted CC2 running stock firmware to flash a .swu containing
+# either an Elegoo stock release or a Cosmos release.
+# usage: stock-cc2-flash /opt/usr/image.swu
+
+PATH=$PATH:/sbin:/usr/sbin:/bin:/usr/bin
+
+if [ $# -lt 1 ] || [ ! -f "$1" ]; then
+    echo "usage: $0 <image.swu>"
+    exit 1
+fi
+
+case "$1" in
+*.swu) ;;
+*) echo "need a .swu file"; exit 1 ;;
+esac
+
+# make sure this swu targets the CC2 (sw-description is the first cpio member;
+# busybox has no cpio applet, so grep the archive head instead)
+if ! grep -a -m1 -q elegoo-centauri-carbon2 "$1"; then
+    echo "refusing: '$1' is not a CC2 (elegoo-centauri-carbon2) swu"
+    exit 1
+fi
+
+# ground truth: the rootfs we are actually running on (p7=A, p8=B)
+running=$(sed -n 's/.*root=\/dev\/mmcblk0p\([0-9]*\).*/\1/p' /proc/cmdline)
+case "$running" in
+7) curr=bootA ;;
+8) curr=bootB ;;
+*) curr=$(fw_printenv boot_partition | awk -F= '{ print $2 }' | tr -d '[:space:]')
+   echo "warning: no root= in /proc/cmdline, trusting env ($curr)" ;;
+esac
+env=$(fw_printenv boot_partition | awk -F= '{ print $2 }' | tr -d '[:space:]')
+if [ -n "$running" ] && [ "$env" != "$curr" ]; then
+    echo "refusing: env says $env but we are running on $curr"
+    echo "fix with: fw_setenv boot_partition $curr (and root_partition to match)"
+    exit 1
+fi
+case "$curr" in
+bootA) NEXT=now_A_next_B ;;
+bootB) NEXT=now_B_next_A ;;
+*) echo "unexpected boot_partition: '$curr'"; exit 1 ;;
+esac
+echo "current slot $curr -> flashing $NEXT"
+
+# stock CC2 swupdate is v2019.11 with no -k (signature member is ignored)
+swupdate_cmd.sh -i "$1" -e stable,$NEXT
