@@ -3,8 +3,6 @@ software =
     version = "@@DISTRO_VERSION@@";
     description = "Firmware update for OpenCentauri";
 
-    hardware-compatibility: [ "1.0" ];
-
     stable = {
 
         /* now in systemA, we need to upgrade systemB(bootB, rootfsB) */
