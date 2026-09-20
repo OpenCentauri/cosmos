@@ -68,6 +68,19 @@ esac
 
 curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
+# ground truth: the rootfs we are actually running on (p7=A, p8=B)
+running=$(sed -n 's/.*root=\/dev\/mmcblk0p\([0-9]*\).*/\1/p' /proc/cmdline)
+case "$running" in
+7) actual=A ;;
+8) actual=B ;;
+*) actual= ;;
+esac
+if [ -n "$actual" ] && [ "$actual" != "$curr" ]; then
+    echo "refusing: env systemAB_next=$curr but we are running on slot $actual"
+    echo "fix with: fw_setenv systemAB_next $actual"
+    exit 1
+fi
+
 if [ "$curr" = "A" ]; then
     boot_partition="now_A_next_B"
 elif [ "$curr" = "B" ]; then
