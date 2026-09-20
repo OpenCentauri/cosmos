@@ -1,0 +1,3 @@
+These are Elegoo's own CC2 OTA keys, recovered from their public
+CentauriCarbon2 signtools. They ship in the repo because the build
+needs them to produce bundles stock printers accept.
