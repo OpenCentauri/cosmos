@@ -50,6 +50,18 @@ software =
                     value = "B";
                 },
                 {
+                    name = "boot_partition";
+                    value = "bootB";
+                },
+                {
+                    name = "root_partition";
+                    value = "rootfsB";
+                },
+                {
+                    name = "swu_next";
+                    value = "reboot";
+                },
+                {
                     name = "swu_version";
                     value = "@@DISTRO_VERSION@@";
                 },
@@ -133,6 +145,18 @@ software =
                 {
                     name = "systemAB_next";
                     value = "A";
+                },
+                {
+                    name = "boot_partition";
+                    value = "bootA";
+                },
+                {
+                    name = "root_partition";
+                    value = "rootfsA";
+                },
+                {
+                    name = "swu_next";
+                    value = "reboot";
                 },
                 {
                     name = "swu_version";
