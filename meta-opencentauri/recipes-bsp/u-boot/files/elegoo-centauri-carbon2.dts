@@ -12,6 +12,8 @@
 
 	aliases {
 		serial2 = &uart2;
+		/* eMMC is on SMHC2; SPL maps BOOT_DEVICE_MMC2 to device index 1 */
+		mmc1 = &mmc2;
 	};
 
 	chosen {
