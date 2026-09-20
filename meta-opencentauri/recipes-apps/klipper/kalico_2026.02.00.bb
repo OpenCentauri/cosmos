@@ -3,6 +3,8 @@ require kalico_${PV}.inc
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI += " \

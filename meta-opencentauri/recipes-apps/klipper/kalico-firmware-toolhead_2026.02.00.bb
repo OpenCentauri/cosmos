@@ -4,6 +4,8 @@ inherit update-rc.d
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI += " \
     file://config.toolhead \
     file://klipper-firmware-toolhead-init-d \
