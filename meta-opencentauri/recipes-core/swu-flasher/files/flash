@@ -1,68 +1,16 @@
 #!/bin/sh
 
 if [ ! -f "$1" ]; then
-    echo "Usage: $0 path/to/update.swu (or Elegoo .zip.sig bundle on CC2)"
+    echo "Usage: $0 path/to/update.swu"
     exit 1
 fi
 
 INPUT="$1"
 case "$INPUT" in
 *.sig)
-    echo "Elegoo bundle detected, unwrapping..."
-    UNWRAP=1
-    INPUT=$(python3 - "$INPUT" <<'EOF'
-import io
-import os
-import struct
-import subprocess
-import sys
-import zipfile
-
-# Elegoo OTA AES-256 key (public: CentauriCarbon2 signtools, daemon-000)
-KEY = 'D14E150843E9D16893890756D8F77F674E161A8BEBB8F720737EE60E7F8C7E68'
-
-def header(f):
-    h = f.read(512)
-    if h[0:4] != b'ELEG':
-        sys.exit('not an Elegoo ELEG package')
-    return {'encrypted': bool(h[4] & 0x80),
-            'size': struct.unpack('<Q', h[8:16])[0],
-            'iv': h[0xA0:0xB0].hex()}
-
-with open(sys.argv[1], 'rb') as f:
-    outer = header(f)
-    blob = f.read()
-if outer['encrypted']:
-    sys.exit('outer bundle unexpectedly encrypted')
-
-zf = zipfile.ZipFile(io.BytesIO(blob))
-member = next((n for n in zf.namelist() if n.endswith('.swu.sig')), None)
-if not member:
-    sys.exit('no .swu.sig member in bundle')
-with zf.open(member) as f:
-    inner = header(f)
-    enc = f.read()
-if not inner['encrypted']:
-    sys.exit('inner swu is not encrypted; refusing')
-
-try:
-    dec = subprocess.run(['openssl', 'enc', '-d', '-aes-256-cbc', '-nopad',
-                          '-K', KEY, '-iv', inner['iv']],
-                         input=enc, capture_output=True, check=True).stdout
-except subprocess.CalledProcessError:
-    sys.exit('inner swu decryption failed')
-
-# scratch on UDISK: /tmp is tmpfs and a 100MB+ swu would OOM the 128MB box
-# (.tmp is the existing klippy/moonraker scratch dir on /user-resource)
-if not os.path.ismount('/user-resource'):
-    sys.exit('/user-resource is not mounted; nowhere safe to unwrap')
-os.makedirs('/user-resource/.tmp', exist_ok=True)
-out = os.path.join('/user-resource/.tmp', member[:-4])
-with open(out, 'wb') as f:
-    f.write(dec[:inner['size']])
-print(out)
-EOF
-    ) || exit 1
+    echo "Elegoo bundles are not supported on-device (decrypting OOMs this box)"
+    echo "unwrap on a host first: cosmos/scripts/cc2-sig-to-swu $INPUT"
+    exit 1
     ;;
 esac
 
@@ -95,6 +43,5 @@ echo "$boot_partition"
 set -e
 readonly-config-reset
 swupdate -v -i "$INPUT" -e stable,${boot_partition}
-[ "$UNWRAP" = 1 ] && rm -f "$INPUT"
 sync
 echo "Update finished, run 'reboot' to finalize"
