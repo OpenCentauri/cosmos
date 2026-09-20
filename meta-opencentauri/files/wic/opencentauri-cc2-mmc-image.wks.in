@@ -3,18 +3,20 @@
 # Image for the Elegoo Centauri Carbon 2 (Allwinner R528) that reproduces the
 # stock eMMC partition layout.
 #
+# GPT partition names match stock so /dev/by-name/* resolves the same as on
+# Elegoo firmware (stock tools and the stock-swu rollback path use by-name).
 
 part u-boot          --source rawcopy           --ondisk mmcblk0 --sourceparams="file=${SPL_BINARY}"           --no-table                             --align 8
-part                 --source rootfs            --ondisk mmcblk0 --fstype=vfat     --label bootlogos           --fixed-size 1024k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
-part                 --source rootfs            --ondisk mmcblk0 --fstype=vfat     --label bootlogosB          --fixed-size 1024k    --offset 21756k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
-part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --fixed-size 252k     --offset 22780k  --align 1
-part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --fixed-size 252k     --offset 23032k  --align 1
-part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA               --fixed-size 6300k    --offset 23284k  --align 1
-part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootB               --fixed-size 6300k    --offset 29584k  --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --fixed-size 131072k  --offset 35884k  --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --fixed-size 131072k  --offset 166956k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label rootfs_data         --fixed-size 524288k  --offset 298028k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0                --fixed-size 1008k    --offset 822316k --align 1
-part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label private             --fixed-size 1008k    --offset 823324k --align 1
-part /user-resource  --source empty             --ondisk mmcblk0 --fstype=ext4     --label UDISK               --fixed-size 6829539k --offset 824332k --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceA --label bootlogos   --fixed-size 1024k    --offset 20732k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part                 --source rootfs            --ondisk mmcblk0 --fstype=vfat     --part-name boot-resourceB --label bootlogosB  --fixed-size 1024k    --offset 21756k  --align 1 --rootfs-dir=${IMAGE_ROOTFS}/boot-resource
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env     --fixed-size 252k     --offset 22780k  --align 1
+part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env-redund --fixed-size 252k --offset 23032k  --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --part-name bootA           --label bootA       --fixed-size 6300k    --offset 23284k  --align 1
+part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --part-name bootB           --label bootB       --fixed-size 6300k    --offset 29584k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs --part-name rootfsA                             --fixed-size 131072k  --offset 35884k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs --part-name rootfsB                             --fixed-size 131072k  --offset 166956k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --part-name rootfs_data    --label rootfs_data --fixed-size 524288k  --offset 298028k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --part-name dsp0           --label dsp0        --fixed-size 1008k    --offset 822316k --align 1
+part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --part-name private        --label private     --fixed-size 1008k    --offset 823324k --align 1
+part /user-resource  --source empty             --ondisk mmcblk0 --fstype=ext4     --part-name UDISK          --label UDISK       --fixed-size 6829539k --offset 824332k --align 1
 bootloader --ptable gpt
