@@ -146,11 +146,15 @@ def merge_configs(default_config : dict, user_config : dict) -> dict:
         default_config[section].update(options)
     return default_config
 
-def main(section : str, option : str):
+def main(section : str, option : str, value : str|None = None):
     default_config = load_config(DEFAULT_CONFIG_PATH)
     default_comments = load_config_comments(DEFAULT_CONFIG_PATH)
     default_header = load_config_header(DEFAULT_CONFIG_PATH)
     user_config = load_config(VARIABLE_CONFIG_PATH)
+    if value is not None:
+        if section not in user_config:
+            user_config[section] = {}
+        user_config[section][option] = value
     normalize_boolean_values(user_config)
     validate_config(user_config)
     merged_config = merge_configs(default_config, user_config)
@@ -164,15 +168,16 @@ def main(section : str, option : str):
     print(merged_config[section][option], end='')
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: config_manager <section> <option>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("Usage: config_manager <section> <option> [value]", file=sys.stderr)
         sys.exit(1)
 
     section = sys.argv[1]
     option = sys.argv[2]
+    value = sys.argv[3] if len(sys.argv) == 4 else None
 
     try:
-        main(section, option)
+        main(section, option, value)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
