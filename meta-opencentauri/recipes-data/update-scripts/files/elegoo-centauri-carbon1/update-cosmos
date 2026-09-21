@@ -1,0 +1,26 @@
+#!/bin/sh
+
+set -e
+
+RELEASE=$(config-manager update release)
+case "$RELEASE" in
+    nightly)
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
+        ;;
+    *)
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/cc1.swu"
+        ;;
+esac
+
+SWUFILE="/user-resource/update.swu"
+
+# Download firmware
+curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+
+# Install firmware
+flash "$SWUFILE"
+
+# Clean up firmware file
+rm "$SWUFILE"
+
+reboot

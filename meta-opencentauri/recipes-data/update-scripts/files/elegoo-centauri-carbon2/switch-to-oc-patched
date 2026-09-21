@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+FW_URL="https://github.com/OpenCentauri/OpenCentauri/releases/download/v0.0.0/cc2_eeb001_01.03.02.51_20260421171758.swu"
+SWUFILE="/user-resource/update.swu"
+
+# Download firmware
+curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+
+# Check file exists and is not empty, clean up and exit if not
+if [ ! -s "$SWUFILE" ]; then
+    echo "Failed to download update.swu - Aborting."
+    rm -f "$SWUFILE"
+    exit 1
+fi
+
+# Flash stock bootloader
+restore-mcu-firmware
+
+# Install firmware
+flash "$SWUFILE"
+
+# Revert stock bootcmd
+fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+
+# Clean up firmware file
+rm "$SWUFILE"
+
+sleep 3
+
+reboot
