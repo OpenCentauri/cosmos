@@ -6,7 +6,7 @@ CONFIG_MANAGER="/usr/bin/config-manager"
 OUTPUT_DIR="/etc/klipper/config/klipper-readonly"
 OUTPUT_FILE="${OUTPUT_DIR}/_vars.cfg"
 EXTRAS_OUTPUT_FILE="${OUTPUT_DIR}/zextras.cfg"
-GRUMPYSCREEN_OUTPUT_FILE="/etc//klipper/config/grumpyscreen-readonly/zextras.cfg"
+GRUMPYSCREEN_OUTPUT_FILE="/etc/klipper/config/grumpyscreen-readonly/zextras.cfg"
 
 get_config_value() {
 	"${CONFIG_MANAGER}" klipper "$1"
