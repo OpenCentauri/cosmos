@@ -1,0 +1,281 @@
+From 8e721532167d010091cd3e65849b6e8f9de023c1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C3=85smund=20Collin?= <aakjaergaard@gmail.com>
+Date: Mon, 13 Jul 2026 20:08:00 +0200
+Subject: [PATCH 1/2] resonance_tester: derive test motion limits from the
+ actual test sequence
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The temporary acceleration and velocity limits were computed from the
+configured accel_per_hz, ignoring both the ACCEL_PER_HZ command
+override and the sweeping acceleration. As a result:
+
+- TEST_RESONANCES/SHAPER_CALIBRATE with ACCEL_PER_HZ higher than the
+  configured value generated moves that exceeded the limits: e.g. with
+  the default accel_per_hz 75 and ACCEL_PER_HZ=120, the test requires
+  16200 mm/s^2 and 30 mm/s but the limits were set to 10135 mm/s^2 and
+  19.75 mm/s. The velocity clamp applies on all kinematics, silently
+  attenuating the excitation across the sweep.
+- Sweeping tests (SWEEPING_PERIOD > 0) exceeded the limits even without
+  overrides: the sweeping motion adds sweeping_accel to the segment
+  acceleration and, more significantly, a large velocity component
+  (~139 mm/s at the default sweeping_accel 400 and period 1.2 vs the
+  19.75 mm/s limit), so the sweeping movement was velocity-clamped.
+
+Compute the limits from the generated sequence itself (max segment
+acceleration and integrated peak velocity plus the previous margins),
+which covers all overrides and generators by construction. Also drop
+the dead test_accel_per_hz plumbing in ResonanceTester._run_test (it
+assigned an attribute nothing reads, on the wrong object, and would
+have leaked the override into subsequent tests otherwise; the override
+already flows through prepare_test), and record the effective
+accel_per_hz instead of the configured default in the CSV metadata.
+
+resonance_tester: fix final deceleration move after the test sequence
+
+The deceleration-to-stop issued when the test sequence ends with a
+nonzero velocity (which happens with sweeping tests; plain vibration
+pulses always return to zero) had two problems:
+
+- It used last_v2, which holds the velocity at the start of the last
+  segment, not the final velocity: the loop updates last_v after
+  computing last_v2. For a sweeping test ending at 8.7 mm/s the decel
+  distance was computed from 28.2 mm/s - about 10x too long for the
+  actual speed.
+- The distance was unconditionally negative, i.e. opposite to the
+  direction of motion whenever the final velocity was positive, while
+  the in-loop direction-change decel gets its sign correctly from the
+  signed segment acceleration.
+
+Compute the distance from the actual final velocity, signed to continue
+in the direction of motion: d = 0.5 * v * |v| / max_accel.
+
+resonance_tester: input validation and minor hardening
+
+- SHAPER_CALIBRATE AXIS validation used a substring check
+  (axis.lower() not in "xy"), so AXIS=XY was accepted: it silently
+  calibrated only the Y direction (TestAxis("xy") maps any non-"x"
+  name to the Y vibration direction) while applying the result to both
+  axes. Restrict to exactly "x" or "y".
+- Require MEAS_TIME > 0 in MEASURE_AXES_NOISE.
+- Show the active-fans warning in TEST_RESONANCES too, not only in
+  SHAPER_CALIBRATE - fan vibrations pollute both measurements.
+- Replace two bare except clauses with the intended exception types.
+- Fix help-string typos (specifed, Simular).
+
+Signed-off-by: Åsmund Collin <aakjaergaard@gmail.com>
+---
+ klippy/extras/resonance_tester.py | 66 +++++++++++++++++++------------
+ 1 file changed, 40 insertions(+), 26 deletions(-)
+
+diff --git a/klippy/extras/resonance_tester.py b/klippy/extras/resonance_tester.py
+index dd9088799e..d15c44f195 100644
+--- a/klippy/extras/resonance_tester.py
++++ b/klippy/extras/resonance_tester.py
+@@ -51,7 +51,7 @@ def _parse_axis(gcmd, raw_axis):
+     try:
+         dir_x = float(dirs[0].strip())
+         dir_y = float(dirs[1].strip())
+-    except:
++    except ValueError:
+         raise gcmd.error("Unable to parse axis direction '%s'" % (raw_axis,))
+     return TestAxis(vib_dir=(dir_x, dir_y))
+ 
+@@ -134,6 +134,10 @@ def __init__(self, config):
+         self.hz_per_sec = config.getfloat(
+             "hz_per_sec", 1.0, minval=0.1, maxval=2.0
+         )
++        self.freq_start = self.min_freq
++        self.freq_end = self.max_freq
++        self.test_accel_per_hz = self.accel_per_hz
++        self.test_hz_per_sec = self.hz_per_sec
+ 
+     def prepare_test(self, gcmd):
+         self.freq_start = gcmd.get_float(
+@@ -169,7 +173,9 @@ def get_max_freq(self):
+         return self.freq_end
+ 
+     def get_accel_per_hz(self):
+-        return self.accel_per_hz
++        # The value in effect for the current test (including any
++        # ACCEL_PER_HZ override), not the configured default
++        return self.test_accel_per_hz
+ 
+ 
+ class SweepingVibrationsTestGenerator:
+@@ -181,6 +187,8 @@ def __init__(self, config):
+         self.sweeping_period = config.getfloat(
+             "sweeping_period", 0.0, minval=0.0
+         )
++        self.test_sweeping_accel = self.sweeping_accel
++        self.test_sweeping_period = self.sweeping_period
+ 
+     def prepare_test(self, gcmd):
+         self.vibration_generator.prepare_test(gcmd)
+@@ -221,17 +229,29 @@ def gen_test(self):
+     def get_max_freq(self):
+         return self.vibration_generator.get_max_freq()
+ 
++    def get_accel_per_hz(self):
++        return self.vibration_generator.get_accel_per_hz()
++
+ 
+ class ResonanceTestExecutor:
+     def __init__(self, config):
+         self.printer = config.get_printer()
+         self.gcode = self.printer.lookup_object("gcode")
+ 
+-    def run_test(self, test_seq, axis, freq_end, accel_per_hz, gcmd):
++    def run_test(self, test_seq, axis, gcmd):
++        # Derive the required limits from the actual test sequence, so that
++        # ACCEL_PER_HZ overrides and the sweeping acceleration are covered
++        max_accel = 0.0
++        max_v = v = last_t = 0.0
++        for next_t, accel, freq in test_seq:
++            max_accel = max(max_accel, abs(accel))
++            v += accel * (next_t - last_t)
++            max_v = max(max_v, abs(v))
++            last_t = next_t
+         with suspend_limits(
+             self.printer,
+-            freq_end * accel_per_hz + 10.0,
+-            accel_per_hz * 0.25 + 1.0,
++            max_accel + 10.0,
++            max_v + 1.0,
+             gcmd.get_int("INPUT_SHAPING", 0),
+         ):
+             self._run_test(test_seq, axis, gcmd)
+@@ -283,7 +303,8 @@ def _run_test(self, test_seq, axis, gcmd):
+             last_v = v
+             last_freq = freq
+         if last_v:
+-            d_decel = -0.5 * last_v2 / old_max_accel
++            # Decelerate to a stop, continuing in the direction of motion
++            d_decel = 0.5 * last_v * abs(last_v) / old_max_accel
+             decel_X, decel_Y = axis.get_point(d_decel)
+             toolhead.cmd_M204(
+                 self.gcode.create_gcode_command(
+@@ -370,18 +391,16 @@ def _run_test(
+         raw_name_suffix=None,
+         accel_chips=None,
+         test_point=None,
+-        test_accel_per_hz=None,
+     ):
+         toolhead = self.printer.lookup_object("toolhead")
+         calibration_data = {axis: None for axis in axes}
+ 
++        # Reads all test overrides (FREQ_START/END, ACCEL_PER_HZ, ...)
++        # from gcmd
+         self.generator.prepare_test(gcmd)
+ 
+         test_points = [test_point] if test_point else self.probe_points
+ 
+-        if test_accel_per_hz is not None:
+-            self.generator.accel_per_hz = test_accel_per_hz
+-
+         for point in test_points:
+             toolhead.manual_move(point, self.move_speed)
+             if len(test_points) > 1 or test_point is not None:
+@@ -407,13 +426,7 @@ def _run_test(
+ 
+                 # Generate moves
+                 test_seq = self.generator.gen_test()
+-                self.executor.run_test(
+-                    test_seq,
+-                    axis,
+-                    self.generator.vibration_generator.freq_end,
+-                    self.generator.vibration_generator.accel_per_hz,
+-                    gcmd,
+-                )
++                self.executor.run_test(test_seq, axis, gcmd)
+                 for chip_axis, aclient, chip_name in raw_values:
+                     aclient.finish_measurements()
+                     if raw_name_suffix is not None:
+@@ -455,14 +468,13 @@ def _parse_chips(self, accel_chips):
+     def _get_max_calibration_freq(self):
+         return 1.5 * self.generator.get_max_freq()
+ 
+-    cmd_TEST_RESONANCES_help = "Runs the resonance test for a specifed axis"
++    cmd_TEST_RESONANCES_help = "Runs the resonance test for a specified axis"
+ 
+     def cmd_TEST_RESONANCES(self, gcmd):
+         # Parse parameters
+         axis = _parse_axis(gcmd, gcmd.get("AXIS").lower())
+         chips_str = gcmd.get("CHIPS", None)
+         test_point = gcmd.get("POINT", None)
+-        test_accel_per_hz = gcmd.get_float("ACCEL_PER_HZ", None, above=0.0)
+ 
+         if test_point:
+             test_coords = test_point.split(",")
+@@ -496,6 +508,9 @@ def cmd_TEST_RESONANCES(self, gcmd):
+         csv_output = "resonances" in outputs
+         raw_output = "raw_data" in outputs
+ 
++        # Check for active fans and display warning if found
++        self._check_active_fans(gcmd)
++
+         # Setup calculation of resonances
+         if csv_output:
+             helper = shaper_calibrate.ShaperCalibrate(self.printer)
+@@ -509,7 +524,6 @@ def cmd_TEST_RESONANCES(self, gcmd):
+             raw_name_suffix=name_suffix if raw_output else None,
+             accel_chips=accel_chips,
+             test_point=test_point,
+-            test_accel_per_hz=test_accel_per_hz,
+         )[axis]
+         if csv_output:
+             csv_name = self.save_calibration_data(
+@@ -520,14 +534,14 @@ def cmd_TEST_RESONANCES(self, gcmd):
+                 data,
+                 point=test_point,
+                 max_freq=self._get_max_calibration_freq(),
+-                accel_per_hz=self.generator.vibration_generator.get_accel_per_hz(),
++                accel_per_hz=self.generator.get_accel_per_hz(),
+             )
+             gcmd.respond_info(
+                 "Resonances data written to %s file" % (csv_name,)
+             )
+ 
+     cmd_SHAPER_CALIBRATE_help = (
+-        "Simular to TEST_RESONANCES but suggest input shaper config"
++        "Similar to TEST_RESONANCES but suggest input shaper config"
+     )
+ 
+     def cmd_SHAPER_CALIBRATE(self, gcmd):
+@@ -535,7 +549,7 @@ def cmd_SHAPER_CALIBRATE(self, gcmd):
+         axis = gcmd.get("AXIS", None)
+         if not axis:
+             calibrate_axes = [TestAxis("x"), TestAxis("y")]
+-        elif axis.lower() not in "xy":
++        elif axis.lower() not in ("x", "y"):
+             raise gcmd.error("Unsupported axis '%s'" % (axis,))
+         else:
+             calibrate_axes = [TestAxis(axis.lower())]
+@@ -601,7 +615,7 @@ def cmd_SHAPER_CALIBRATE(self, gcmd):
+                 calibration_data[axis],
+                 all_shapers,
+                 max_freq=max_freq,
+-                accel_per_hz=self.generator.vibration_generator.get_accel_per_hz(),
++                accel_per_hz=self.generator.get_accel_per_hz(),
+             )
+             gcmd.respond_info(
+                 "Shaper calibration data written to %s file" % (csv_name,)
+@@ -616,7 +630,7 @@ def cmd_SHAPER_CALIBRATE(self, gcmd):
+     )
+ 
+     def cmd_MEASURE_AXES_NOISE(self, gcmd):
+-        meas_time = gcmd.get_float("MEAS_TIME", 2.0)
++        meas_time = gcmd.get_float("MEAS_TIME", 2.0, above=0.0)
+         raw_values = [
+             (chip_axis, chip.start_internal_client())
+             for chip_axis, chip in self.accel_chips
+@@ -695,7 +709,7 @@ def _check_active_fans(self, gcmd):
+                                 )
+ 
+                             active_fans.append(fan_name)
+-                    except:
++                    except Exception:
+                         continue
+ 
+             if active_fans:

@@ -13,6 +13,7 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=wildta
     file://0001-force-specific-input-shaper.patch \
     file://0003-drv8833-motor-control.patch \
     file://0004-allow-config-exclude.patch \
+    file://0001-Increase-max-velocity-in-resonance-tester.patch \
 "
 SRCREV = "4c37a204e5c2ed31b979baba7fb4d32a587aa590"
 
