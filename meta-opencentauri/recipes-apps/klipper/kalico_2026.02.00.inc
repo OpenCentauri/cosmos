@@ -15,9 +15,9 @@ SRC_URI = "git://github.com/jamesturton/kalico.git;protocol=https;branch=cs123x 
     file://0004-allow-config-exclude.patch \
     file://0001-Increase-max-velocity-in-resonance-tester.patch \
 "
-SRCREV = "4bb79cd0b790ba3bb6dba3db277e16ebe16dfc19"
+SRCREV = "a92a0fcc7dacf739494883c8f153189bd9f46577"
 
-PR = "r12"
+PR = "r13"
 
 DEPENDS = " \
     python3-native \
