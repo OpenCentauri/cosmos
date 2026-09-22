@@ -11,7 +11,7 @@ SRC_URI = " \
     file://afc.cfg \
     file://canvas-toolhead.cfg \
     file://canvas.cfg \
-    file://boxturtle.cfg
+    file://boxturtle.cfg \
 "
 
 SRCREV = "484a09b4c16674b586bf33035f1ab1b9dccc67b9"
@@ -78,4 +78,5 @@ FILES:${PN} = " \
     ${sysconfdir}/klipper/config/extras-readonly/afc.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas-toolhead.cfg \
+    ${sysconfdir}/klipper/config/extras-readonly/boxturtle.cfg \
 "

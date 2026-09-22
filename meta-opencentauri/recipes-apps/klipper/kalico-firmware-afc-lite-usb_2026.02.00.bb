@@ -16,9 +16,9 @@ EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.afc-lite-usb"
 
 do_install() {
     install -d ${D}/lib/firmware
-    install -m 0644 ${S}/out/klipper.bin ${D}/lib/firmware/kalico-afc-lite-usb.bin
+    install -m 0644 ${S}/out/klipper.bin ${D}/lib/firmware/klipper-afc-lite-usb.bin
 }
 
 FILES:${PN} = " \
-    /lib/firmware/kalico-afc-lite-usb.bin \
+    /lib/firmware/klipper-afc-lite-usb.bin \
 "
