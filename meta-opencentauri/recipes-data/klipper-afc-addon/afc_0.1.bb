@@ -11,6 +11,7 @@ SRC_URI = " \
     file://afc.cfg \
     file://canvas-toolhead.cfg \
     file://canvas.cfg \
+    file://boxturtle.cfg
 "
 
 SRCREV = "484a09b4c16674b586bf33035f1ab1b9dccc67b9"
@@ -36,7 +37,7 @@ do_install() {
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
-    install -m 0644 ${WORKDIR}/canvas.cfg ${WORKDIR}/afc.cfg ${WORKDIR}/canvas-toolhead.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${WORKDIR}/canvas.cfg ${WORKDIR}/afc.cfg ${WORKDIR}/canvas-toolhead.cfg ${WORKDIR}/boxturtle.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
 }
 
 FILES:${PN} = " \
