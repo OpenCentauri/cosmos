@@ -24,6 +24,7 @@ full_calibrate_hotend_temperature=$(get_config_value full_calibrate_hotend_tempe
 full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature)
 bypass_calibration=$(get_config_value bypass_calibration)
 toolhead_led=$(get_config_value toolhead_led)
+tangle_detection=$(get_config_value tangle_detection)
 elegoo_canvas=$("${CONFIG_MANAGER}" extras elegoo_canvas)
 
 mkdir -p "${OUTPUT_DIR}"
@@ -46,6 +47,7 @@ variable_full_calibrate_hotend_temperature: ${full_calibrate_hotend_temperature}
 variable_full_calibrate_bed_temperature: ${full_calibrate_bed_temperature}
 variable_bypass_calibration: ${bypass_calibration}
 variable_toolhead_led: ${toolhead_led}
+variable_tangle_detection: ${tangle_detection}
 gcode:
 
 EOF
