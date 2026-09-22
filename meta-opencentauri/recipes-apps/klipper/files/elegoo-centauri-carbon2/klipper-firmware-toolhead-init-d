@@ -51,7 +51,12 @@ case "$1" in
         else
             echo "Firmware version mismatch or not installed, flashing firmware..."
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing toolhead. DO NOT POWER OFF"
-            update
+            # The first open of the UART after boot can leave the UART stuck in
+            # BUSY with DLAB set, so nothing is received. Reopening fixes it.
+            if ! update; then
+                echo "Retrying firmware flash..."
+                update
+            fi
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;
