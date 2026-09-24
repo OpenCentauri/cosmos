@@ -13,14 +13,49 @@ case "$RELEASE" in
 esac
 
 SWUFILE="/user-resource/update.swu"
+LOG="/board-resource/update-cosmos.log"
 
-# Download firmware
-curl -k -f -S -o "$SWUFILE" -L "$FW_URL"
+# Everything printed here is shown to the user by Moonraker's update_manager
+# (Mainsail, Fluidd, ...). The chatter from curl and swupdate goes to $LOG.
+: > "$LOG"
+
+# Size of the asset after redirects, so the download can report progress. If
+# this fails the download still runs, just without percentages.
+TOTAL=$(curl -k -sIL "$FW_URL" 2>>"$LOG" \
+    | awk '/^[Cc]ontent-[Ll]ength:/ {v=$2} END {gsub(/\r/,"",v); print v+0}')
+
+echo "Downloading COSMOS update..."
+curl -k -f -sS -o "$SWUFILE" -L "$FW_URL" 2>>"$LOG" &
+CURL_PID=$!
+
+LAST=0
+while kill -0 "$CURL_PID" 2>/dev/null; do
+    if [ "$TOTAL" -gt 0 ] && [ -f "$SWUFILE" ]; then
+        CUR=$(wc -c < "$SWUFILE" || echo 0)
+        STEP=$(( CUR * 100 / TOTAL / 20 * 20 ))
+        if [ "$STEP" -gt "$LAST" ]; then
+            LAST=$STEP
+            echo "Downloading COSMOS update... ${STEP}%"
+        fi
+    fi
+    sleep 1
+done
+
+if ! wait "$CURL_PID"; then
+    echo "Download failed, see $LOG"
+    exit 1
+fi
+[ "$LAST" -lt 100 ] && echo "Downloading COSMOS update... 100%"
 
 # Install firmware
-flash "$SWUFILE"
+echo "Installing the update, do not power off the printer!"
+if ! flash "$SWUFILE" >>"$LOG" 2>&1; then
+    echo "Installing the update failed, see $LOG"
+    exit 1
+fi
 
 # Clean up firmware file
 rm "$SWUFILE"
 
+echo "Update installed, rebooting..."
 reboot
