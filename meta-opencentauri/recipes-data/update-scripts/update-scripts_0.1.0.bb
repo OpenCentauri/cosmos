@@ -17,6 +17,7 @@ SRC_URI = " \
 SRC_URI:append:elegoo-centauri-carbon2 = " \
     file://stock-bed.bin \
     file://stock-toolhead.bin \
+    file://stock-canvas.bin \
 "
 
 S = "${UNPACKDIR}"
@@ -56,6 +57,7 @@ do_install:append:elegoo-centauri-carbon2() {
     install -d ${D}/lib/firmware
     install -m 0644 ${S}/stock-bed.bin ${D}/lib/firmware/
     install -m 0644 ${S}/stock-toolhead.bin ${D}/lib/firmware/
+    install -m 0644 ${S}/stock-canvas.bin ${D}/lib/firmware/
 }
 
 FILES:${PN} += " \
@@ -70,4 +72,5 @@ FILES:${PN} += " \
 FILES:${PN}:append:elegoo-centauri-carbon2 = " \
     /lib/firmware/stock-bed.bin \
     /lib/firmware/stock-toolhead.bin \
+    /lib/firmware/stock-canvas.bin \
 "
