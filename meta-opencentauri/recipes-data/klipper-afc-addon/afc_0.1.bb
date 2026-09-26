@@ -12,6 +12,7 @@ SRC_URI = " \
     file://canvas-toolhead.cfg \
     file://canvas.cfg \
     file://boxturtle.cfg \
+    file://canvas_rfid.cfg \
 "
 
 SRCREV = "484a09b4c16674b586bf33035f1ab1b9dccc67b9"
@@ -35,7 +36,7 @@ do_install() {
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
-    install -m 0644 ${UNPACKDIR}/canvas.cfg ${UNPACKDIR}/afc.cfg ${UNPACKDIR}/canvas-toolhead.cfg ${UNPACKDIR}/boxturtle.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${UNPACKDIR}/canvas.cfg ${UNPACKDIR}/canvas_rfid.cfg ${UNPACKDIR}/afc.cfg ${UNPACKDIR}/canvas-toolhead.cfg ${UNPACKDIR}/boxturtle.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
 }
 
 FILES:${PN} = " \
@@ -77,4 +78,5 @@ FILES:${PN} = " \
     ${sysconfdir}/klipper/config/extras-readonly/canvas.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas-toolhead.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/boxturtle.cfg \
+    ${sysconfdir}/klipper/config/extras-readonly/canvas_rfid.cfg \
 "
