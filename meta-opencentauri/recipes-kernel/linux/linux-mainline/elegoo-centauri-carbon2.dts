@@ -315,6 +315,12 @@
 	uart1_pe_pins: uart1-pe-pins {
 		pins = "PE10", "PE11";
 		function = "uart1";
+		bias-pull-up;
+	};
+
+	uart1_rts_pe_pin: uart1-rts-pe-pin {
+		pins = "PE8";
+		function = "uart1";
 	};
 
 	uart2_pe_pins: uart2-pe-pins {
@@ -355,9 +361,13 @@
 	status = "okay";
 };
 
+/* Canvas port, half-duplex RS-485 */
 &uart1 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart1_pe_pins>;
+	pinctrl-0 = <&uart1_pe_pins>, <&uart1_rts_pe_pin>;
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-active-low;
+	rs485-rts-delay = <0 0>;
 	status = "okay";
 };
 

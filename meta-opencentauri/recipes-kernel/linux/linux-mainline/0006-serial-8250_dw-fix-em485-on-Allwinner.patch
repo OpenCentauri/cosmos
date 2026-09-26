@@ -1,0 +1,98 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Thu, 24 Sep 2026 00:00:00 +0000
+Subject: [PATCH] serial: 8250_dw: fix RS485 and baud changes on Allwinner
+
+- Re-apply UART_CAP_NOTEMT after autoconfig; without it em485 never
+  releases RTS, so the RS485 transceiver stays in transmit.
+- Save/restore the real MCR around idle instead of up->mcr, which drops
+  the RTS level em485 set.
+- If BUSY blocks a divisor update (leaving DLAB set), force it with the
+  Allwinner HALT register (FORCECFG/LCRUP).
+---
+diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw.c
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ b/drivers/tty/serial/8250/8250_dw.c
+@@ -95,6 +95,7 @@
+ 	unsigned int		in_idle:1;
+ 
+ 	u8			no_int_count;
++	u32			idle_mcr;
+ };
+ 
+ static inline struct dw8250_data *to_dw8250_data(struct dw8250_port_data *data)
+@@ -135,7 +136,7 @@
+ 
+ 	if (up->capabilities & UART_CAP_FIFO)
+ 		serial_port_out(p, UART_FCR, up->fcr);
+-	serial_port_out(p, UART_MCR, up->mcr);
++	serial_port_out(p, UART_MCR, d->idle_mcr);
+ 	serial_port_out(p, UART_IER, up->ier);
+ 
+ 	/* DMA Rx is restarted by IRQ handler as needed. */
+@@ -185,7 +186,8 @@
+ 	serial8250_fifo_wait_for_lsr_thre(up, p->fifosize);
+ 	ndelay(p->frame_time);
+ 
+-	serial_port_out(p, UART_MCR, up->mcr | UART_MCR_LOOP);
++	d->idle_mcr = serial_port_in(p, UART_MCR);
++	serial_port_out(p, UART_MCR, d->idle_mcr | UART_MCR_LOOP);
+ 
+ 	retries = 4;	/* Arbitrary limit, 2 was always enough in tests */
+ 	do {
+@@ -214,12 +216,13 @@
+ static void dw8250_set_divisor(struct uart_port *p, unsigned int baud,
+ 			       unsigned int quot, unsigned int quot_frac)
+ {
++	struct dw8250_data *d = to_dw8250_data(p->private_data);
+ 	struct uart_8250_port *up = up_to_u8250p(p);
+-	int ret;
++	int ret, tries = 10000;
+ 
+ 	ret = dw8250_idle_enter(p);
+ 	if (ret < 0)
+-		return;
++		goto force;
+ 
+ 	serial_port_out(p, UART_LCR, up->lcr | UART_LCR_DLAB);
+ 	if (!(serial_port_in(p, UART_LCR) & UART_LCR_DLAB))
+@@ -227,9 +230,25 @@
+ 
+ 	serial_dl_write(up, quot);
+ 	serial_port_out(p, UART_LCR, up->lcr);
++	if (!(serial_port_in(p, UART_LCR) & UART_LCR_DLAB)) {
++		dw8250_idle_exit(p);
++		return;
++	}
+ 
+ idle_failed:
+ 	dw8250_idle_exit(p);
++force:
++	/* Allwinner: force the update through BUSY with the HALT register */
++	d->in_idle = 1;
++	dw8250_writel_ext(p, 0xa4, BIT(1));
++	serial_port_out(p, UART_LCR, up->lcr | UART_LCR_DLAB);
++	serial_dl_write(up, quot);
++	serial_port_out(p, UART_LCR, up->lcr);
++	dw8250_writel_ext(p, 0xa4, BIT(1) | BIT(2));
++	while ((dw8250_readl_ext(p, 0xa4) & BIT(2)) && --tries)
++		udelay(1);
++	dw8250_writel_ext(p, 0xa4, 0);
++	d->in_idle = 0;
+ }
+ 
+ /*
+@@ -839,6 +858,11 @@
+ 	if (data->data.line < 0)
+ 		return data->data.line;
+ 
++	/* Autoconfig drops UART_CAP_NOTEMT, which em485 needs here */
++	if (!data->skip_autocfg)
++		serial8250_get_port(data->data.line)->capabilities |=
++			UART_CAP_NOTEMT;
++
+ 	/*
+ 	 * Some platforms may provide a reference clock shared between several
+ 	 * devices. In this case any clock state change must be known to the
+-- 
+2.43.0
