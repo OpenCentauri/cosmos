@@ -14,10 +14,11 @@ SRC_URI = "git://github.com/jamesturton/kalico.git;protocol=https;branch=cs123x 
     file://0003-drv8833-motor-control.patch \
     file://0004-allow-config-exclude.patch \
     file://0001-Increase-max-velocity-in-resonance-tester.patch \
+    file://0005-stm32-serial-rs485-de-pin.patch \
 "
 SRCREV = "a92a0fcc7dacf739494883c8f153189bd9f46577"
 
-PR = "r13"
+PR = "r14"
 
 DEPENDS = " \
     python3-native \
