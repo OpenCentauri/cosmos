@@ -16,7 +16,7 @@ SERIALPORT="/dev/ttyS0"
 GPIO="43"
 
 update(){
-    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --timeout 20 &
+    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --baud 250000 --timeout 20 &
     FLASHER=$!
     sleep 1
 
@@ -51,12 +51,7 @@ case "$1" in
         else
             echo "Firmware version mismatch or not installed, flashing firmware..."
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing bed. DO NOT POWER OFF"
-            # The first open of the UART after boot can leave the UART stuck in
-            # BUSY with DLAB set, so nothing is received. Reopening fixes it.
-            if ! update; then
-                echo "Retrying firmware flash..."
-                update
-            fi
+            update
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;

@@ -56,18 +56,7 @@ case "$1" in
         else
             echo "Firmware version mismatch or not installed, flashing firmware..."
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG Flashing canvas. DO NOT POWER OFF"
-            if update; then
-                # If we succede updating firmware then indicate canvas
-                # is connected
-                config-manager extras elegoo_canvas True
-            else
-                # The first open of the UART after boot can leave the UART stuck in
-                # BUSY with DLAB set, so nothing is received. Reopening fixes it.
-                echo "Retrying firmware flash..."
-                if update; then
-                    config-manager extras elegoo_canvas True
-                fi
-            fi
+            update
             PSPLASH_FIFO_DIR="/var/psplash" psplash-write "MSG  "
         fi
         ;;

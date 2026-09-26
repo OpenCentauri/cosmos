@@ -6,10 +6,10 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://../LICENSE;md5=0a18a528575a965515cdd877f88b3c4c"
 
 SRC_URI += " \
-    git://github.com/jamesturton/OpenCentauri.git;protocol=https;nobranch=1;branch=jt \
+    git://github.com/jamesturton/OpenCentauri.git;protocol=https;nobranch=1;branch=mcu-flasher-cc2 \
 "
-SRCREV = "83e2dc2ab0c7f512f63a795ffa57a13d4c1dbb16"
-PR = "r3"
+SRCREV = "bafc96a448800c2398d68987d6b23dcd22aed114"
+PR = "r4"
 
 S = "${UNPACKDIR}/${PN}-${PV}/mcu-flasher"
 CARGO_SRC_DIR = ""
