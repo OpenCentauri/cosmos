@@ -15,10 +15,11 @@ SRC_URI = "git://github.com/OpenCentauri/kalico.git;protocol=https;branch=cs1237
     file://0004-allow-config-exclude.patch \
     file://0001-Increase-max-velocity-in-resonance-tester.patch \
     file://0005-stm32-serial-rs485-de-pin.patch \
+    file://canvas_rfid.py;subdir=${BP}/klippy/extras \
 "
 SRCREV = "5e7d9bce5e052c3db682efa961df37727cabc282"
 
-PR = "r15"
+PR = "r16"
 
 DEPENDS = " \
     python3-native \
