@@ -48,6 +48,7 @@ python () {
 
 python do_elegoo_ota() {
     import hashlib
+    import hmac
     import io
     import json
     import os
@@ -55,9 +56,7 @@ python do_elegoo_ota() {
     import subprocess
     import sys
     import zipfile
-    from datetime import datetime
-
-    # Output is intentionally not reproducible: random IV + wall-clock timestamp per build.
+    import time
 
     MAGIC = b'ELEG'
     HEADER_SIZE = 512
@@ -108,11 +107,19 @@ python do_elegoo_ota() {
 
 
     def eleg_encrypt(pkg_type, filename, plain, key_hex, priv_key_path):
-        iv = os.urandom(16)
+        # deterministic IV based off key, filename, plaintext
+        iv = hmac.new(bytes.fromhex(key_hex), filename.encode('ascii') + b'\0' + plain,
+                      hashlib.sha256).digest()[:16]
         enc, enc_size = aes_cbc_encrypt(key_hex, iv, plain)
         return build_header(package_type=pkg_type, encrypted=True, filename=filename,
                             filesize=len(plain), encrypt_filesize=enc_size,
                             iv=iv, payload=enc, priv_key_path=priv_key_path) + enc
+
+    def zip_add(zf, name, data, date_time):
+        zi = zipfile.ZipInfo(name, date_time=date_time)
+        zi.compress_type = zipfile.ZIP_DEFLATED
+        zi.external_attr = 0o644 << 16
+        zf.writestr(zi, data)
 
     swu_path = os.path.join(d.getVar('DEPLOY_DIR_IMAGE'), d.getVar('ELEGOO_OTA_SWU'))
     if not os.path.exists(swu_path):
@@ -126,7 +133,8 @@ python do_elegoo_ota() {
     priv = d.getVar('ELEGOO_OTA_PRIVATE_KEY')
 
     swu = open(swu_path, 'rb').read()
-    stamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    sde = time.gmtime(int(d.getVar('SOURCE_DATE_EPOCH')))
+    stamp = time.strftime('%Y%m%d%H%M%S', sde)
     base = f'{prefix}_{fw_version}_{stamp}'
 
     # inner: encrypted swu
@@ -140,9 +148,9 @@ python do_elegoo_ota() {
 
     # outer: unencrypted zip of the two .sig members
     zbio = io.BytesIO()
-    with zipfile.ZipFile(zbio, 'w', zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr('ota-package-list.json.sig', json_sig)
-        zf.writestr(f'{base}.swu.sig', swu_sig)
+    with zipfile.ZipFile(zbio, 'w') as zf:
+        zip_add(zf, 'ota-package-list.json.sig', json_sig, sde[:6])
+        zip_add(zf, f'{base}.swu.sig', swu_sig, sde[:6])
     blob = zbio.getvalue()
 
     outer = build_header(package_type=4, encrypted=False, filename=f'{base}.zip',
