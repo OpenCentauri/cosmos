@@ -1,4 +1,4 @@
-# short-description: Create MMC image for Elegoo Centauri Carbon 2
+# short-description: Create MMC image for Elegoo Centauri Carbon 1
 # long-description:
 # Image for the Elegoo Centauri Carbon 1 (Allwinner R528) that reproduces the
 # stock eMMC partition layout.
