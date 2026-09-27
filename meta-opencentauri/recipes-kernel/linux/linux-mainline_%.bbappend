@@ -25,6 +25,6 @@ SRC_URI:append = " \
 	file://0001-Add-support-for-st77922-touchscreen-driver.patch \
 "
 
-SRC_URI:append:elegoo-centauri-carbon2 = " \
+SRC_URI:append:centauri-carbon-2 = " \
 	file://cc2-mipi.cfg \
 "

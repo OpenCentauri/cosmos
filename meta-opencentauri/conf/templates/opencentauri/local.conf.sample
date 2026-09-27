@@ -1,4 +1,4 @@
-MACHINE ?= "elegoo-centauri-carbon1"
+MACHINE ?= "centauri-carbon-1"
 DISTRO = "cosmos"
 
 BB_DISKMON_DIRS ??= "\

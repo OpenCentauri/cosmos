@@ -1,9 +1,7 @@
 software =
 {
     version = "@@DISTRO_VERSION@@";
-    description = "Firmware update for OpenCentauri";
-
-    hardware-compatibility: [ "1.0" ];
+    description = "Firmware update for Cosmos";
 
     stable = {
 
@@ -12,15 +10,15 @@ software =
             images: (
                 {
                     filename = "bootA.img";
-                    device = "/dev/mmcblk0p7";
+                    device = "/dev/mmcblk0p6";
                     installed-directly = true;
                     sha256 = "$swupdate_get_sha256(bootA.img)"
                 },
                 {
-                    filename = "opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs";
+                    filename = "cosmos-image-mmc-@@MACHINE@@.squashfs";
                     device = "/dev/mmcblk0p8";
                     installed-directly = true;
-                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs)"
+                    sha256 = "$swupdate_get_sha256(cosmos-image-mmc-@@MACHINE@@.squashfs)"
                 },
                 {
                     filename = "u-boot-sunxi-with-spl.bin";
@@ -31,7 +29,7 @@ software =
                 },
                 {
                     filename = "bootlogos.img";
-                    device = "/dev/mmcblk0p1";
+                    device = "/dev/mmcblk0p2";
                     installed-directly = true;
                     sha256 = "$swupdate_get_sha256(bootlogos.img)"
                 }
@@ -39,7 +37,7 @@ software =
             bootenv: (
                 {
                     name = "boot_part";
-                    value = "7";
+                    value = "6";
                 },
                 {
                     name = "mmc_root";
@@ -48,6 +46,18 @@ software =
                 {
                     name = "systemAB_next";
                     value = "B";
+                },
+                {
+                    name = "boot_partition";
+                    value = "bootB";
+                },
+                {
+                    name = "root_partition";
+                    value = "rootfsB";
+                },
+                {
+                    name = "swu_next";
+                    value = "reboot";
                 },
                 {
                     name = "swu_version";
@@ -59,7 +69,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
                     name = "bootcmd_";
@@ -67,7 +77,7 @@ software =
                 },
                 {
                     name = "bootcmd_mainline";
-                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 @@MACHINE@@.dtb; bootz 43000000 - 43800000";
+                    value = "run setargs_mainline; fatload mmc 1:${boot_part} 43000000 zImage; fatload mmc 1:${boot_part} 43800000 @@MACHINE@@.dtb; bootz 43000000 - 43800000";
                 },
                 {
                     name = "bootcmd";
@@ -75,7 +85,7 @@ software =
                 },
                 {
                     name = "preboot";
-                    value = "load mmc 0:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                    value = "load mmc 1:2 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
                 },
                 {
                     name = "stdin";
@@ -97,15 +107,15 @@ software =
             images: (
                 {
                     filename = "bootA.img";
-                    device = "/dev/mmcblk0p4";
+                    device = "/dev/mmcblk0p5";
                     installed-directly = true;
                     sha256 = "$swupdate_get_sha256(bootA.img)"
                 },
                 {
-                    filename = "opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs";
-                    device = "/dev/mmcblk0p5";
+                    filename = "cosmos-image-mmc-@@MACHINE@@.squashfs";
+                    device = "/dev/mmcblk0p7";
                     installed-directly = true;
-                    sha256 = "$swupdate_get_sha256(opencentauri-image-mmc-@@MACHINE@@.rootfs.squashfs)"
+                    sha256 = "$swupdate_get_sha256(cosmos-image-mmc-@@MACHINE@@.squashfs)"
                 },
                 {
                     filename = "u-boot-sunxi-with-spl.bin";
@@ -124,15 +134,27 @@ software =
             bootenv: (
                 {
                     name = "boot_part";
-                    value = "4";
+                    value = "5";
                 },
                 {
                     name = "mmc_root";
-                    value = "/dev/mmcblk0p5";
+                    value = "/dev/mmcblk0p7";
                 },
                 {
                     name = "systemAB_next";
                     value = "A";
+                },
+                {
+                    name = "boot_partition";
+                    value = "bootA";
+                },
+                {
+                    name = "root_partition";
+                    value = "rootfsA";
+                },
+                {
+                    name = "swu_next";
+                    value = "reboot";
                 },
                 {
                     name = "swu_version";
@@ -144,7 +166,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
                 },
                 {
                     name = "bootcmd_";
@@ -152,7 +174,7 @@ software =
                 },
                 {
                     name = "bootcmd_mainline";
-                    value = "run setargs_mainline; fatload mmc 0:${boot_part} 43000000 zImage; fatload mmc 0:${boot_part} 43800000 @@MACHINE@@.dtb; bootz 43000000 - 43800000";
+                    value = "run setargs_mainline; fatload mmc 1:${boot_part} 43000000 zImage; fatload mmc 1:${boot_part} 43800000 @@MACHINE@@.dtb; bootz 43000000 - 43800000";
                 },
                 {
                     name = "bootcmd";
@@ -160,7 +182,7 @@ software =
                 },
                 {
                     name = "preboot";
-                    value = "load mmc 0:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                    value = "load mmc 1:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
                 },
                 {
                     name = "stdin";

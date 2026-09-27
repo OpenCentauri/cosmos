@@ -25,17 +25,17 @@ The build supports different machine configurations for the Centauri Carbon vari
 
 | Machine | Description |
 |---------|-------------|
-| `elegoo-centauri-carbon1` | Original Centauri Carbon 1 (default) |
-| `elegoo-centauri-carbon2` | Centauri Carbon 2 |
+| `centauri-carbon-1` | Centauri Carbon 1 (default) |
+| `centauri-carbon-2` | Centauri Carbon 2 |
 
 The default in `build/conf/local.conf` is set to CC1:
 ```bash
-MACHINE ?= "elegoo-centauri-carbon1"
+MACHINE ?= "centauri-carbon-1"
 ```
 
 To build for CC2, specify the machine on the command line:
 ```bash
-MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-image-usb
+MACHINE=centauri-carbon-2 bitbake cosmos-image-usb
 ```
 
 ### Image Type Selection (USB vs eMMC)
@@ -44,16 +44,16 @@ Choose the appropriate image type based on your target boot media:
 
 | Image Recipe | Target Media | Use Case |
 |--------------|--------------|----------|
-| `opencentauri-image-usb` | USB drive | Development, testing, or running from USB |
-| `opencentauri-image-mmc` | Internal eMMC | Production installation on printer internal storage |
+| `cosmos-image-usb` | USB drive | Development, testing, or running from USB |
+| `cosmos-image-mmc` | Internal eMMC | Production installation on printer internal storage |
 
-#### USB Image (`opencentauri-image-usb`)
+#### USB Image (`cosmos-image-usb`)
 - Boots from USB drive
 - Read-write root filesystem
 - Suitable for development and testing
 - Larger partition layout for USB storage
 
-#### eMMC Image (`opencentauri-image-mmc`)
+#### eMMC Image (`cosmos-image-mmc`)
 - Installs to internal eMMC storage
 - Read-only SquashFS root with overlay filesystem for `/etc` on `/data` partition
 - Optimized for production use
@@ -71,7 +71,7 @@ Choose the appropriate image type based on your target boot media:
    Ensure `MACHINE` is set correctly in `build/conf/local.conf`:
    ```bash
    # For CC1 or CC2
-   MACHINE ?= "elegoo-centauri-carbon1"
+   MACHINE ?= "centauri-carbon-1"
    ```
 
 3. **Run BitBake:**
@@ -79,12 +79,12 @@ Choose the appropriate image type based on your target boot media:
    
    **For USB booting:**
    ```bash
-   bitbake opencentauri-image-usb
+   bitbake cosmos-image-usb
    ```
    
    **For eMMC/internal storage:**
    ```bash
-   bitbake opencentauri-image-mmc
+   bitbake cosmos-image-mmc
    ```
    
    *Note: The first build will take a significant amount of time as it downloads and compiles all necessary packages from source.*
@@ -94,17 +94,17 @@ Choose the appropriate image type based on your target boot media:
 After a successful build, the output files are located in:
 
 ```
-tmp/deploy/images/elegoo-centauri-carbon1/
+tmp/deploy/images/centauri-carbon-1/
 ```
 
 ### USB Image Outputs
-- `opencentauri-image-usb-elegoo-centauri-carbon1.rootfs.wic.gz` - Compressed disk image for USB drives
+- `cosmos-image-usb-centauri-carbon-1.wic.gz` - Compressed disk image for USB drives
 
 ### eMMC Image Outputs
-- `opencentauri-image-mmc-elegoo-centauri-carbon1.rootfs.wic.gz` - Full disk image for eMMC
+- `cosmos-image-mmc-centauri-carbon-1.wic.gz` - Full disk image for eMMC
 - `bootA.img` - Extracted boot partition image (for swupdate)
 - `bootlogos.img` - Extracted boot logos partition image (for swupdate)
-- `rootfs.squashfs` - SquashFS root filesystem
+- `cosmos-image-mmc-centauri-carbon-1.squashfs` - SquashFS root filesystem
 
 ## Disk Space Requirements
 
@@ -119,7 +119,7 @@ Note that the current install requires having a serial UART connected to the CC1
 1. **Install built firmware image to a USB drive.**
    *(Warning: This is a destructive operation! Replace `sdX` with your actual USB drive device like `sdb`, `sdc`, etc.)*
    ```bash
-   sudo bmaptool copy tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-image-usb-elegoo-centauri-carbon1.rootfs.wic.gz /dev/sdX
+   sudo bmaptool copy tmp/deploy/images/centauri-carbon-1/cosmos-image-usb-centauri-carbon-1.wic.gz /dev/sdX
    ```
 
 2. **Boot into FEL Mode.**
@@ -131,7 +131,7 @@ Note that the current install requires having a serial UART connected to the CC1
 3. **Boot the new Yocto firmware image via USB from FEL mode.**
    Run the following commands on your host machine to load the mainline u-boot:
    ```bash
-   sunxi-fel uboot tmp/deploy/images/elegoo-centauri-carbon1/u-boot-sunxi-with-spl.bin
+   sunxi-fel uboot tmp/deploy/images/centauri-carbon-1/u-boot-sunxi-with-spl.bin
    ```
 
    The mainline u-boot followed by the mainline Linux kernel should now boot! This will start up Klipper, Moonraker, Mainsail daemons, and a dropbear SSH server.
@@ -153,18 +153,31 @@ Note that the current install requires having a serial UART connected to the CC1
 5. **Access the Printer Interface.**
    Find the printer's IP address by running `ip a`. Access the Mainsail interface by visiting the printer's IP address via HTTP (port 80) in your web browser!
 
-### eMMC Install Method (Production)
+### eMMC Install Method (CC1)
 
 For installing to internal eMMC storage, use the swupdate-based installation:
 
-1. Build the `opencentauri-upgrade` target. This recipe depends on `opencentauri-image-mmc` and produces the SWUpdate bundle:
+1. Build the `cosmos` target. This recipe depends on `cosmos-image-mmc` and produces the SWUpdate bundle:
    ```bash
-   bitbake opencentauri-upgrade
+   bitbake cosmos
    ```
-2. Locate the generated `.swu` file in `tmp/deploy/images/elegoo-centauri-carbon1/` (e.g. `opencentauri-upgrade-elegoo-centauri-carbon1.swu`).
+2. Locate the generated `.swu` file in `tmp/deploy/images/centauri-carbon-1/` (e.g. `cosmos-centauri-carbon-1.swu`).
 3. Copy the `.swu` file to a FAT32-formatted USB drive in the `install_opencentauri` folder, renaming it to `update.swu`.
 4. Insert the USB drive into the printer
 5. Import the `IMPORT_ME_DO_NOT_PRINT` file via the printer screen as you would for stock OpenCentauri
+
+### eMMC Install Method (CC2)
+
+For installing to internal eMMC storage, use the signed archive installation:
+
+1. Build the `cosmos` target. This recipe depends on `cosmos-image-mmc` and produces the .zip.sig bundle:
+   ```bash
+   bitbake cosmos
+   ```
+2. Locate the generated `.zip.sig` file in `tmp/deploy/images/centauri-carbon-2/` (e.g. `cc2_eeb001_26.09.00.00.zip.sig`).
+3. Copy the `.zip.sig` file to the root of a FAT32-formatted USB drive.
+4. Insert the USB drive into the printer
+5. Import the offline update via the printer screen
 
 ## Configuration and Services
 

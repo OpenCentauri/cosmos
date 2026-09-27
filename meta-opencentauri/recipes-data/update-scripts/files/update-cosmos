@@ -5,10 +5,10 @@ set -e
 RELEASE=$(config-manager update release)
 case "$RELEASE" in
     nightly)
-        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/cosmos-@MACHINE@.swu"
         ;;
     *)
-        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/cosmos-centauri-carbon-1.swu"
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/cosmos-@MACHINE@.swu"
         ;;
 esac
 

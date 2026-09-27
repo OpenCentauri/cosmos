@@ -22,14 +22,40 @@ jobs:
       - name: Download CC1 Firmware artifact
         uses: actions/download-artifact@v4
         with:
-          name: CC1 Firmware
+          name: centauri-carbon-1 Firmware
           path: ./firmware
 
-      - name: Upload SWU to nightly release
+      - name: Download CC2 Firmware artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: centauri-carbon-2 Firmware
+          path: ./firmware
+
+      - name: Download CC2 Elegoo OTA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: centauri-carbon-2 Elegoo OTA
+          path: ./firmware
+
+      - name: Remove previous Elegoo OTA bundle from nightly release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The bundle name includes the version, so --clobber won't replace it
+          gh release view 0.0.0 --repo OpenCentauri/cosmos --json assets \
+            --jq '.assets[].name | select(test("^cc2_eeb001_.*\\.zip\\.sig$"))' \
+            | while read -r asset; do
+                gh release delete-asset 0.0.0 "$asset" --yes --repo OpenCentauri/cosmos
+              done
+
+      - name: Upload firmware to nightly release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload 0.0.0 \
-            "./firmware/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu" \
+            "./firmware/cosmos-centauri-carbon-1.swu" \
+            "./firmware/cosmos-centauri-carbon-2.swu" \
+            ./firmware/cc2_eeb001_*.zip.sig \
             --clobber \
-            --repo OpenCentauri/yocto-opencentauri
+            --repo OpenCentauri/cosmos
+

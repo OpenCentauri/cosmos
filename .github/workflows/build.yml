@@ -65,40 +65,44 @@ jobs:
       - name: Build CC1 image
         run: |
           TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
-          MACHINE=elegoo-centauri-carbon1 bitbake opencentauri-upgrade
+          MACHINE=centauri-carbon-1 bitbake cosmos
 
       - name: Build CC2 image
         run: |
           TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
-          MACHINE=elegoo-centauri-carbon2 bitbake opencentauri-upgrade
+          MACHINE=centauri-carbon-2 bitbake cosmos
 
       - name: Upload build artifacts CC1 (SWU only)
         uses: actions/upload-artifact@v4
         with:
-          name: CC1 Firmware
-          path: build/tmp/deploy/images/elegoo-centauri-carbon1/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu
+          name: centauri-carbon-1 Firmware
+          path: build/tmp/deploy/images/centauri-carbon-1/cosmos-centauri-carbon-1.swu
 
-      - name: Upload build artifacts CC2 (SWU + Elegoo bundle)
+      - name: Upload build artifacts CC2 (SWU only)
         uses: actions/upload-artifact@v4
         with:
-          name: CC2 Firmware
-          path: |
-            build/tmp/deploy/images/elegoo-centauri-carbon2/opencentauri-upgrade-elegoo-centauri-carbon2.rootfs.swu
-            build/tmp/deploy/images/elegoo-centauri-carbon2/cc2_eeb001_*.zip.sig
+          name: centauri-carbon-2 Firmware
+          path: build/tmp/deploy/images/centauri-carbon-2/cosmos-centauri-carbon-2.swu
+
+      - name: Upload build artifacts CC2 (Elegoo OTA bundle)
+        uses: actions/upload-artifact@v4
+        with:
+          name: centauri-carbon-2 Elegoo OTA
+          path: build/tmp/deploy/images/centauri-carbon-2/cc2_eeb001_*.zip.sig
 
       - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}
         uses: actions/upload-artifact@v4
         with:
-          name: elegoo-centauri-carbon1-images
-          path: build/tmp/deploy/images/elegoo-centauri-carbon1/
+          name: centauri-carbon-1-images
+          path: build/tmp/deploy/images/centauri-carbon-1/
 
       - name: Upload build artifacts CC2
         if: ${{ inputs.upload_all_artifacts }}
         uses: actions/upload-artifact@v4
         with:
-          name: elegoo-centauri-carbon2-images
-          path: build/tmp/deploy/images/elegoo-centauri-carbon2/
+          name: centauri-carbon-2-images
+          path: build/tmp/deploy/images/centauri-carbon-2/
 
       - name: Write back cache
         if: ${{ inputs.write_back_cache }}

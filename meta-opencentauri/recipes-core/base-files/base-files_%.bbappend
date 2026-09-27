@@ -12,6 +12,6 @@ do_install:append() {
     install -m 0644 ${UNPACKDIR}/motd-opencentauri ${D}${sysconfdir}/motd
 }
 
-do_install:append:elegoo-centauri-carbon2() {
+do_install:append:centauri-carbon-2() {
     install -d ${D}/opt/usr
 }

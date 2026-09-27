@@ -8,10 +8,10 @@ inherit module
 SRCREV = "bd11969265809a0fc948f1107c8256bbb2c1aa60"
 SRC_URI = "git://github.com/radxa-pkg/aic8800.git;protocol=https;branch=main"
 
-AIC_BUS:elegoo-centauri-carbon1 = "USB"
-AIC_BUS:elegoo-centauri-carbon2 = "SDIO"
-AIC_DRIVER_DIR:elegoo-centauri-carbon1 = "src/USB/driver_fw/drivers/aic8800"
-AIC_DRIVER_DIR:elegoo-centauri-carbon2 = "src/SDIO/driver_fw/driver/aic8800"
+AIC_BUS:centauri-carbon-1 = "USB"
+AIC_BUS:centauri-carbon-2 = "SDIO"
+AIC_DRIVER_DIR:centauri-carbon-1 = "src/USB/driver_fw/drivers/aic8800"
+AIC_DRIVER_DIR:centauri-carbon-2 = "src/SDIO/driver_fw/driver/aic8800"
 
 do_radxa_patches() {
     cd ${S}

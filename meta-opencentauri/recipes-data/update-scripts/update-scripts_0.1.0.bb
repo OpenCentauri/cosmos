@@ -14,7 +14,7 @@ SRC_URI = " \
     file://flash-artifact.py \
 "
 
-SRC_URI:append:elegoo-centauri-carbon2 = " \
+SRC_URI:append:centauri-carbon-2 = " \
     file://stock-bed.bin \
     file://stock-toolhead.bin \
     file://stock-canvas.bin \
@@ -28,14 +28,14 @@ RDEPENDS:${PN} = " \
     config-manager \
 "
 
-RDEPENDS:${PN}:append:elegoo-centauri-carbon1 = " \
+RDEPENDS:${PN}:append:centauri-carbon-1 = " \
     flashtool \
     toolhead-bootloader-stock \
     bed-bootloader-stock \
     canvas-bootloader-stock \
 "
 
-RDEPENDS:${PN}:append:elegoo-centauri-carbon2 = " \
+RDEPENDS:${PN}:append:centauri-carbon-2 = " \
     mcu-flasher \
 "
 
@@ -51,9 +51,11 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
+
+    sed -i -e 's,@MACHINE@,${MACHINE},g' ${D}${bindir}/update-cosmos ${D}${bindir}/flash-artifact
 }
 
-do_install:append:elegoo-centauri-carbon2() {
+do_install:append:centauri-carbon-2() {
     install -d ${D}/lib/firmware
     install -m 0644 ${S}/stock-bed.bin ${D}/lib/firmware/
     install -m 0644 ${S}/stock-toolhead.bin ${D}/lib/firmware/
@@ -69,7 +71,7 @@ FILES:${PN} += " \
     ${bindir}/restore-mcu-firmware \
     ${bindir}/flash-artifact \
 "
-FILES:${PN}:append:elegoo-centauri-carbon2 = " \
+FILES:${PN}:append:centauri-carbon-2 = " \
     /lib/firmware/stock-bed.bin \
     /lib/firmware/stock-toolhead.bin \
     /lib/firmware/stock-canvas.bin \
