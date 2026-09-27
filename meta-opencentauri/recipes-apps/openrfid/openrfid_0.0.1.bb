@@ -5,8 +5,8 @@ LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 SRC_URI = "git://github.com/suchmememanyskill/OpenRFID.git;protocol=https;branch=main"
-SRCREV = "1a6f605d0334157b532afdd14f89fc182d9000f6"
-PR = "r1"
+SRCREV = "a13bc9e181374e182f61db4e69abf9fa1786cc29"
+PR = "r2"
 
 inherit allarch
 
