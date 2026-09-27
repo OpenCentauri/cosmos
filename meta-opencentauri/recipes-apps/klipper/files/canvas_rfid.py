@@ -30,7 +30,14 @@ STATUS_OK, STATUS_NO_TAG = 0x00, 0x01
 REPLY_OVERHEAD = 8  # 7 header bytes + XOR
 # 11 pages = 52-byte reply, the most that fits in one i2c_read_response
 MAX_READ_PAGES = 11
-# NTAG213 incl. config pages, used when the capability container is invalid
+# Physical page count (incl. header and config pages) by CC size byte
+PAGE_COUNTS_BY_CC_SIZE = {
+    0x06: 16,  # MIFARE Ultralight
+    0x12: 45,  # NTAG213
+    0x3E: 135,  # NTAG215
+    0x6D: 231,  # NTAG216
+}
+# NTAG213 incl. config pages, used when the capability container is unknown
 DEFAULT_LAST_PAGE = 44
 READ_RETRY_TIME = 5.0
 ELEGOO_MAGIC = bytes((0x36, 0xEE, 0xEE, 0xEE))
@@ -40,6 +47,7 @@ PROCESSORS = {
     "elegoo": ("tag.elegoo.processor", "ElegooTagProcessor"),
     "tigertag": ("tag.tigertag.processor", "TigerTagProcessor"),
     "openspool": ("tag.openspool.processor", "OpenspoolTagProcessor"),
+    "opentag3d": ("tag.opentag3d.processor", "OpenTag3DTagProcessor"),
     "spoolease": ("tag.spoolease.processor", "SpooleaseTagProcessor"),
     "anycubic": ("tag.anycubic.processor", "AnycubicTagProcessor"),
 }
@@ -72,10 +80,12 @@ def parse_reply(frame, rx):
 
 
 def tag_last_page(head):
-    # Capability container (page 3): E1 . version . data area size / 8
+    # Capability container (page 3): E1 . version . NDEF area size / 8 . access.
+    # The NDEF area can be smaller than the user memory (NTAG215/216), so map
+    # the factory CC size to the chip's physical page count, as OpenRFID does
     cc = head[12:16]
-    if len(cc) == 4 and cc[0] == 0xE1 and cc[2]:
-        return 3 + 2 * cc[2]
+    if len(cc) == 4 and cc[0] == 0xE1 and cc[2] in PAGE_COUNTS_BY_CC_SIZE:
+        return PAGE_COUNTS_BY_CC_SIZE[cc[2]] - 1
     return DEFAULT_LAST_PAGE
 
 
@@ -138,7 +148,7 @@ class CanvasRFID:
         )
         self.retries = config.getint("retries", 3, minval=0)
         self.max_pages = config.getint(
-            "max_pages", 135, minval=MAX_READ_PAGES, maxval=256
+            "max_pages", 231, minval=MAX_READ_PAGES, maxval=256
         )
         names = config.getlist(
             "openrfid_processors", list(PROCESSORS), count=None
