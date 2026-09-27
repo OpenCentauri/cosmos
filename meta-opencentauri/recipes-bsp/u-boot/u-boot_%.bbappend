@@ -18,7 +18,7 @@ SRC_URI:append = " \
 	file://0001-Use-PE2-and-PE3-for-UART2.patch \
 "
 
-SRC_URI:append:elegoo-centauri-carbon2 = " \
+SRC_URI:append:centauri-carbon-2 = " \
 	file://0002-video-add-st77922-panel-and-allwinner-dsi-host.patch \
 "
 

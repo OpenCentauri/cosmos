@@ -1,4 +1,4 @@
-DESCRIPTION = "OpenCentauri Base Image"
+DESCRIPTION = "Cosmos Base Image"
 LICENSE = "GPL-3.0-only"
 
 IMAGE_INSTALL = " \
