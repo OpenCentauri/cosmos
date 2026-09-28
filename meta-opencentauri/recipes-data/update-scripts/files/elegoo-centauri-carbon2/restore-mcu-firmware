@@ -23,8 +23,9 @@ update(){
     FIRMWARE="$1"
     SERIALPORT="$2"
     GPIO="$3"
+    EXTRA_ARGS="$4"
 
-    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --timeout 20 &
+    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --timeout 20 $EXTRA_ARGS &
     FLASHER=$!
     sleep 1
 
@@ -46,10 +47,10 @@ update(){
 # Flash stock firmware
 service klipper stop
 
-update $STOCK_FW_BED $SERIALPORT_BED $GPIO_BED
+update $STOCK_FW_BED $SERIALPORT_BED $GPIO_BED "--baud 250000"
 rm -f $VERSION_BED
 
-update $STOCK_FW_TOOLHEAD $SERIALPORT_TOOLHEAD $GPIO_TOOLHEAD
+update $STOCK_FW_TOOLHEAD $SERIALPORT_TOOLHEAD $GPIO_TOOLHEAD "--baud 250000"
 rm -f $VERSION_TOOLHEAD
 
 if [ "$FLASH_CANVAS" = "True" ]; then
