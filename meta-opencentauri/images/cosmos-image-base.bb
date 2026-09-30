@@ -47,6 +47,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     afc \
     tmc-autotune \ 
     dragonbreath \
+    check-disk \
 "
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
