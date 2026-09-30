@@ -123,7 +123,7 @@ new file mode 100644
 index 00000000000..8755d2c78c7
 --- /dev/null
 +++ b/drivers/video/panel-sitronix-st77922.c
-@@ -0,0 +1,328 @@
+@@ -0,0 +1,314 @@
 +#include <backlight.h>
 +#include <dm.h>
 +#include <dm/device_compat.h>
@@ -317,31 +317,16 @@ index 00000000000..8755d2c78c7
 +	mdelay(20);
 +	dm_gpio_set_value(&priv->reset, false);
 +	mdelay(120);
++	mdelay(100);
++
++	ret = sunxi_mipi_dsi_start_hs_clock(priv->host);
++	if (ret)
++		return ret;
++	mdelay(100);
 +
 +	printf("st77922: sending init sequence\n");
 +	ret = st77922_send_init_sequence(dsi);
 +	if (ret)
-+		return ret;
-+
-+	ret = mipi_dsi_dcs_set_pixel_format(dsi,
-+					    (MIPI_DCS_PIXEL_FMT_24BIT << 4) |
-+					    MIPI_DCS_PIXEL_FMT_24BIT);
-+	if (ret < 0)
-+		return ret;
-+
-+	{
-+		u8 addr_mode[] = { 0x36, 0x00 };
-+		ret = mipi_dsi_dcs_write_buffer(dsi, addr_mode, 2);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	ret = mipi_dsi_dcs_set_column_address(dsi, 0, 531);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = mipi_dsi_dcs_set_page_address(dsi, 0, 299);
-+	if (ret < 0)
 +		return ret;
 +
 +	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
@@ -359,21 +344,21 @@ index 00000000000..8755d2c78c7
 +		return ret;
 +	mdelay(100);
 +
-+	/*
-+	 * The DSI host was left in command mode by the first dsi_host_enable()
-+	 * call. Now that the panel is initialized, start HS video mode.
-+	 */
-+	printf("st77922: enabling HS video\n");
-+	ret = dsi_host_enable(priv->host);
-+	if (ret < 0)
-+		return ret;
++	return 0;
++}
 +
-+	if (priv->backlight) {
-+		printf("st77922: enabling backlight\n");
-+		ret = backlight_enable(priv->backlight);
-+		if (ret && ret != -ENOSYS && ret != -ENOENT)
-+			return ret;
-+	}
++static int st77922_panel_set_backlight(struct udevice *dev, int percent)
++{
++	struct st77922_panel_priv *priv = dev_get_priv(dev);
++	int ret;
++
++	if (!priv->backlight)
++		return 0;
++
++	printf("st77922: enabling backlight\n");
++	ret = backlight_enable(priv->backlight);
++	if (ret && ret != -ENOSYS && ret != -ENOENT)
++		return ret;
 +
 +	return 0;
 +}
@@ -434,6 +419,7 @@ index 00000000000..8755d2c78c7
 +
 +static const struct panel_ops st77922_panel_ops = {
 +	.enable_backlight = st77922_panel_enable,
++	.set_backlight = st77922_panel_set_backlight,
 +	.get_display_timing = st77922_panel_get_display_timing,
 +};
 +
@@ -535,7 +521,7 @@ diff --git a/drivers/video/sunxi/sunxi_lcd.c b/drivers/video/sunxi/sunxi_lcd.c
 index 6c89f10c84f..1f376385a23 100644
 --- a/drivers/video/sunxi/sunxi_lcd.c
 +++ b/drivers/video/sunxi/sunxi_lcd.c
-@@ -9,21 +9,101 @@
+@@ -9,21 +9,104 @@
  #include <log.h>
  #include <panel.h>
  #include <video_bridge.h>
@@ -545,6 +531,9 @@ index 6c89f10c84f..1f376385a23 100644
 +#include <dm/ofnode.h>
 +#include <dm/ofnode_graph.h>
 +#include <dm/root.h>
++#include <backlight.h>
++#include <dsi_host.h>
++#include <linux/delay.h>
  #include <edid.h>
  #include <asm/io.h>
 +#include <clk.h>
@@ -637,7 +626,7 @@ index 6c89f10c84f..1f376385a23 100644
  static void sunxi_lcdc_config_pinmux(void)
  {
  #if defined(CONFIG_MACH_SUN50I)
-@@ -56,7 +136,9 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
+@@ -56,7 +139,9 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
  	struct sunxi_lcdc_reg * const lcdc =
  	       (struct sunxi_lcdc_reg *)SUNXI_LCD0_BASE;
  	struct sunxi_lcd_priv *priv = dev_get_priv(dev);
@@ -648,7 +637,7 @@ index 6c89f10c84f..1f376385a23 100644
  	int clk_div, clk_double, ret;
  
  	/*
-@@ -80,9 +162,54 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
+@@ -80,9 +165,60 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
  #endif
  
  	lcdc_init(lcdc);
@@ -695,6 +684,12 @@ index 6c89f10c84f..1f376385a23 100644
 +		lcdc_pll_set(ccm, 0,
 +			     edid->pixelclock.typ / 1000 * priv->panel_bpp / 1 / SUN6I_DSI_TCON_DIV,
 +			     &clk_div, &clk_double, false);
++#ifdef CONFIG_SUNXI_GEN_NCAT2
++		writel(CCM_LCD_CH0_CTRL_GATE | CCM_LCD_CH0_CTRL_PLL3_2X |
++		       CCM_LCD_CH0_CTRL_M(1),
++		       (void __iomem *)SUNXI_CCM_BASE + CCU_NCAT2_LCD0_CLK_CFG);
++		clk_div = SUN6I_DSI_TCON_DIV;
++#endif
 +	} else
 +#endif
 +	{
@@ -706,7 +701,7 @@ index 6c89f10c84f..1f376385a23 100644
  	lcdc_tcon0_mode_set(lcdc, edid, clk_div, false,
  			    priv->panel_bpp, CONFIG_VIDEO_LCD_DCLK_PHASE);
  	if (priv->rb_swap)
-@@ -91,11 +218,87 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
+@@ -91,11 +227,85 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
  	else
  		clrbits_le32(&lcdc->tcon0_ctrl,
  			     SUNXI_LCDC_TCON0_CTRL_RB_SWAP);
@@ -764,40 +759,38 @@ index 6c89f10c84f..1f376385a23 100644
 +#endif
 +
 +#ifdef CONFIG_VIDEO_SUNXI_MIPI_DSI
-+	/*
-+	 * The panel's enable_backlight() puts the DSI host into command mode,
-+	 * sends the DCS init sequence, and then switches it to HS video mode.
-+	 * The TCON must be configured before this, and must be enabled after
-+	 * the panel is in HS video mode.
-+	 */
 +	if (priv->has_dsi) {
 +		if (priv->panel) {
 +			printf("sunxi_lcd: enable panel\n");
 +			ret = panel_enable_backlight(priv->panel);
 +			printf("sunxi_lcd: panel enable ret=%d\n", ret);
 +		}
++		mdelay(10);
 +	}
 +#endif
 +
 +	printf("sunxi_lcd: enable lcdc\n");
  	lcdc_enable(lcdc, priv->panel_bpp);
- 
+
 -	ret = uclass_get_device(UCLASS_PANEL, 0, &panel);
 -	if (!ret)
 -		panel_enable_backlight(panel);
 +#ifdef CONFIG_VIDEO_SUNXI_MIPI_DSI
-+	/*
-+	 * The framebuffer may already contain console output written before the
-+	 * panel path became active. Force a sync now so the first visible frame
-+	 * is pushed as soon as the DSI/LCDC pipeline is up.
-+	 */
-+	if (priv->has_dsi)
++	if (priv->has_dsi) {
++		printf("sunxi_lcd: enabling HS video\n");
++		ret = dsi_host_enable(dsi_host);
++		if (ret)
++			return ret;
++		mdelay(50);
++		if (priv->panel)
++			panel_set_backlight(priv->panel, BACKLIGHT_DEFAULT);
 +		video_sync_all();
++	}
 +#endif
  
  	return 0;
  }
-@@ -110,6 +313,32 @@ static int sunxi_lcd_read_timing(struct udevice *dev,
+@@ -110,6 +320,32 @@ static int sunxi_lcd_read_timing(struct udevice *dev,
  	return 0;
  }
  
@@ -830,7 +823,7 @@ index 6c89f10c84f..1f376385a23 100644
  static int sunxi_lcd_probe(struct udevice *dev)
  {
  	struct udevice *cdev;
-@@ -117,6 +346,23 @@ static int sunxi_lcd_probe(struct udevice *dev)
+@@ -117,6 +353,23 @@ static int sunxi_lcd_probe(struct udevice *dev)
  	int ret;
  	int node, timing_node, val;
  
@@ -854,7 +847,7 @@ index 6c89f10c84f..1f376385a23 100644
  #ifdef CONFIG_VIDEO_BRIDGE
  	/* Try to get timings from bridge first */
  	ret = uclass_get_device(UCLASS_VIDEO_BRIDGE, 0, &cdev);
-@@ -160,8 +406,6 @@ static int sunxi_lcd_probe(struct udevice *dev)
+@@ -160,8 +413,6 @@ static int sunxi_lcd_probe(struct udevice *dev)
  	val = fdtdec_get_int(gd->fdt_blob, node, "bits-per-pixel", -1);
  	if (val != -1)
  		priv->panel_bpp = val;
@@ -863,7 +856,7 @@ index 6c89f10c84f..1f376385a23 100644
  
  	priv->rb_swap = fdtdec_get_bool(gd->fdt_blob, node, "rb-swap");
  
-@@ -173,15 +417,22 @@ static const struct dm_display_ops sunxi_lcd_ops = {
+@@ -173,15 +424,22 @@ static const struct dm_display_ops sunxi_lcd_ops = {
  	.enable = sunxi_lcd_enable,
  };
  
@@ -892,7 +885,7 @@ new file mode 100644
 index 00000000000..3ccbe2fa287
 --- /dev/null
 +++ b/drivers/video/sunxi/sunxi_mipi_dsi.c
-@@ -0,0 +1,1239 @@
+@@ -0,0 +1,1284 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Allwinner sun6i/sun50i MIPI-DSI host driver for U-Boot
@@ -910,15 +903,21 @@ index 00000000000..3ccbe2fa287
 +#include <log.h>
 +#include <mipi_dsi.h>
 +#include <reset.h>
++#include <asm/arch/clock.h>
 +#include <asm/io.h>
 +#include <dm/device_compat.h>
-+#include <u-boot/crc.h>
 +#include <linux/bitops.h>
 +#include <linux/delay.h>
 +#include <linux/iopoll.h>
 +
 +#include "sunxi_mipi_dsi.h"
 +#include "sunxi_tcon.h"
++
++#define CCU_NCAT2_MIPI_DSI_CLK_CFG	0xb24
++#define CCM_MIPI_DSI_CTRL_SRC_MASK	(7 << 24)
++#define CCM_MIPI_DSI_CTRL_SRC_PERI	(1 << 24)
++#define CCM_MIPI_DSI_CTRL_M(n)		(((n) - 1) & 0xf)
++#define CCM_MIPI_DSI_CTRL_M_MASK	0xf
 +
 +#define SUN6I_DPHY_GCTL_REG		0x00
 +#define SUN6I_DPHY_GCTL_LANE_NUM(n)	((((n) - 1) & 3) << 4)
@@ -1039,6 +1038,7 @@ index 00000000000..3ccbe2fa287
 +	const struct sunxi_dphy_variant *dphy_variant;
 +	bool video_configured;
 +	bool video_started;
++	bool hs_clk_started;
 +	unsigned long dphy_rate;
 +};
 +
@@ -1122,9 +1122,25 @@ index 00000000000..3ccbe2fa287
 +	return ecc;
 +}
 +
++static u16 sun6i_dsi_crc_byte(u16 crc, u8 data)
++{
++	int i;
++
++	crc ^= data;
++	for (i = 0; i < 8; i++)
++		crc = (crc & 1) ? (crc >> 1) ^ 0x8408 : crc >> 1;
++
++	return crc;
++}
++
 +static u16 sun6i_dsi_crc_compute(const u8 *buffer, size_t len)
 +{
-+	return crc16_ccitt(0xffff, buffer, len);
++	u16 crc = 0xffff;
++
++	while (len--)
++		crc = sun6i_dsi_crc_byte(crc, *buffer++);
++
++	return crc;
 +}
 +
 +static u16 sun6i_dsi_crc_repeat(u8 pd, size_t len)
@@ -1132,7 +1148,7 @@ index 00000000000..3ccbe2fa287
 +	u16 crc = 0xffff;
 +
 +	while (len--)
-+		crc = crc16_ccitt(crc, &pd, 1);
++		crc = sun6i_dsi_crc_byte(crc, pd);
 +
 +	return crc;
 +}
@@ -1752,12 +1768,12 @@ index 00000000000..3ccbe2fa287
 +		   SUN6I_DPHY_TX_TIME1_CLK_ZERO(50) |
 +		   SUN6I_DPHY_TX_TIME1_CLK_PRE(3) |
 +		   SUN6I_DPHY_TX_TIME1_CLK_POST(10));
-+	dsi_write(dsi, SUN6I_DPHY_TX_TIME2_REG,
-+		  SUN6I_DPHY_TX_TIME2_CLK_TRAIL(30));
-+	dsi_write(dsi, SUN6I_DPHY_TX_TIME3_REG, 0);
-+	dsi_write(dsi, SUN6I_DPHY_TX_TIME4_REG,
-+		  SUN6I_DPHY_TX_TIME4_HS_TX_ANA0(3) |
-+		  SUN6I_DPHY_TX_TIME4_HS_TX_ANA1(3));
++	dphy_write(dsi, SUN6I_DPHY_TX_TIME2_REG,
++		   SUN6I_DPHY_TX_TIME2_CLK_TRAIL(30));
++	dphy_write(dsi, SUN6I_DPHY_TX_TIME3_REG, 0);
++	dphy_write(dsi, SUN6I_DPHY_TX_TIME4_REG,
++		   SUN6I_DPHY_TX_TIME4_HS_TX_ANA0(3) |
++		   SUN6I_DPHY_TX_TIME4_HS_TX_ANA1(3));
 +
 +	dsi->dphy_variant->tx_power_on(dsi);
 +
@@ -1789,7 +1805,6 @@ index 00000000000..3ccbe2fa287
 +{
 +	struct display_timing *timings = &dsi->timings;
 +	u16 delay;
-+	int ret;
 +	u8 lanes = dsi->device ? dsi->device->lanes : 1;
 +	u8 format = dsi->device ?
 +		mipi_dsi_pixel_format_to_bpp(dsi->device->format) : 24;
@@ -1802,13 +1817,6 @@ index 00000000000..3ccbe2fa287
 +	printf("sunxi_dsi: video_setup enter\n");
 +	dphy_rate = timings->pixelclock.typ * format / lanes;
 +	dsi->dphy_rate = dphy_rate;
-+
-+	if (dsi->mod_clk_valid) {
-+		printf("sunxi_dsi: set mod clk\n");
-+		ret = clk_set_rate(&dsi->mod_clk, dphy_rate);
-+		if (ret < 0)
-+			dev_err(dsi->dev, "failed to set mod_clk rate: %d\n", ret);
-+	}
 +
 +	/* Reset and enable the DSI block; D-PHY reset is already released in host init. */
 +	printf("sunxi_dsi: assert reset\n");
@@ -1858,6 +1866,16 @@ index 00000000000..3ccbe2fa287
 +	return 0;
 +}
 +
++static void sunxi_dsi_start_hs_clock(struct sunxi_dsi *dsi)
++{
++	if (dsi->hs_clk_started)
++		return;
++
++	sun6i_dsi_start(dsi, DSI_START_HSC);
++	udelay(1000);
++	dsi->hs_clk_started = true;
++}
++
 +static int sunxi_dsi_video_start(struct sunxi_dsi *dsi)
 +{
 +	if (dsi->video_started)
@@ -1869,8 +1887,7 @@ index 00000000000..3ccbe2fa287
 +			return ret;
 +	}
 +
-+	sun6i_dsi_start(dsi, DSI_START_HSC);
-+	udelay(1000);
++	sunxi_dsi_start_hs_clock(dsi);
 +	sun6i_dsi_start(dsi, DSI_START_HSD);
 +
 +	dsi_write(dsi, SUN6I_DSI_BASIC_SIZE0_REG,
@@ -1896,6 +1913,7 @@ index 00000000000..3ccbe2fa287
 +	dsi_write(dsi, SUN6I_DSI_CTL_REG, 0);
 +	dsi->video_started = false;
 +	dsi->video_configured = false;
++	dsi->hs_clk_started = false;
 +	return 0;
 +}
 +
@@ -1924,6 +1942,13 @@ index 00000000000..3ccbe2fa287
 +	ret = clk_enable(&dsi->dphy_bus_clk);
 +	if (ret)
 +		return ret;
++
++#ifdef CONFIG_SUNXI_GEN_NCAT2
++	clrsetbits_le32((void __iomem *)SUNXI_CCM_BASE + CCU_NCAT2_MIPI_DSI_CLK_CFG,
++			CCM_MIPI_DSI_CTRL_SRC_MASK | CCM_MIPI_DSI_CTRL_M_MASK,
++			CCM_MIPI_DSI_CTRL_SRC_PERI |
++			CCM_MIPI_DSI_CTRL_M(DIV_ROUND_UP(clock_get_pll6(), 150000000)));
++#endif
 +
 +	ret = clk_enable(&dsi->dphy_mod_clk);
 +	if (ret)
@@ -1976,6 +2001,7 @@ index 00000000000..3ccbe2fa287
 +	struct sunxi_dsi *dsi = dev_get_priv(dev);
 +
 +	sunxi_dsi_video_stop(dsi);
++	dsi->hs_clk_started = false;
 +	if (dsi->mod_clk_valid)
 +		clk_disable(&dsi->mod_clk);
 +	clk_disable(&dsi->bus_clk);
@@ -2086,6 +2112,18 @@ index 00000000000..3ccbe2fa287
 +	return &dsi->host;
 +}
 +
++int sunxi_mipi_dsi_start_hs_clock(struct udevice *dev)
++{
++	struct sunxi_dsi *dsi = dev_get_priv(dev);
++
++	if (!dsi->video_configured)
++		return -EINVAL;
++
++	sunxi_dsi_start_hs_clock(dsi);
++
++	return 0;
++}
++
 +static int sunxi_dsi_remove(struct udevice *dev)
 +{
 +	struct sunxi_dsi *dsi = dev_get_priv(dev);
@@ -2137,7 +2175,7 @@ new file mode 100644
 index 00000000000..6ee778ef30d
 --- /dev/null
 +++ b/drivers/video/sunxi/sunxi_mipi_dsi.h
-@@ -0,0 +1,163 @@
+@@ -0,0 +1,164 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Allwinner sun6i MIPI-DSI host registers (from Linux sun6i_mipi_dsi.h/.c)
@@ -2255,6 +2293,7 @@ index 00000000000..6ee778ef30d
 +#define SUN6I_DSI_SYNC_POINT		40
 +
 +struct mipi_dsi_host *sunxi_mipi_dsi_host(struct udevice *dev);
++int sunxi_mipi_dsi_start_hs_clock(struct udevice *dev);
 +
 +enum sun6i_dsi_start_inst {
 +	DSI_START_LPRX,
@@ -2365,7 +2404,7 @@ new file mode 100644
 index 00000000000..5be7f95d27b
 --- /dev/null
 +++ b/drivers/video/sunxi/sunxi_tcon_top.c
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,99 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
 + * Allwinner TCON-TOP driver for T113/R528 (NCAT2).
@@ -2440,9 +2479,10 @@ index 00000000000..5be7f95d27b
 +	}
 +#endif
 +
-+	/* Route mixer0 -> TCON-LCD0; clear any stale bits first. */
++	/* Route mixer0 -> TCON-LCD0 and mixer1 -> TCON-TV0, as stock does. */
 +	val = 0;
 +	val |= 0 << TCON_TOP_PORT_DE0_SHIFT;
++	val |= 2 << TCON_TOP_PORT_DE1_SHIFT;
 +	writel(val, priv->regs + TCON_TOP_PORT_SEL_REG);
 +
 +	/* Open DSI clock gate; clear other gate/source bits to match Linux. */
