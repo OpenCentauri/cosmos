@@ -16,6 +16,9 @@ jobs:
   publish-nightly:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-nightly
+      queue: max
     permissions:
       contents: write
     steps:
@@ -35,9 +38,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          main_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$main_sha" != "$GITHUB_SHA" ]]; then
+            echo "Skipping nightly release: main is at $main_sha, but this build is $GITHUB_SHA"
+            exit 0
+          fi
+
           gh release upload 0.0.0 \
             "./firmware/cosmos-centauri-carbon-1.swu" \
             "./firmware/cosmos-centauri-carbon-2.swu" \
             --clobber \
             --repo OpenCentauri/cosmos
-
