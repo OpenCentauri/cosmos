@@ -59,7 +59,6 @@
 	backlight: backlight {
 		compatible = "gpio-backlight";
 		gpios = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 - backlight on/off */
-		default-on;
 	};
 };
 
