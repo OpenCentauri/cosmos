@@ -38,7 +38,7 @@
 				 <&ccu CLK_TCON_LCD0>,
 				 <&ccu CLK_BUS_MIPI_DSI>,
 				 <&ccu CLK_MIPI_DSI>,
-				 <&tcon_top CLK_TCON_TOP_DSI>;
+				 <&ccu CLK_BUS_DPSS_TOP>;
 			status = "disabled";
 		};
 	};
