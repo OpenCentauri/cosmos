@@ -1,0 +1,58 @@
+#!/bin/sh
+
+set -e
+
+FLASH_CANVAS="$(config-manager extras elegoo_canvas 2>/dev/null)"
+
+SERIALPORT_BED="/dev/ttyS0"
+VERSION_BED="/etc/bed.ver"
+STOCK_FW_BED="/lib/firmware/stock-bed.bin"
+GPIO_BED="43"
+
+SERIALPORT_TOOLHEAD="/dev/ttyS3"
+VERSION_TOOLHEAD="/etc/toolhead.ver"
+STOCK_FW_TOOLHEAD="/lib/firmware/stock-toolhead.bin"
+GPIO_TOOLHEAD="145"
+
+SERIALPORT_CANVAS="/dev/ttyS1"
+VERSION_CANVAS="/etc/canvas.ver"
+STOCK_FW_CANVAS="/lib/firmware/stock-canvas.bin"
+GPIO_CANVAS="117"
+
+update(){
+    FIRMWARE="$1"
+    SERIALPORT="$2"
+    GPIO="$3"
+
+    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --timeout 20 &
+    FLASHER=$!
+    sleep 1
+
+    echo $GPIO > /sys/class/gpio/export 2>/dev/null || true
+    echo out > /sys/class/gpio/gpio$GPIO/direction
+    echo 0 > /sys/class/gpio/gpio$GPIO/value
+    sleep 2
+    echo 1 > /sys/class/gpio/gpio$GPIO/value
+    echo $GPIO > /sys/class/gpio/unexport 2>/dev/null || true
+
+    if wait $FLASHER; then
+        echo "Stock firmware flashed to $SERIALPORT."
+    else
+        echo "Stock firmware flash to $SERIALPORT failed."
+        return 1
+    fi
+}
+
+# Flash stock firmware
+service klipper stop
+
+update $STOCK_FW_BED $SERIALPORT_BED $GPIO_BED
+rm -f $VERSION_BED
+
+update $STOCK_FW_TOOLHEAD $SERIALPORT_TOOLHEAD $GPIO_TOOLHEAD
+rm -f $VERSION_TOOLHEAD
+
+if [ "$FLASH_CANVAS" = "True" ]; then
+	update $STOCK_FW_CANVAS $SERIALPORT_CANVAS $GPIO_CANVAS
+	rm -f $VERSION_CANVAS
+fi

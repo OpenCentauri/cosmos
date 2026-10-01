@@ -8,7 +8,7 @@ case "$RELEASE" in
         FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/download/0.0.0/opencentauri-upgrade-elegoo-centauri-carbon1.rootfs.swu"
         ;;
     *)
-        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/update.swu"
+        FW_URL="https://github.com/OpenCentauri/yocto-opencentauri/releases/latest/download/cosmos-centauri-carbon-1.swu"
         ;;
 esac
 

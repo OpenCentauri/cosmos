@@ -48,7 +48,7 @@ While we cannot say with certainty what elegoo's position is we have not heard o
 [Open an issue on GitHub](https://github.com/OpenCentauri/yocto-opencentauri/issues) and provide a brief description of what happened and the steps to reproduce it. Alternatively you can also drop by the #COSMOS_development channel on the [Opencentauri Discord server](https://discord.gg/t6Cft3wNJ3) to let us know.
 
 ## Will COSMOS be available for the Centauri Carbon 2?
-Maybe, but developer efforts are focused on the CC1 for the time being
+Yes, an alpha version of COSMOS for the CC2 is currently being tested and a public beta version will released shortly. Stay tuned!
 
 ## Is COSMOS related to the OpenCentauri board?
 No, the OpenCentauri board is another ongoing project to create a much more powerful drop in mainboard replacement for the Centauri Carbon. 

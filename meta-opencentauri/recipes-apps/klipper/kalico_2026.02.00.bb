@@ -3,6 +3,8 @@ require kalico_${PV}.inc
 SUMMARY = "Kalico 3D Printer Firmware"
 DESCRIPTION = "Klipper, but Limitless"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
@@ -35,6 +37,7 @@ RDEPENDS:${PN} = " \
     kalico-firmware-bed \
     check-update \
     kalico-firmware-canvas \
+    kalico-firmware-afc-lite-usb \
 "
 
 RPROVIDES:${PN} += "klipper"

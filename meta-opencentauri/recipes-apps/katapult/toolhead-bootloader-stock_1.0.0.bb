@@ -3,6 +3,8 @@ require katapult_${PV}.inc
 SUMMARY = "Stock Toolhead Bootloader Deployer"
 DESCRIPTION = "Builds the Katapult deployer binary for reverting the toolhead bootloader to stock."
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI += " \
     file://config.toolhead \
     file://toolhead-bootloader-stock.bin \

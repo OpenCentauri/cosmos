@@ -22,6 +22,7 @@ VALIDATORS = {
         'adaptive_mesh': ['True', 'False'],
         'adaptive_purge': ['True', 'False'],
         'unload_after_print': ['True', 'False'],
+        'clean_nozzle_after_print': ['True', 'False'],
         'nozzle_z_homing': ['True', 'False'],
         'z_ideal_lifting_distance': [str(i) for i in range(257)],
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
@@ -44,6 +45,14 @@ def validate_config(config : dict):
             if value not in valid_values:
                 print(f"Warning: Invalid value '{value}' for '{option}' in section '{section}'. Valid options are: {valid_values}", file=sys.stderr)
                 del config[section][option]
+
+def normalize_boolean_values(config : dict):
+    for options in config.values():
+        for option, value in options.items():
+            if value.lower() == 'true':
+                options[option] = 'True'
+            elif value.lower() == 'false':
+                options[option] = 'False'
 
 def load_config(path : str) -> dict:
     parser = configparser.ConfigParser()
@@ -137,11 +146,16 @@ def merge_configs(default_config : dict, user_config : dict) -> dict:
         default_config[section].update(options)
     return default_config
 
-def main(section : str, option : str):
+def main(section : str, option : str, value : str|None = None):
     default_config = load_config(DEFAULT_CONFIG_PATH)
     default_comments = load_config_comments(DEFAULT_CONFIG_PATH)
     default_header = load_config_header(DEFAULT_CONFIG_PATH)
     user_config = load_config(VARIABLE_CONFIG_PATH)
+    if value is not None:
+        if section not in user_config:
+            user_config[section] = {}
+        user_config[section][option] = value
+    normalize_boolean_values(user_config)
     validate_config(user_config)
     merged_config = merge_configs(default_config, user_config)
 
@@ -154,15 +168,16 @@ def main(section : str, option : str):
     print(merged_config[section][option], end='')
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: config_manager <section> <option>", file=sys.stderr)
+    if len(sys.argv) not in (3, 4):
+        print("Usage: config_manager <section> <option> [value]", file=sys.stderr)
         sys.exit(1)
 
     section = sys.argv[1]
     option = sys.argv[2]
+    value = sys.argv[3] if len(sys.argv) == 4 else None
 
     try:
-        main(section, option)
+        main(section, option, value)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

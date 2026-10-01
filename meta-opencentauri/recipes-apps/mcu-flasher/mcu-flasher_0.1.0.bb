@@ -1,15 +1,15 @@
 inherit cargo pkgconfig
 
-SUMMARY = "Serial Multiplexer"
+SUMMARY = "Tool for flashing apps on Elegoos MCU bootloader"
 HOMEPAGE = "https://github.com/OpenCentauri/OpenCentauri"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://../LICENSE;md5=0a18a528575a965515cdd877f88b3c4c"
 
 SRC_URI += " \
-    git://github.com/OpenCentauri/OpenCentauri.git;protocol=https;nobranch=1;branch=main \
+    git://github.com/OpenCentauri/OpenCentauri.git;protocol=https;nobranch=1;branch=mcu-flasher-cc2 \
 "
-SRCREV = "8690e3f9f84555cd0037a18f214959ae7274de7d"
-PR = "r1"
+SRCREV = "c921b0fc40fb64bd6d677c75a976a07324112096"
+PR = "r5"
 
 S = "${UNPACKDIR}/${PN}-${PV}/mcu-flasher"
 CARGO_SRC_DIR = ""

@@ -9,10 +9,12 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = " \
     git://github.com/suchmememanyskill/AFC-Klipper-Add-On.git;protocol=https;branch=DEV \
     file://afc.cfg \
+    file://canvas-toolhead.cfg \
     file://canvas.cfg \
+    file://boxturtle.cfg \
 "
 
-SRCREV = "61d43626a167b40824638ea4cd82ce884541e35e"
+SRCREV = "484a09b4c16674b586bf33035f1ab1b9dccc67b9"
 
 DEPENDS = " \
     python3-native \
@@ -33,7 +35,7 @@ do_install() {
 
     # Install config files
     install -d ${D}${sysconfdir}/klipper/config/extras-readonly
-    install -m 0644 ${UNPACKDIR}/canvas.cfg ${UNPACKDIR}/afc.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${UNPACKDIR}/canvas.cfg ${UNPACKDIR}/afc.cfg ${UNPACKDIR}/canvas-toolhead.cfg ${UNPACKDIR}/boxturtle.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
 }
 
 FILES:${PN} = " \
@@ -73,4 +75,6 @@ FILES:${PN} = " \
     ${datadir}/klipper/klippy/extras/AFC_EMU.py \
     ${sysconfdir}/klipper/config/extras-readonly/afc.cfg \
     ${sysconfdir}/klipper/config/extras-readonly/canvas.cfg \
+    ${sysconfdir}/klipper/config/extras-readonly/canvas-toolhead.cfg \
+    ${sysconfdir}/klipper/config/extras-readonly/boxturtle.cfg \
 "

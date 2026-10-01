@@ -9,8 +9,6 @@ SRC_URI += " \
     file://klipper-firmware-canvas-init-d \
 "
 
-PR = "r3"
-
 DEPENDS += "gcc-arm-none-eabi-native"
 RDEPENDS:${PN} = " \
     flashtool \

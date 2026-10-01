@@ -16,7 +16,7 @@ SERIALPORT="/dev/ttyS0"
 GPIO="43"
 
 update(){
-    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --timeout 20 &
+    mcu-flasher --firmware $FIRMWARE --no-wait $SERIALPORT --cc2 --baud 250000 --timeout 20 &
     FLASHER=$!
     sleep 1
 

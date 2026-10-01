@@ -25,7 +25,21 @@ start() {
     modprobe zram num_devices=1
     echo "zram devices probed successfully"
 
-    echo 1 > /sys/block/zram0/reset
+    # udev opens the new block device to probe it, and a reset while it is
+    # open fails with EBUSY. With "set -e" that used to end this script
+    # silently, before swap was ever enabled. Retry until udev lets go
+    # (a few milliseconds normally, bounded at 5 s).
+    tries=0
+    while ! echo 1 > /sys/block/zram0/reset 2>/dev/null; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 20 ]; then
+            echo "zram: /sys/block/zram0/reset still busy after $tries tries, giving up"
+            return 1
+        fi
+        sleep 0.25
+    done
+    [ "$tries" -gt 0 ] && echo "zram: reset succeeded after $tries retries"
+
     echo lz4 > /sys/block/zram0/comp_algorithm
     echo $disksize > /sys/block/zram0/disksize
 

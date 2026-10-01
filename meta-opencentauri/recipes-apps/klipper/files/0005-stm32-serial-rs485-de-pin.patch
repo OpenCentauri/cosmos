@@ -1,0 +1,135 @@
+diff --git a/src/stm32/Kconfig b/src/stm32/Kconfig
+index a3cb877f..dee2e06c 100644
+--- a/src/stm32/Kconfig
++++ b/src/stm32/Kconfig
+@@ -513,6 +513,27 @@ choice
+         depends on HAVE_STM32_USBCANBUS
+         select USBCANBUS
+ endchoice
++config STM32_SERIAL_RS485
++    bool "Drive an RS-485 transceiver enable pin" if LOW_LEVEL_OPTIONS
++    depends on SERIAL && !MACH_STM32F0 && !MACH_STM32G0 && !MACH_STM32G4 && !MACH_STM32H7
++    default n
++    help
++        Raise a GPIO while transmitting and lower it once the last
++        stop bit has left the UART, for a half-duplex RS-485
++        transceiver whose DE (and /RE) pins are tied together.
++config STM32_SERIAL_RS485_DE_PIN
++    string "RS-485 driver enable pin (active high)"
++    depends on STM32_SERIAL_RS485
++    default "PA12"
++config STM32_SERIAL_RS485_TURNAROUND_US
++    int "RS-485 response turnaround time (us)"
++    depends on STM32_SERIAL_RS485
++    default 200
++    help
++        Minimum bus silence after the last received byte before this
++        device raises DE to reply. It must cover the time the host
++        takes to release its transceiver; Linux em485 does that from
++        a timer after the final stop bit.
+ choice
+     prompt "CAN bus interface" if USBCANBUS
+     config STM32_CMENU_CANBUS_PB8_PB9
+diff --git a/src/stm32/serial.c b/src/stm32/serial.c
+index b78b5afb..6e3cdabf 100644
+--- a/src/stm32/serial.c
++++ b/src/stm32/serial.c
+@@ -6,6 +6,10 @@
+ 
+ #include "autoconf.h" // CONFIG_SERIAL_BAUD
+ #include "board/armcm_boot.h" // armcm_enable_irq
++#include "board/gpio.h" // gpio_out_write
++#include "board/io.h" // readl
++#include "board/irq.h" // irq_save
++#include "board/misc.h" // timer_read_time
+ #include "board/serial_irq.h" // serial_rx_byte
+ #include "command.h" // DECL_CONSTANT_STR
+ #include "internal.h" // enable_pclock
+@@ -73,6 +77,24 @@
+ #define CR1_FLAGS (USART_CR1_UE | USART_CR1_RE | USART_CR1_TE   \
+                    | USART_CR1_RXNEIE)
+ 
++#if CONFIG_STM32_SERIAL_RS485
++  DECL_CONSTANT_STR("RESERVE_PINS_serial_de", CONFIG_STM32_SERIAL_RS485_DE_PIN);
++  // Parse "PA12" style pin names; the compiler folds this to a constant
++  #define DE_STR CONFIG_STM32_SERIAL_RS485_DE_PIN
++  #define GPIO_DE GPIO(DE_STR[1], DE_STR[3]                              \
++                       ? (DE_STR[2] - '0') * 10 + DE_STR[3] - '0'        \
++                       : DE_STR[2] - '0')
++  // Once the buffer drains, wait for the last stop bit before releasing DE
++  #define CR1_TX_DONE (CR1_FLAGS | USART_CR1_TCIE)
++  static struct gpio_out de_pin;
++  // Responder turnaround: after the last received byte, stay off the bus
++  // until the host has had time to release its own driver.
++  static uint32_t last_rx_time;
++  static uint8_t de_active;
++#else
++  #define CR1_TX_DONE CR1_FLAGS
++#endif
++
+ void
+ USARTx_IRQHandler(void)
+ {
+@@ -80,27 +102,60 @@ USARTx_IRQHandler(void)
+     if (sr & (USART_SR_RXNE | USART_SR_ORE)) {
+         // The ORE flag is automatically cleared by reading SR, followed
+         // by reading DR.
++#if CONFIG_STM32_SERIAL_RS485
++        last_rx_time = timer_read_time();
++#endif
+         serial_rx_byte(USARTx->DR);
+     }
+-    if (sr & USART_SR_TXE && USARTx->CR1 & USART_CR1_TXEIE) {
++    uint32_t cr1 = USARTx->CR1;
++    if (sr & USART_SR_TXE && cr1 & USART_CR1_TXEIE) {
+         uint8_t data;
+         int ret = serial_get_tx_byte(&data);
+         if (ret)
+-            USARTx->CR1 = CR1_FLAGS;
++            USARTx->CR1 = cr1 = CR1_TX_DONE;
+         else
+             USARTx->DR = data;
+     }
++#if CONFIG_STM32_SERIAL_RS485
++    // TC is cleared by the SR read + DR write above, so a set TC here
++    // means the shift register really is empty.
++    if (sr & USART_SR_TC && cr1 & USART_CR1_TCIE) {
++        USARTx->CR1 = CR1_FLAGS;
++        gpio_out_write(de_pin, 0);
++        de_active = 0;
++    }
++#endif
+ }
+ 
+ void
+ serial_enable_tx_irq(void)
+ {
++#if CONFIG_STM32_SERIAL_RS485
++    if (!readb(&de_active)) {
++        // Wait out the turnaround time (irqs enabled; restarts while the
++        // host is still sending)
++        uint32_t gap = timer_from_us(CONFIG_STM32_SERIAL_RS485_TURNAROUND_US);
++        while (timer_read_time() - readl(&last_rx_time) < gap)
++            ;
++    }
++    // Raise DE and cancel any pending TC release together, so the IRQ
++    // can't drop DE between the two.
++    irqstatus_t flag = irq_save();
++    de_active = 1;
++    gpio_out_write(de_pin, 1);
++    USARTx->CR1 = CR1_FLAGS | USART_CR1_TXEIE;
++    irq_restore(flag);
++#else
+     USARTx->CR1 = CR1_FLAGS | USART_CR1_TXEIE;
++#endif
+ }
+ 
+ void
+ serial_init(void)
+ {
++#if CONFIG_STM32_SERIAL_RS485
++    de_pin = gpio_out_setup(GPIO_DE, 0);
++#endif
+     enable_pclock((uint32_t)USARTx);
+ 
+     uint32_t pclk = get_pclock_frequency((uint32_t)USARTx);

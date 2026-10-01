@@ -30,6 +30,19 @@ case "$1" in
     start)
         echo "Starting klipper-firmware-canvas..."
 
+        if [ -e "$SERIALPORT" ] && [ "$FLASH_ENABLED" = "False" ]; then
+            VENDOR=$(
+                udevadm info -q property -n "$SERIALPORT" |
+                sed -n 's/^ID_VENDOR=//p'
+            )
+
+            if [ "$VENDOR" = "ShenZhenCBD" ]; then
+                echo "Detected Elegoo bootloader, force enabling canvas feature..."
+                config-manager extras elegoo_canvas True
+                FLASH_ENABLED="True"
+            fi
+        fi
+
         if [ "$FLASH_ENABLED" != "True" ]; then
             echo "Skipping canvas firmware flash because extras.elegoo_canvas is not enabled."
             exit 0

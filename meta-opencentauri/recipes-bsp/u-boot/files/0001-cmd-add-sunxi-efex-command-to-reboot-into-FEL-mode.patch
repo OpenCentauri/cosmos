@@ -1,5 +1,5 @@
 From 110bea08605d21f0b29fa6c05ba9c3b8a3eec3cc Mon Sep 17 00:00:00 2001
-From: James Turton <james@titv.se>
+From: James Turton <james.turton@gmx.com>
 Date: Thu, 2 Jul 2026 10:46:49 +0200
 Subject: [PATCH] cmd: add sunxi efex command to reboot into FEL mode
 

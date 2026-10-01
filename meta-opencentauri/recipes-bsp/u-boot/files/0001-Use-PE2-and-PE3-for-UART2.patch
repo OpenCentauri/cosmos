@@ -1,5 +1,5 @@
 From 16b487cfd2264eea6088bccc3c3825d7660ad2dd Mon Sep 17 00:00:00 2001
-From: James Turton <james@titv.se>
+From: James Turton <james.turton@gmx.com>
 Date: Sat, 5 Sep 2026 23:36:01 +0200
 Subject: [PATCH] Use PE2 and PE3 for UART2
 

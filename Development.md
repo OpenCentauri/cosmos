@@ -26,7 +26,7 @@ The build supports different machine configurations for the Centauri Carbon vari
 | Machine | Description |
 |---------|-------------|
 | `elegoo-centauri-carbon1` | Original Centauri Carbon 1 (default) |
-| `elegoo-centauri-carbon2` | Centauri Carbon 2 |
+| `elegoo-centauri-carbon2` | Centauri Carbon 2 (including C2, C2C, CC2C) |
 
 The default in `build/conf/local.conf` is set to CC1:
 ```bash
