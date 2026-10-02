@@ -14,9 +14,11 @@ SRC_URI = " \
     file://moonraker-init-d \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
+    file://moonraker.asvc \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
     file://0001-Add-support-for-SWUDeploy.patch \
+    file://0002-Add-sysvinit-as-machine-provider.patch \
 "
 
 SRCREV = "985c1d0bbeb90bc057d34a232c9dc3b05e0c6c8d"
@@ -82,6 +84,9 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
     install -m 0644 ${UNPACKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
 
+    # Install moonraker services file
+    install -m 0644 ${UNPACKDIR}/moonraker.asvc ${D}${sysconfdir}/klipper/
+
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
     # Symlink logs to /board-resource
@@ -95,6 +100,7 @@ do_install() {
 FILES:${PN} = " \
     ${datadir}/moonraker \
     ${sysconfdir}/init.d/moonraker \
+    ${sysconfdir}/klipper/moonraker.asvc \
     ${sysconfdir}/klipper/config/moonraker.conf \
     ${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf \
     ${sysconfdir}/klipper/gcodes \

@@ -1,0 +1,205 @@
+From 9aa273d932c93a0cef8167e3671aafb27f486501 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Thu, 1 Oct 2026 22:36:38 +0200
+Subject: [PATCH] Add sysvinit as machine provider
+
+---
+ moonraker/components/machine.py | 157 +++++++++++++++++++++++++++++++-
+ 1 file changed, 156 insertions(+), 1 deletion(-)
+
+diff --git a/moonraker/components/machine.py b/moonraker/components/machine.py
+index 09c1c7b..98d875c 100644
+--- a/moonraker/components/machine.py
++++ b/moonraker/components/machine.py
+@@ -16,6 +16,7 @@ import socket
+ import ipaddress
+ import time
+ import shutil
++import subprocess
+ import distro
+ import tempfile
+ import getpass
+@@ -46,6 +47,7 @@ if TYPE_CHECKING:
+     from .klippy_connection import KlippyConnection
+     from .http_client import HttpClient
+     from .shell_command import ShellCommandFactory as SCMDComp
++    from .shell_command import ShellCommand
+     from .database import MoonrakerDatabase
+     from .file_manager.file_manager import FileManager
+     from .announcements import Announcements
+@@ -75,6 +77,19 @@ SERVICE_PROPERTIES = [
+ ]
+ USB_IDS_URL = "http://www.linux-usb.org/usb.ids"
+ HAS_SYSCTL = shutil.which("systemctl", os.F_OK) is not None
++SYSV_INIT_PATH = "/etc/init.d"
++SYSV_PID_PATHS = ("/run", "/var/run")
++SYSV_ACTIONS = ("start", "stop", "restart")
++SYSV_ACTION_TIMEOUT = 60.
++SYSV_STATUS_TIMEOUT = 5.
++SYSV_STATUS_SEQUENCE = 5
++SYSV_LSB_STATES: Dict[int, Tuple[str, str]] = {
++    0: ("active", "running"),
++    1: ("failed", "dead"),
++    2: ("failed", "dead"),
++    3: ("inactive", "dead"),
++    4: ("unknown", "unknown")
++}
+ 
+ class Machine:
+     def __init__(self, config: ConfigHelper) -> None:
+@@ -112,7 +127,8 @@ class Machine:
+             "none": BaseProvider,
+             "systemd_cli": SystemdCliProvider,
+             "systemd_dbus": SystemdDbusProvider,
+-            "supervisord_cli": SupervisordCliProvider
++            "supervisord_cli": SupervisordCliProvider,
++            "sysvinit": SysvinitProvider
+         }
+         self.provider_type = config.get('provider', 'systemd_dbus')
+         pclass = providers.get(self.provider_type)
+@@ -1606,6 +1622,145 @@ class SupervisordCliProvider(BaseProvider):
+         service_info["properties"] = dict(spv_config[section_name])
+         return service_info
+ 
++class SysvinitProvider(BaseProvider):
++    def __init__(self, config: ConfigHelper) -> None:
++        super().__init__(config)
++        self.status_cmds: Dict[str, ShellCommand] = {}
++
++    async def initialize(self) -> None:
++        self._detect_services()
++        for svc in self.available_services:
++            self.status_cmds[svc] = self.shell_cmd.build_shell_command(
++                f"{SYSV_INIT_PATH}/{svc} status"
++            )
++        if self.available_services:
++            await self._update_service_status(0, notify=True)
++            pstats: ProcStats = self.server.lookup_component('proc_stats')
++            pstats.register_stat_callback(self._update_service_status)
++
++    def _detect_services(self) -> None:
++        machine: Machine = self.server.lookup_component("machine")
++        init_dir = pathlib.Path(SYSV_INIT_PATH)
++        if not init_dir.is_dir():
++            return
++        for script in sorted(init_dir.iterdir()):
++            if (
++                script.is_file() and
++                os.access(script, os.X_OK) and
++                machine.is_service_allowed(script.name)
++            ):
++                self.available_services[script.name] = {
++                    'active_state': "unknown",
++                    'sub_state': "unknown"
++                }
++
++    async def _exec_sudo_command(
++        self, command: str, timeout: float = 2.
++    ) -> str:
++        if os.geteuid() == 0:
++            return await self.shell_cmd.exec_cmd(
++                command, log_complete=False, timeout=timeout
++            )
++        machine: Machine = self.server.lookup_component("machine")
++        return await machine.exec_sudo_command(command, timeout=timeout)
++
++    async def do_service_action(
++        self, action: str, service_name: str
++    ) -> None:
++        if action not in SYSV_ACTIONS:
++            raise self.server.error(f"Invalid service action '{action}'")
++        if service_name not in self.available_services:
++            raise self.server.error(f"Service '{service_name}' not available")
++        machine: Machine = self.server.lookup_component("machine")
++        script = f"{SYSV_INIT_PATH}/{service_name}"
++        if service_name == machine.unit_name:
++            await self._exec_detached(script, action)
++            return
++        await self._exec_sudo_command(
++            f"{script} {action}", timeout=SYSV_ACTION_TIMEOUT
++        )
++        await self._update_state(service_name)
++
++    async def _exec_detached(self, script: str, action: str) -> None:
++        args = [script, action]
++        if os.geteuid() != 0:
++            args = ["sudo", "-n"] + args
++        eventloop = self.server.get_event_loop()
++        await eventloop.run_in_thread(
++            lambda: subprocess.Popen(
++                args,
++                stdin=subprocess.DEVNULL,
++                stdout=subprocess.DEVNULL,
++                stderr=subprocess.DEVNULL,
++                start_new_session=True
++            )
++        )
++
++    async def _update_service_status(
++        self, sequence: int, notify: bool = True
++    ) -> None:
++        if sequence % SYSV_STATUS_SEQUENCE:
++            return
++        for svc in list(self.available_services.keys()):
++            await self._update_state(svc, notify)
++
++    async def _update_state(self, service_name: str, notify: bool = True) -> None:
++        scmd = self.status_cmds[service_name]
++        try:
++            await scmd.run(
++                timeout=SYSV_STATUS_TIMEOUT, verbose=False, log_complete=False,
++                success_codes=list(SYSV_LSB_STATES.keys())
++            )
++        except Exception:
++            logging.exception(f"Error checking status of service {service_name}")
++        ret_code = scmd.get_return_code()
++        active_state, sub_state = SYSV_LSB_STATES.get(
++            ret_code if ret_code is not None else 4, ("unknown", "unknown")
++        )
++        new_state: Dict[str, str] = {
++            'active_state': active_state,
++            'sub_state': sub_state
++        }
++        if self.available_services[service_name] != new_state:
++            self.available_services[service_name] = new_state
++            if notify:
++                self.server.send_event(
++                    "machine:service_state_changed", {service_name: new_state}
++                )
++
++    async def extract_service_info(
++        self,
++        service_name: str,
++        pid: int,
++        properties: Optional[List[str]] = None,
++        raw: bool = False
++    ) -> Dict[str, Any]:
++        for svc in self.available_services:
++            for pid_dir in SYSV_PID_PATHS:
++                pid_file = pathlib.Path(pid_dir).joinpath(f"{svc}.pid")
++                try:
++                    if int(pid_file.read_text().strip()) != pid:
++                        continue
++                except (OSError, ValueError):
++                    continue
++                if svc != service_name:
++                    logging.info(
++                        f"Detected alternate unit name for {service_name}: {svc}"
++                    )
++                return {
++                    "unit_name": svc,
++                    "is_default": svc == service_name,
++                    "manager": "sysvinit",
++                    "properties": {
++                        "InitScript": f"{SYSV_INIT_PATH}/{svc}",
++                        "PIDFile": str(pid_file)
++                    }
++                }
++        logging.info(
++            f"Unable to locate service info for {service_name}, pid: {pid}"
++        )
++        return {}
++
+ 
+ # Install validation
+ INSTALL_VERSION = 1
