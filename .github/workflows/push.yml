@@ -49,3 +49,6 @@ jobs:
             "./firmware/cosmos-centauri-carbon-2.swu" \
             --clobber \
             --repo OpenCentauri/cosmos
+          
+          gh api -X PATCH repos/${GITHUB_REPOSITORY}/git/refs/tags/0.0.0 \
+            -f sha=$GITHUB_SHA -F force=true

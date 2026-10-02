@@ -6,18 +6,22 @@ HOMEPAGE = "https://github.com/Arksine/moonraker"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=db95b6e40dc7d26d8308b6b7375637b6"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
+    file://swu_deploy.py;subdir=${BP}/moonraker/components/update_manager/ \
     file://moonraker-init-d \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
+    file://0001-Add-support-for-SWUDeploy.patch \
 "
 
-SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
+SRCREV = "985c1d0bbeb90bc057d34a232c9dc3b05e0c6c8d"
 
 PR = "r1"
 
@@ -51,6 +55,7 @@ RDEPENDS:${PN} = " \
     python3-msgspec \
     python3-uvloop \
     python3-aiofiles \
+    curl \
     kalico \
 "
 
@@ -78,6 +83,7 @@ do_install() {
     # Copy readonly config file to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
     install -m 0644 ${UNPACKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
+    sed -i -e 's,@MACHINE@,${MACHINE},g' ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
 
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
