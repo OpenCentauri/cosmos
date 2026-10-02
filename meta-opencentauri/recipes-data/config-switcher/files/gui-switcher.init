@@ -32,6 +32,7 @@ case "$1" in
     stop)
         echo "Stopping GUI..."
         start-stop-daemon -K -p "$PIDFILE" -R 10
+        rm -f "$PIDFILE"
         dd if=/dev/zero of=/dev/fb0
         ;;
     restart|force-reload)
@@ -41,10 +42,13 @@ case "$1" in
         ;;
     status)
         if [ -f "/var/run/gui.pid" ] && kill -0 "$(cat "/var/run/gui.pid")" 2>/dev/null; then
-            echo "${gui} is running (PID $(cat "/var/run/gui.pid"))"
+            echo "${GUI} is running (PID $(cat "/var/run/gui.pid"))"
+        elif [ -f "/var/run/gui.pid" ]; then
+            echo "${GUI} is dead but pidfile exists"
+            exit 1
         else
-            echo "${gui} is not running"
-            return 1
+            echo "${GUI} is not running"
+            exit 3
         fi
         ;;
     *)

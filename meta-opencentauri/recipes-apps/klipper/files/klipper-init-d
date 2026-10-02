@@ -74,9 +74,12 @@ case "$1" in
     status)
         if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
             echo "klipper is running (PID $(cat $PIDFILE))"
+        elif [ -f $PIDFILE ]; then
+            echo "klipper is dead but pidfile exists"
+            exit 1
         else
             echo "klipper is not running"
-            exit 1
+            exit 3
         fi
         ;;
     *)
