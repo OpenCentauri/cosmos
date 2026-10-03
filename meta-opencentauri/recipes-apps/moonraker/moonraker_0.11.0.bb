@@ -10,14 +10,16 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
+    file://swu_deploy.py;subdir=${BP}/moonraker/components/update_manager/ \
     file://moonraker-init-d \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
+    file://0001-Add-support-for-SWUDeploy.patch \
 "
 
-SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
+SRCREV = "985c1d0bbeb90bc057d34a232c9dc3b05e0c6c8d"
 
 PR = "r1"
 
@@ -51,6 +53,7 @@ RDEPENDS:${PN} = " \
     python3-msgspec \
     python3-uvloop \
     python3-aiofiles \
+    curl \
     kalico \
 "
 
