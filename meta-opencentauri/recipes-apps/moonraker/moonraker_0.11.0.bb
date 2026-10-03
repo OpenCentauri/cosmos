@@ -6,8 +6,6 @@ HOMEPAGE = "https://github.com/Arksine/moonraker"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=db95b6e40dc7d26d8308b6b7375637b6"
 
-PACKAGE_ARCH = "${MACHINE_ARCH}"
-
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
@@ -83,7 +81,6 @@ do_install() {
     # Copy readonly config file to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
     install -m 0644 ${UNPACKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
-    sed -i -e 's,@MACHINE@,${MACHINE},g' ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
 
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes

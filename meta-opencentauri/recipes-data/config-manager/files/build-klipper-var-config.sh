@@ -26,6 +26,7 @@ full_calibrate_bed_temperature=$(get_config_value full_calibrate_bed_temperature
 bypass_calibration=$(get_config_value bypass_calibration)
 toolhead_led=$(get_config_value toolhead_led)
 elegoo_canvas=$("${CONFIG_MANAGER}" extras elegoo_canvas)
+check_for_updates=$("${CONFIG_MANAGER}" update check_for_updates)
 release=$("${CONFIG_MANAGER}" update release)
 
 mkdir -p "${OUTPUT_DIR}"
@@ -68,8 +69,15 @@ cat > "${MOONRAKER_UPDATE_FILE}" <<EOF
 
 EOF
 
-if [ "${release}" = "nightly" ]; then
+if [ "${check_for_updates}" = "True" ]; then
 	echo "[update_manager cosmos]" >> "${MOONRAKER_UPDATE_FILE}"
-	echo "channel: dev" >> "${MOONRAKER_UPDATE_FILE}"
+	echo "type: swupdate" >> "${MOONRAKER_UPDATE_FILE}"
+	echo "repo: OpenCentauri/cosmos" >> "${MOONRAKER_UPDATE_FILE}"
+	echo "asset_name: cosmos-@MACHINE@.swu" >> "${MOONRAKER_UPDATE_FILE}"
+	if [ "${release}" = "nightly" ]; then
+		echo "channel: dev" >> "${MOONRAKER_UPDATE_FILE}"
+	else
+		echo "channel: stable" >> "${MOONRAKER_UPDATE_FILE}"
+	fi
 fi
 
