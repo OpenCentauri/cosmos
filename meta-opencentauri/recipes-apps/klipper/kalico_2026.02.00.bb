@@ -17,6 +17,8 @@ SRC_URI += " \
     file://calibration.cfg \
     file://kamp.cfg \
     file://client.cfg \
+    file://knock.py \
+    file://knock.cfg \
 "
 
 inherit python3-dir update-rc.d
@@ -105,6 +107,11 @@ do_install() {
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
     install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+
+    # Knock gestures: klippy extra + its config (included from zextras.cfg when cosmos.conf knock = True)
+    install -m 0644 ${WORKDIR}/knock.py ${D}${datadir}/klipper/klippy/extras/
+    install -d ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${WORKDIR}/knock.cfg ${D}${sysconfdir}/klipper/config/extras-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d

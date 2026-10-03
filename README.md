@@ -25,6 +25,7 @@ _For detailed technical and build information [See development info](./Developme
 - Full control over I/O pins- this should make it possible repurpose model fan - tachometer pin for a toolhead filament detector
 - Ability control and dim the toolhead led for those that have added it, from webui and printer screen
 - Dimming control on the main light
+- Knock gestures: knock a rhythm on the frame to run a macro, replay it with the toolhead, or toggle the lights ([docs](./docs/knock.md))
 - Additionally all the major benefits of OC V3.0 (eliminating excessive outgoing traffic, homing changes to increase cable durability, fixed mid-print fan control)
 
 ## Sounds great but what's the catch?
