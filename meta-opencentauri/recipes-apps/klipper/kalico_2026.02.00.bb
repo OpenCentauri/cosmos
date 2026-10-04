@@ -10,6 +10,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
     file://klipper-init-d \
     file://printer.cfg \
+    file://shared-macros.cfg \
     file://macros.cfg \
     file://machine.cfg \
     file://shell.cfg \
@@ -104,7 +105,7 @@ do_install() {
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/shared-macros.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
@@ -119,6 +120,7 @@ FILES:${PN} = " \
 
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/shared-macros.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/macros.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/machine.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
