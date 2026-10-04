@@ -2,6 +2,8 @@ DESCRIPTION = "Config manager script and default configuration"
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-3.0-only;md5=c79ff39f19dfec6d293b95dea7b07891"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 SRC_URI = " \
     file://config_manager.py \
     file://build-klipper-var-config.sh \
@@ -14,6 +16,7 @@ do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${S}/config_manager.py ${D}${bindir}/config-manager
     install -m 0755 ${S}/build-klipper-var-config.sh ${D}${bindir}/build-klipper-var-config
+    sed -i -e 's,@MACHINE@,${MACHINE},g' ${D}${bindir}/build-klipper-var-config
 
     install -d ${D}${sysconfdir}/klipper/config
     install -m 0644 ${S}/default.conf ${D}${sysconfdir}/klipper/config/cosmos.conf
