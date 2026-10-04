@@ -33,6 +33,7 @@ VALIDATORS = {
 
 VARIABLE_CONFIG_PATH = '/etc/klipper/config/cosmos.conf'
 DEFAULT_CONFIG_PATH = '/usr/share/config-manager/default.conf'
+MACHINE_CONFIG_PATH = '/usr/share/config-manager/default-machine.conf'
 
 def validate_config(config : dict):
     for section, options in VALIDATORS.items():
@@ -147,9 +148,9 @@ def merge_configs(default_config : dict, user_config : dict) -> dict:
     return default_config
 
 def main(section : str, option : str, value : str|None = None):
-    default_config = load_config(DEFAULT_CONFIG_PATH)
-    default_comments = load_config_comments(DEFAULT_CONFIG_PATH)
-    default_header = load_config_header(DEFAULT_CONFIG_PATH)
+    machine_config = load_config(MACHINE_CONFIG_PATH)
+    machine_comments = load_config_comments(MACHINE_CONFIG_PATH)
+    machine_header = load_config_header(MACHINE_CONFIG_PATH)
     user_config = load_config(VARIABLE_CONFIG_PATH)
     if value is not None:
         if section not in user_config:
@@ -157,15 +158,20 @@ def main(section : str, option : str, value : str|None = None):
         user_config[section][option] = value
     normalize_boolean_values(user_config)
     validate_config(user_config)
-    merged_config = merge_configs(default_config, user_config)
+    merged_config = merge_configs(machine_config, user_config)
 
-    if user_config != merged_config or config_needs_update(VARIABLE_CONFIG_PATH, merged_config, default_comments, default_header):
-        save_config(VARIABLE_CONFIG_PATH, merged_config, default_comments, default_header)
+    if user_config != merged_config or config_needs_update(VARIABLE_CONFIG_PATH, merged_config, machine_comments, machine_header):
+        save_config(VARIABLE_CONFIG_PATH, merged_config, machine_comments, machine_header)
 
-    if section not in merged_config or option not in merged_config[section]:
-        raise ValueError(f"Option '{option}' not found in section '{section}'")
+    if section in merged_config and option in merged_config[section]:
+        result = merged_config[section][option]
+    else:
+        global_config = load_config(DEFAULT_CONFIG_PATH)
+        if section not in global_config or option not in global_config[section]:
+            raise ValueError(f"Option '{option}' not found in section '{section}'")
+        result = global_config[section][option]
 
-    print(merged_config[section][option], end='')
+    print(result, end='')
 
 if __name__ == "__main__":
     if len(sys.argv) not in (3, 4):
