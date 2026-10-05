@@ -166,8 +166,8 @@ class SwuDeploy(AppDeploy):
         )
         if not commits:
             return
-        self.remote_hash = commits[0].get("sha", "?")
-        self.remote_version = self.remote_hash[:SHORT_HASH_LEN]
+        self.remote_hash = commits[0].get("sha", "?")[:SHORT_HASH_LEN]
+        self.remote_version = self.remote_hash
         if self.version == "?":
             return
         comparison = await self._github_request(
