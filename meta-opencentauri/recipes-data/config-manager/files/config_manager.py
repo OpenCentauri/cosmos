@@ -13,6 +13,7 @@ VALIDATORS = {
     },
     'extras': {
         'elegoo_canvas': ['True', 'False'],
+        'enclosed': ['True', 'False'],
     },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['True', 'False'],
