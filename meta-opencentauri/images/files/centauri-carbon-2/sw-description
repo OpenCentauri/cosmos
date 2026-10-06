@@ -199,4 +199,11 @@ software =
             );
         };
     };
+
+    @@MACHINE@@ = {
+        cosmos = {
+            now_A_next_B = { ref = "#./../../stable/now_A_next_B"; };
+            now_B_next_A = { ref = "#./../../stable/now_B_next_A"; };
+        };
+    };
 }
