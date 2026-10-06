@@ -11,6 +11,8 @@
 MOONRAKER_EXEC="/usr/bin/python3"
 MOONRAKER_ARGS="-X no_debug_ranges -m moonraker.moonraker -d /etc/klipper -l /board-resource/moonraker.log -u /run/moonraker.sock"
 PIDFILE="/var/run/moonraker.pid"
+ASVC_OVERLAY="/data/overlay-etc/upper/klipper/moonraker.asvc"
+ASVC_DEFAULT="/usr/share/moonraker/moonraker/assets/default_allowed_services"
 
 export PYTHONPATH="/usr/share/moonraker"
 export TMPDIR="/user-resource/.tmp"
@@ -22,6 +24,11 @@ case "$1" in
         rm -rf /user-resource/OpenCentauri
         mkdir -p /user-resource/.tmp
         mkdir -p /user-resource/gcodes
+        # Older images let moonraker generate its default asvc in the overlay,
+        # which hides the one shipped in the image
+        if cmp -s "$ASVC_OVERLAY" "$ASVC_DEFAULT"; then
+            rm -f "$ASVC_OVERLAY"
+        fi
 
         if [ -d /etc/webui ]; then
             rm -f /etc/webui
