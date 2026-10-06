@@ -14,6 +14,7 @@ KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-bed.bin"
 INSTALLED_VERSION="/etc/bed.ver"
 SERIALPORT="/dev/ttyS4"
 GPIO="201"
+STATEFILE="/var/run/klipper-firmware-bed.running"
 
 update(){
     flashtool -d $SERIALPORT -b 250000 -r
@@ -34,6 +35,7 @@ case "$1" in
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 1 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
+        touch $STATEFILE
         sleep 1
 
         if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
@@ -72,6 +74,7 @@ case "$1" in
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 0 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
+        rm -f $STATEFILE
         ;;
     restart|force-reload)
         $0 stop
@@ -79,13 +82,11 @@ case "$1" in
         $0 start
         ;;
     status)
-        echo $GPIO > /sys/class/gpio/export
-        gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
-        echo $GPIO > /sys/class/gpio/unexport
-        if [ "$gpio_value" = "1" ]; then
+        if [ -f $STATEFILE ]; then
             echo "klipper-firmware-bed is running"
         else
             echo "klipper-firmware-bed is not running"
+            exit 3
         fi
         ;;
     *)

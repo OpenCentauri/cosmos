@@ -64,10 +64,11 @@ case "$1" in
         fi
         ;;
     status)
-        if [ "$FLASH_ENABLED" = "True" ]; then
-            echo "klipper-firmware-canvas flashing is enabled"
+        if [ -e "$SERIALPORT" ]; then
+            echo "klipper-firmware-canvas is running"
         else
-            echo "klipper-firmware-canvas flashing is disabled"
+            echo "klipper-firmware-canvas is not running"
+            exit 3
         fi
         ;;
     *)

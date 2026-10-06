@@ -25,7 +25,11 @@ case "$1" in
         $0 start
         ;;
     status)
-        echo "klipper-firmware-dsp is $(cat $REMOTEPROCFILE)"
+        state="$(cat $REMOTEPROCFILE)"
+        echo "klipper-firmware-dsp is $state"
+        if [ "$state" != "running" ]; then
+            exit 3
+        fi
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|status}"

@@ -14,6 +14,7 @@ KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-canvas.bin"
 INSTALLED_VERSION="/etc/canvas.ver"
 SERIALPORT="/dev/ttyS1"
 GPIO="117"
+STATEFILE="/var/run/klipper-firmware-canvas.running"
 FLASH_ENABLED="$(config-manager extras elegoo_canvas 2>/dev/null)"
 
 update(){
@@ -44,6 +45,7 @@ case "$1" in
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 1 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
+        touch $STATEFILE
         sleep 1
 
         if [ "$FLASH_ENABLED" != "True" ]; then
@@ -61,10 +63,11 @@ case "$1" in
         fi
         ;;
     status)
-        if [ "$FLASH_ENABLED" = "True" ]; then
-            echo "klipper-firmware-canvas flashing is enabled"
+        if [ -f $STATEFILE ]; then
+            echo "klipper-firmware-canvas is running"
         else
-            echo "klipper-firmware-canvas flashing is disabled"
+            echo "klipper-firmware-canvas is not running"
+            exit 3
         fi
         ;;
     *)

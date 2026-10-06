@@ -14,6 +14,7 @@ KATAPULT_DEPLOYER="/lib/firmware/katapult-deployer-toolhead.bin"
 INSTALLED_VERSION="/etc/toolhead.ver"
 SERIALPORT="/dev/serial/by-path/platform-4101400.usb-usb-0:1:1.0"
 GPIO="140"
+STATEFILE="/var/run/klipper-firmware-toolhead.running"
 
 update(){
     if flashtool -d $SERIALPORT -f $FIRMWARE; then
@@ -33,6 +34,7 @@ case "$1" in
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 1 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
+        touch $STATEFILE
         sleep 3
 
         if [ -e "$SERIALPORT" ]; then
@@ -82,6 +84,7 @@ case "$1" in
         echo out > /sys/class/gpio/gpio$GPIO/direction
         echo 0 > /sys/class/gpio/gpio$GPIO/value
         echo $GPIO > /sys/class/gpio/unexport
+        rm -f $STATEFILE
         ;;
     restart|force-reload)
         $0 stop
@@ -89,13 +92,11 @@ case "$1" in
         $0 start
         ;;
     status)
-        echo $GPIO > /sys/class/gpio/export
-        gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
-        echo $GPIO > /sys/class/gpio/unexport
-        if [ "$gpio_value" = "1" ]; then
+        if [ -f $STATEFILE ]; then
             echo "klipper-firmware-toolhead is running"
         else
             echo "klipper-firmware-toolhead is not running"
+            exit 3
         fi
         ;;
     *)
