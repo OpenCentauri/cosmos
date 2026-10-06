@@ -3,8 +3,6 @@ software =
     version = "@@DISTRO_VERSION@@";
     description = "Firmware update for Cosmos";
 
-    hardware-compatibility: [ "1.0" ];
-
     stable = {
 
         /* now in systemA, we need to upgrade systemB(bootB, rootfsB) */
@@ -175,6 +173,13 @@ software =
                     value = "serial";
                 }
             );
+        };
+    };
+
+    @@MACHINE@@ = {
+        cosmos = {
+            now_A_next_B = { ref = "#./../../stable/now_A_next_B"; };
+            now_B_next_A = { ref = "#./../../stable/now_B_next_A"; };
         };
     };
 }

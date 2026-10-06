@@ -51,7 +51,9 @@ install_firmware_update() {
     mv "$SWU_FILE" "$SRC_DIR/emergency.swu.installed" || return 1
     rm -f "$FAILED_FILE" "$SUCCESS_FILE"
 
+    SELECTION="cosmos"
     if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
+        SELECTION="stable"
         # Flash stock bootloader
         if ! restore-mcu-firmware; then
             echo "restore-mcu-firmware failed" > "$FAILED_FILE"
@@ -61,7 +63,7 @@ install_firmware_update() {
 
     uiprompt "Installing firmware" "A firmware update is being installed, please wait..."
 
-    if ! flash "$SRC_DIR/emergency.swu.installed"; then
+    if ! flash "$SRC_DIR/emergency.swu.installed" "$SELECTION"; then
         echo "flash failed" > "$FAILED_FILE"
         return 1
     fi

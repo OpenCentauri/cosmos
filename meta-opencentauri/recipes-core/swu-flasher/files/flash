@@ -1,8 +1,14 @@
 #!/bin/sh
 
 if [ ! -f "$1" ]; then
-    echo "Usage: $0 path/to/update.swu"
+    echo "Usage: $0 path/to/update.swu [cosmos|stable]"
     exit 1
+fi
+
+if [ -n "$2" ]; then
+    selection="$2"
+else
+    selection="cosmos"
 fi
 
 curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
@@ -19,6 +25,6 @@ echo "$boot_partition"
 
 set -e
 readonly-config-reset
-swupdate -v -i "$1" -e stable,${boot_partition}
+swupdate -v -i "$1" -e ${selection},${boot_partition}
 sync
 echo "Update finished, run 'reboot' to finalize"
