@@ -94,7 +94,7 @@
     color: var(--oc-text-muted) !important;
 }
 
-[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-icon,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-icon:not(.spool-icon),
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-label,
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-input,
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-select__selection,
