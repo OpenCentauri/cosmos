@@ -7,7 +7,6 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 SRC_URI = " \
     file://config_manager.py \
     file://build-klipper-var-config.sh \
-    file://default.conf \
     file://default-machine.conf \
 "
 
@@ -23,7 +22,6 @@ do_install() {
     install -m 0644 ${S}/default-machine.conf ${D}${sysconfdir}/klipper/config/cosmos.conf
 
     install -d ${D}${datadir}/config-manager
-    install -m 0644 ${S}/default.conf ${D}${datadir}/config-manager/default.conf
     install -m 0644 ${S}/default-machine.conf ${D}${datadir}/config-manager/default-machine.conf
 }
 
@@ -31,7 +29,6 @@ FILES:${PN} = " \
     ${bindir}/config-manager \
     ${bindir}/build-klipper-var-config \
     ${sysconfdir}/klipper/config/cosmos.conf \
-    ${datadir}/config-manager/default.conf \
     ${datadir}/config-manager/default-machine.conf \
 "
 

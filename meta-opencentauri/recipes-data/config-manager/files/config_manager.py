@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os, configparser, sys
 
+# The first valid value is the fallback when no configured default is present.
 VALIDATORS = {
     'ui': {
         'screen_ui': ['grumpyscreen', 'guppyscreen', 'atomscreen', 'none'],
@@ -12,28 +13,27 @@ VALIDATORS = {
         'check_for_updates': ['True', 'False'],
     },
     'extras': {
-        'elegoo_canvas': ['True', 'False'],
-        'enclosed': ['True', 'False'],
+        'elegoo_canvas': ['False', 'True'],
+        'enclosed': ['False', 'True'],
     },
     'klipper': {
-        'sync_camera_led_to_chamber_led': ['True', 'False'],
+        'sync_camera_led_to_chamber_led': ['False', 'True'],
         'camera_led_default_on': ['True', 'False'],
-        'bypass_calibration': ['True', 'False'],
+        'bypass_calibration': ['False', 'True'],
         'heatsoak': [str(x / 10) for x in range(100)] + [str(x) for x in range(31)],
-        'adaptive_mesh': ['True', 'False'],
+        'adaptive_mesh': ['False', 'True'],
         'adaptive_purge': ['True', 'False'],
-        'unload_after_print': ['True', 'False'],
+        'unload_after_print': ['False', 'True'],
         'clean_nozzle_after_print': ['True', 'False'],
-        'nozzle_z_homing': ['True', 'False'],
+        'nozzle_z_homing': ['False', 'True'],
         'z_ideal_lifting_distance': [str(i) for i in range(257)],
         'full_calibrate_hotend_temperature': [str(i) for i in range(200, 301)],
         'full_calibrate_bed_temperature': [str(i) for i in range(30, 111)],
-        'toolhead_led': ['True', 'False'],
+        'toolhead_led': ['False', 'True'],
     },
 }
 
 VARIABLE_CONFIG_PATH = '/etc/klipper/config/cosmos.conf'
-DEFAULT_CONFIG_PATH = '/usr/share/config-manager/default.conf'
 MACHINE_CONFIG_PATH = '/usr/share/config-manager/default-machine.conf'
 
 def validate_config(config : dict):
@@ -167,10 +167,9 @@ def main(section : str, option : str, value : str|None = None):
     if section in merged_config and option in merged_config[section]:
         result = merged_config[section][option]
     else:
-        global_config = load_config(DEFAULT_CONFIG_PATH)
-        if section not in global_config or option not in global_config[section]:
+        if section not in VALIDATORS or option not in VALIDATORS[section]:
             raise ValueError(f"Option '{option}' not found in section '{section}'")
-        result = global_config[section][option]
+        result = VALIDATORS[section][option][0]
 
     print(result, end='')
 
