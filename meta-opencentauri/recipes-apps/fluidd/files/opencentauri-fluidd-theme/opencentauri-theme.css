@@ -134,7 +134,7 @@
     box-shadow: none !important;
 }
 
-[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip,
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-chip:not(.app-chip-color),
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-alert,
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-snack__wrapper {
     color: var(--oc-text) !important;
