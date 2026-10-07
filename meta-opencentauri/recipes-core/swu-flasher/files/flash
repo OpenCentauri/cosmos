@@ -1,15 +1,27 @@
 #!/bin/sh
 
 if [ ! -f "$1" ]; then
-    echo "Usage: $0 path/to/update.swu [cosmos|stable]"
+    echo "Usage: $0 path/to/update.swu"
     exit 1
 fi
 
-if [ -n "$2" ]; then
-    selection="$2"
-else
+SWU_FILE=$(realpath "$1")
+TEMP_DIR="/user-resource/.tmp"
+mkdir -p "$TEMP_DIR"
+cd "$TEMP_DIR"
+cpio -i -u -F "$SWU_FILE" sw-description
+
+stock_image="false"
+if grep -qs "cosmos =" "$TEMP_DIR/sw-description"; then
     selection="cosmos"
+elif grep -qs "awuboot" "$TEMP_DIR/sw-description"; then
+    selection="stable"
+    stock_image="true"
+else
+    selection="stable"
 fi
+
+rm -f "$TEMP_DIR/sw-description"
 
 curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
@@ -21,10 +33,22 @@ else
     exit 1
 fi
 
-echo "$boot_partition"
+echo "Installing $selection,$boot_partition"
 
 set -e
+
 readonly-config-reset
-swupdate -v -i "$1" -e ${selection},${boot_partition}
+
+if [ "$stock_image" = "true" ]; then
+    restore-mcu-firmware
+fi
+
+swupdate -v -i "$SWU_FILE" -e ${selection},${boot_partition}
+
+if [ "$stock_image" = "true" ]; then
+    fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+fi
+
 sync
+
 echo "Update finished, run 'reboot' to finalize"

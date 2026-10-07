@@ -36,14 +36,8 @@ curl -k -o "$BINFILE" -L "$FW_URL"
 swu-decrypt.py "$BINFILE" "$KEY" "$IV" "$ZIPFILE"
 unzip "$ZIPFILE" -d /user-resource
 
-# Flash stock bootloader
-restore-mcu-firmware
-
 # Install firmware
-flash "$SWUFILE" stable
-
-# Revert stock bootcmd
-fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+flash "$SWUFILE"
 
 # Clean up firmware files
 rm -r "$BINFILE" "$ZIPFILE" /user-resource/update

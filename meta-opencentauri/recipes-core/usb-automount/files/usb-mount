@@ -51,26 +51,11 @@ install_firmware_update() {
     mv "$SWU_FILE" "$SRC_DIR/emergency.swu.installed" || return 1
     rm -f "$FAILED_FILE" "$SUCCESS_FILE"
 
-    SELECTION="cosmos"
-    if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
-        SELECTION="stable"
-        # Flash stock bootloader
-        if ! restore-mcu-firmware; then
-            echo "restore-mcu-firmware failed" > "$FAILED_FILE"
-            return 1
-        fi
-    fi
-
     uiprompt "Installing firmware" "A firmware update is being installed, please wait..."
 
-    if ! flash "$SRC_DIR/emergency.swu.installed" "$SELECTION"; then
+    if ! flash "$SRC_DIR/emergency.swu.installed"; then
         echo "flash failed" > "$FAILED_FILE"
         return 1
-    fi
-
-    if strings "$SRC_DIR/emergency.swu.installed" | grep -qx "dsp0_partition"; then
-        # Revert stock bootcmd
-        fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
     fi
 
     uiprompt "Firmware update complete" "Please reboot the printer to finalize the update."
