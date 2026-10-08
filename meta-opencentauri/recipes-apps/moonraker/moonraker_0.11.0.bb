@@ -21,9 +21,9 @@ SRC_URI = " \
     file://0002-Add-sysvinit-as-machine-provider.patch \
 "
 
-SRCREV = "985c1d0bbeb90bc057d34a232c9dc3b05e0c6c8d"
+SRCREV = "9e676eba6b02661a4dfa3ec6e7ac3f3504498e6d"
 
-PR = "r2"
+PR = "r3"
 
 inherit python3-dir update-rc.d
 
