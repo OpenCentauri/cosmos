@@ -17,8 +17,16 @@ if grep -qs "cosmos =" "$TEMP_DIR/sw-description"; then
 elif grep -qs "awuboot" "$TEMP_DIR/sw-description"; then
     selection="stable"
     stock_image="true"
-else
+elif [[ "$2" == "--yes-i-want-to-downgrade-just-do-it" ]]; then
     selection="stable"
+else
+    echo "Potentially dangerous downgrade!!"
+    echo "We couldn't determine if the image is a cosmos or stock image."
+    echo "If you are attempting to downgrade to an old cosmos image, please"
+    echo "double check you have the image for the correct machine and pass"
+    echo "--yes-i-want-to-downgrade-just-do-it to install it anyway."
+    rm -f "$TEMP_DIR/sw-description"
+    exit 1
 fi
 
 rm -f "$TEMP_DIR/sw-description"
