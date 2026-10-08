@@ -1,0 +1,53 @@
+From 24908423635c63389f1da713cb723aa3a3af21c9 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Thu, 1 Oct 2026 22:04:33 +0200
+Subject: [PATCH] update_manager: Add support for SWUDeploy
+
+---
+ moonraker/components/update_manager/common.py         | 3 +++
+ moonraker/components/update_manager/update_manager.py | 4 +++-
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/moonraker/components/update_manager/common.py b/moonraker/components/update_manager/common.py
+index 32c1cf8..232eb3d 100644
+--- a/moonraker/components/update_manager/common.py
++++ b/moonraker/components/update_manager/common.py
+@@ -51,6 +51,7 @@ class AppType(ExtendedEnum):
+     ZIP = 4
+     PYTHON = 5
+     EXECUTABLE = 6
++    SWUPDATE = 7
+ 
+     @classmethod
+     def detect(cls, app_path: Union[str, pathlib.Path, None] = None):
+@@ -76,6 +77,8 @@ class AppType(ExtendedEnum):
+             return []
+         elif self in [AppType.WEB, AppType.ZIP, AppType.EXECUTABLE]:
+             return [Channel.STABLE, Channel.BETA]  # type: ignore
++        elif self == AppType.SWUPDATE:
++            return [Channel.STABLE, Channel.DEV]  # type: ignore
+         else:
+             return list(Channel)
+ 
+diff --git a/moonraker/components/update_manager/update_manager.py b/moonraker/components/update_manager/update_manager.py
+index cd580c9..0973132 100644
+--- a/moonraker/components/update_manager/update_manager.py
++++ b/moonraker/components/update_manager/update_manager.py
+@@ -17,6 +17,7 @@ from .app_deploy import AppDeploy
+ from .git_deploy import GitDeploy
+ from .net_deploy import NetDeploy
+ from .python_deploy import PythonDeploy
++from .swu_deploy import SwuDeploy
+ from .system_deploy import PackageDeploy
+ from ...common import RequestType
+ from ...utils.filelock import AsyncExclusiveFileLock, LockTimeout
+@@ -61,7 +62,8 @@ def get_deploy_class(
+         AppType.GIT_REPO: GitDeploy,
+         AppType.ZIP: NetDeploy,
+         AppType.PYTHON: PythonDeploy,
+-        AppType.EXECUTABLE: NetDeploy
++        AppType.EXECUTABLE: NetDeploy,
++        AppType.SWUPDATE: SwuDeploy
+     }
+     return _deployers.get(key, default)
+ 

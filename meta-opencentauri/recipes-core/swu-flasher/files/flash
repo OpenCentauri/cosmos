@@ -5,6 +5,32 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
+SWU_FILE=$(realpath "$1")
+TEMP_DIR="/user-resource/.tmp"
+mkdir -p "$TEMP_DIR"
+cd "$TEMP_DIR"
+cpio -i -u -F "$SWU_FILE" sw-description
+
+stock_image="false"
+if grep -qs "cosmos =" "$TEMP_DIR/sw-description"; then
+    selection="cosmos"
+elif grep -qs "awuboot" "$TEMP_DIR/sw-description"; then
+    selection="stable"
+    stock_image="true"
+elif [[ "$2" == "--yes-i-want-to-downgrade-just-do-it" ]]; then
+    selection="stable"
+else
+    echo "Potentially dangerous downgrade!!"
+    echo "We couldn't determine if the image is a cosmos or stock image."
+    echo "If you are attempting to downgrade to an old cosmos image, please"
+    echo "double check you have the image for the correct machine and pass"
+    echo "--yes-i-want-to-downgrade-just-do-it to install it anyway."
+    rm -f "$TEMP_DIR/sw-description"
+    exit 1
+fi
+
+rm -f "$TEMP_DIR/sw-description"
+
 curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
 
 if [[ "$curr" == "A" ]]; then
@@ -15,10 +41,22 @@ else
     exit 1
 fi
 
-echo "$boot_partition"
+echo "Installing $selection,$boot_partition"
 
 set -e
+
 readonly-config-reset
-swupdate -v -i "$1" -e stable,${boot_partition}
+
+if [ "$stock_image" = "true" ]; then
+    restore-mcu-firmware
+fi
+
+swupdate -v -i "$SWU_FILE" -e ${selection},${boot_partition}
+
+if [ "$stock_image" = "true" ]; then
+    fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
+fi
+
 sync
+
 echo "Update finished, run 'reboot' to finalize"

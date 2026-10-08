@@ -10,6 +10,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += " \
     file://klipper-init-d \
     file://printer.cfg \
+    file://shared-macros.cfg \
     file://macros.cfg \
     file://machine.cfg \
     file://shell.cfg \
@@ -18,6 +19,9 @@ SRC_URI += " \
     file://kamp.cfg \
     file://client.cfg \
 "
+
+SRC_URI:append:centauri-carbon-1 = " file://canvas-toolhead.cfg"
+SRC_URI:append:centauri-carbon-2 = " file://enclosed.cfg"
 
 inherit python3-dir update-rc.d
 
@@ -104,11 +108,22 @@ do_install() {
 
     # Copy non-printer .cfg files to readonly folder
     install -d ${D}${sysconfdir}/klipper/config/klipper-readonly
-    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${UNPACKDIR}/machine.cfg ${UNPACKDIR}/client.cfg ${UNPACKDIR}/shell.cfg ${UNPACKDIR}/shared-macros.cfg ${UNPACKDIR}/calibration.cfg ${UNPACKDIR}/screen.cfg ${UNPACKDIR}/kamp.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly
+    install -m 0644 ${UNPACKDIR}/macros.cfg ${D}${sysconfdir}/klipper/config/klipper-readonly/zmacros.cfg
 
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${UNPACKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+}
+
+do_install:append:centauri-carbon-1() {
+    install -d ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${UNPACKDIR}/canvas-toolhead.cfg ${D}${sysconfdir}/klipper/config/extras-readonly/
+}
+
+do_install:append:centauri-carbon-2() {
+    install -d ${D}${sysconfdir}/klipper/config/extras-readonly
+    install -m 0644 ${UNPACKDIR}/enclosed.cfg ${D}${sysconfdir}/klipper/config/extras-readonly/
 }
 
 FILES:${PN} = " \
@@ -119,7 +134,8 @@ FILES:${PN} = " \
 
 CONFFILES:${PN} = " \
     ${sysconfdir}/klipper/config/printer.cfg \
-    ${sysconfdir}/klipper/config/klipper-readonly/macros.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/shared-macros.cfg \
+    ${sysconfdir}/klipper/config/klipper-readonly/zmacros.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/machine.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/shell.cfg \
     ${sysconfdir}/klipper/config/klipper-readonly/screen.cfg \

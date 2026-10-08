@@ -10,16 +10,20 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/Arksine/moonraker.git;protocol=https;branch=master \
+    file://swu_deploy.py;subdir=${BP}/moonraker/components/update_manager/ \
     file://moonraker-init-d \
     file://moonraker.conf \
     file://moonraker-readonly.conf \
+    file://moonraker.asvc \
     file://0001-Serve-static-files.patch \
     file://0001-Reduce-log-rotate-threshold.patch \
+    file://0001-Add-support-for-SWUDeploy.patch \
+    file://0002-Add-sysvinit-as-machine-provider.patch \
 "
 
-SRCREV = "16e530eb663218faa6ccd97ffb0583f1880e2983"
+SRCREV = "9e676eba6b02661a4dfa3ec6e7ac3f3504498e6d"
 
-PR = "r1"
+PR = "r3"
 
 inherit python3-dir update-rc.d
 
@@ -51,6 +55,7 @@ RDEPENDS:${PN} = " \
     python3-msgspec \
     python3-uvloop \
     python3-aiofiles \
+    curl \
     kalico \
 "
 
@@ -79,6 +84,9 @@ do_install() {
     install -d ${D}${sysconfdir}/klipper/config/moonraker-readonly
     install -m 0644 ${UNPACKDIR}/moonraker-readonly.conf ${D}${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf
 
+    # Install moonraker services file
+    install -m 0644 ${UNPACKDIR}/moonraker.asvc ${D}${sysconfdir}/klipper/
+
     # Symlink gcodes to /user-resource
     ln -sf /user-resource/gcodes ${D}${sysconfdir}/klipper/gcodes
     # Symlink logs to /board-resource
@@ -92,6 +100,7 @@ do_install() {
 FILES:${PN} = " \
     ${datadir}/moonraker \
     ${sysconfdir}/init.d/moonraker \
+    ${sysconfdir}/klipper/moonraker.asvc \
     ${sysconfdir}/klipper/config/moonraker.conf \
     ${sysconfdir}/klipper/config/moonraker-readonly/moonraker.conf \
     ${sysconfdir}/klipper/gcodes \

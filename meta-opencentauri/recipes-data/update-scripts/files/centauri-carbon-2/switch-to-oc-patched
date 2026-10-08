@@ -15,14 +15,8 @@ if [ ! -s "$SWUFILE" ]; then
     exit 1
 fi
 
-# Flash stock bootloader
-restore-mcu-firmware
-
 # Install firmware
 flash "$SWUFILE"
-
-# Revert stock bootcmd
-fw_setenv bootcmd "run setargs_mmc boot_dsp0 boot_normal"
 
 # Clean up firmware file
 rm "$SWUFILE"
