@@ -11,8 +11,6 @@ RDEPENDS:${PN} = " \
     screen-actions \
 "
 
-do_install[vardeps] += "DISTRO_VERSION"
-
 do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${UNPACKDIR}/check-disk.sh ${D}${bindir}/check-disk

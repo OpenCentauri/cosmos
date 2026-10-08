@@ -43,6 +43,7 @@ RDEPENDS:${PN} = " \
     kalico-firmware-canvas \
     kalico-firmware-afc-lite-usb \
     openrfid \
+	check-disk \
 "
 
 RPROVIDES:${PN} += "klipper"
