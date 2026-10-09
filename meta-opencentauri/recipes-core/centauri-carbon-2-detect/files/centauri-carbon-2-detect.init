@@ -32,6 +32,14 @@ case "$1" in
         sleep 0.2
 
         hardware="$("@LIBEXECDIR@/probe-canvas" "$SERIALPORT")"
+
+        # Leave the port powered off before the firmware services start.
+        echo "$GPIO" > /sys/class/gpio/export
+        echo out > "/sys/class/gpio/gpio$GPIO/direction"
+        echo 0 > "/sys/class/gpio/gpio$GPIO/value"
+        echo "$GPIO" > /sys/class/gpio/unexport
+        sleep 0.5
+
         canvas=False
         [ "$hardware" != canvas ] || canvas=True
 
