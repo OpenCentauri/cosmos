@@ -2,7 +2,7 @@
 
 This repository contains a Yocto Project-based firmware build system for the Elegoo Centauri Carbon 3D printer family. The mainboard of these printers is powered by an Allwinner R528 SoC.
 
-_**Unsure about what COSMOS is? [Check the FAQ to learn more](./FAQ.md)**_
+_**Unsure about what COSMOS is? [Check the FAQ to learn more](https://docs.opencentauri.cc/klipper-conversion/cosmos/cosmos/#faq)**_
 
 ## Prerequisites
 
