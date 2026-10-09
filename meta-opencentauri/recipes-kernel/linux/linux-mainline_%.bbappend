@@ -20,3 +20,5 @@ SRC_URI:append = " \
 	file://0001-Make-CONFIG_FB-select-CONFIG_FB_BACKLIGHT.patch \
 	file://0001-Add-support-for-st77922-touchscreen-driver.patch \
 "
+
+SRC_URI:append:centauri-carbon-2 = " file://cc2-mmc-debug.cfg"
