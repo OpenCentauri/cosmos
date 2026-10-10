@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1ebbd3e34237af26da5dc08a4e440464"
 
 inherit module
 
-SRCREV = "bd11969265809a0fc948f1107c8256bbb2c1aa60"
+SRCREV = "d13d07963cd15d731e2895e8288a04cca6152ac9"
 SRC_URI = "git://github.com/radxa-pkg/aic8800.git;protocol=https;branch=main"
 
 AIC_BUS:centauri-carbon-1 = "USB"

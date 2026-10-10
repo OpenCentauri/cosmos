@@ -10,7 +10,9 @@ require recipes-kernel/linux/linux.inc
 
 LINUX_VERSION = "${PV}"
 
-KBRANCH = "linux-6.18.y"
+KBRANCH = "linux-7.2.y"
+
+KMETA_AUDIT = ""
 
 # Pull in the devicetree files into the rootfs
 RDEPENDS_${KERNEL_PACKAGE_NAME}-base += "kernel-devicetree"
@@ -25,6 +27,6 @@ SRC_URI = " \
 "
 
 # v${PV}
-SRCREV = "0c503cf3dde2e53614f05261ece12f9d3d4c3c20"
+SRCREV = "bd50482a9c7a6eb91468f1064a346a75e677e692"
 
 FILES_${KERNEL_PACKAGE_NAME}-base:append = " ${nonarch_base_libdir}/modules/${KERNEL_VERSION}/modules.builtin.modinfo"
