@@ -14,13 +14,12 @@ inherit update-rc.d
 INITSCRIPT_NAME = "centauri-carbon-2-detect"
 INITSCRIPT_PARAMS = "start 93 2 3 4 5 ."
 
-RDEPENDS:${PN} = "config-manager python3-core python3-pyserial"
+RDEPENDS:${PN} = "config-manager libgpiod-tools python3-core python3-pyserial"
 
 do_install() {
-    install -d ${D}${sysconfdir}/init.d ${D}${libexecdir}
+    install -d ${D}${sysconfdir}/init.d ${D}${bindir}
     install -m 0755 ${S}/centauri-carbon-2-detect.init ${D}${sysconfdir}/init.d/centauri-carbon-2-detect
-    install -m 0755 ${S}/probe-canvas.py ${D}${libexecdir}/probe-canvas
-    sed -i 's,@LIBEXECDIR@,${libexecdir},g' ${D}${sysconfdir}/init.d/centauri-carbon-2-detect
+    install -m 0755 ${S}/probe-canvas.py ${D}${bindir}/probe-canvas
 }
 
-FILES:${PN} = "${sysconfdir}/init.d/centauri-carbon-2-detect ${libexecdir}/probe-canvas"
+FILES:${PN} = "${sysconfdir}/init.d/centauri-carbon-2-detect ${bindir}/probe-canvas"

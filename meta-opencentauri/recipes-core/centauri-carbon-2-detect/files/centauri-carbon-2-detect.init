@@ -21,23 +21,26 @@ case "$1" in
         [ ! -f "$MARKER" ] || exit 0
 
         echo "Detecting Centauri Carbon 2 hardware..."
-        enclosed=False
-        [ ! -e /dev/video0 ] || enclosed=True
+        # The chamber light presence signal is active-low.
+        chamber_light="$(gpioget --numeric --chip gpiochip0 38)"
+        case "$chamber_light" in
+            0) enclosed=True ;;
+            1) enclosed=False ;;
+            *)
+                echo "Unexpected chamber light presence value: $chamber_light" >&2
+                exit 1
+                ;;
+        esac
 
         # Match the CANVAS init service's power-on sequence.
-        echo "$GPIO" > /sys/class/gpio/export
-        echo out > "/sys/class/gpio/gpio$GPIO/direction"
-        echo 1 > "/sys/class/gpio/gpio$GPIO/value"
-        echo "$GPIO" > /sys/class/gpio/unexport
+        # Exit after setting the line so the firmware services can request it.
+        gpioset --chip gpiochip0 --toggle 0 "$GPIO=1"
         sleep 0.2
 
-        hardware="$("@LIBEXECDIR@/probe-canvas" "$SERIALPORT")"
+        hardware="$(probe-canvas "$SERIALPORT")"
 
         # Leave the port powered off before the firmware services start.
-        echo "$GPIO" > /sys/class/gpio/export
-        echo out > "/sys/class/gpio/gpio$GPIO/direction"
-        echo 0 > "/sys/class/gpio/gpio$GPIO/value"
-        echo "$GPIO" > /sys/class/gpio/unexport
+        gpioset --chip gpiochip0 --toggle 0 "$GPIO=0"
         sleep 0.5
 
         canvas=False
