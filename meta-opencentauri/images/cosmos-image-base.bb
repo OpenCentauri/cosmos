@@ -50,6 +50,8 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     dragonbreath \
 "
 
+CORE_IMAGE_EXTRA_INSTALL:append:centauri-carbon-2 = " centauri-carbon-2-detect"
+
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
 INITRAMFS_FSTYPES = "cpio.gz"
 INITRAMFS_IMAGE_BUNDLE = "1"

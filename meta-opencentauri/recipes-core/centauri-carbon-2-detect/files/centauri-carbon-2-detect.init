@@ -1,0 +1,60 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          centauri-carbon-2-detect
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:
+# X-Start-Before:     klipper-firmware-bed klipper-firmware-toolhead klipper-firmware-dsp klipper-firmware-canvas klipper
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Detect Centauri Carbon 2 hardware on first boot
+### END INIT INFO
+
+set -e
+
+# /etc is persistent across firmware updates and cleared by a factory reset.
+MARKER="/etc/centauri-carbon-2-detected"
+SERIALPORT="/dev/ttyS1"
+GPIO="117"
+
+case "$1" in
+    start)
+        [ ! -f "$MARKER" ] || exit 0
+
+        echo "Detecting Centauri Carbon 2 hardware..."
+        # The chamber light presence signal is active-low.
+        chamber_light="$(gpioget --numeric --chip gpiochip0 38)"
+        case "$chamber_light" in
+            0) enclosed=True ;;
+            1) enclosed=False ;;
+            *)
+                echo "Unexpected chamber light presence value: $chamber_light" >&2
+                exit 1
+                ;;
+        esac
+
+        # Match the CANVAS init service's power-on sequence.
+        # Exit after setting the line so the firmware services can request it.
+        gpioset --chip gpiochip0 --toggle 0 "$GPIO=1"
+        sleep 0.2
+
+        hardware="$(probe-canvas "$SERIALPORT")"
+
+        # Leave the port powered off before the firmware services start.
+        gpioset --chip gpiochip0 --toggle 0 "$GPIO=0"
+        sleep 0.5
+
+        canvas=False
+        [ "$hardware" != canvas ] || canvas=True
+
+        config-manager extras enclosed "$enclosed" > /dev/null
+        config-manager extras elegoo_canvas "$canvas" > /dev/null
+        echo "Detected enclosed=$enclosed, elegoo_canvas=$canvas ($hardware)."
+        touch "$MARKER"
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+        ;;
+esac
