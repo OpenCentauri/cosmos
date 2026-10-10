@@ -146,7 +146,7 @@ index dd9088799e..d15c44f195 100644
              gcmd.get_int("INPUT_SHAPING", 0),
          ):
              self._run_test(test_seq, axis, gcmd)
-@@ -283,7 +303,8 @@ def _run_test(self, test_seq, axis, gcmd):
+@@ -279,7 +299,8 @@ def _run_test(self, test_seq, axis, gcmd):
              last_v = v
              last_freq = freq
          if last_v:
@@ -154,8 +154,8 @@ index dd9088799e..d15c44f195 100644
 +            # Decelerate to a stop, continuing in the direction of motion
 +            d_decel = 0.5 * last_v * abs(last_v) / old_max_accel
              decel_X, decel_Y = axis.get_point(d_decel)
-             toolhead.cmd_M204(
-                 self.gcode.create_gcode_command(
+             toolhead.set_max_velocities(None, old_max_accel, None, None)
+             toolhead.move([X + decel_X, Y + decel_Y] + tpos[2:], abs(last_v))
 @@ -370,18 +391,16 @@ def _run_test(
          raw_name_suffix=None,
          accel_chips=None,

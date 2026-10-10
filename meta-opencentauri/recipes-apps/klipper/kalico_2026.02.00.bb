@@ -63,6 +63,7 @@ do_compile() {
         pyhelper.c \
         serialqueue.c \
         stepcompress.c \
+        steppersync.c \
         itersolve.c \
         trapq.c \
         pollreactor.c \
@@ -72,6 +73,7 @@ do_compile() {
         kin_corexy.c \
         kin_corexz.c \
         kin_delta.c \
+        kin_deltesian.c \
         kin_polar.c \
         kin_rotary_delta.c \
         kin_winch.c \

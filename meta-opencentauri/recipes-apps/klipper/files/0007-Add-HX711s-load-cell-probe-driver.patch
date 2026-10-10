@@ -1,0 +1,864 @@
+From e9403de78b44680a8ee008521b34e3e5a776cf10 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Tue, 26 May 2026 22:09:28 +0200
+Subject: [PATCH] Add HX711s load cell probe driver
+
+---
+ docs/Config_Reference.md            |  48 ++++
+ docs/Load_Cell.md                   |  24 ++
+ klippy/extras/load_cell/__init__.py |   3 +-
+ klippy/extras/load_cell/hx711s.py   | 245 +++++++++++++++++
+ klippy/extras/load_cell_probe.py    |   3 +-
+ src/Kconfig                         |  12 +-
+ src/Makefile                        |   1 +
+ src/sensor_hx711s.c                 | 394 ++++++++++++++++++++++++++++
+ 8 files changed, 726 insertions(+), 4 deletions(-)
+ create mode 100644 klippy/extras/load_cell/hx711s.py
+ create mode 100644 src/sensor_hx711s.c
+
+diff --git a/docs/Config_Reference.md b/docs/Config_Reference.md
+index 60548249..8fdfb949 100644
+--- a/docs/Config_Reference.md
++++ b/docs/Config_Reference.md
+@@ -6161,6 +6161,54 @@ data_ready_pin:
+ #   are: 0, 1, 2, 3. The default is 0.
+ ```
+ 
++#### HX711S
++Support for 1 to 4 HX711 chips wired as a multi-channel load cell sensor. Each
++chip's reading is reported as a separate ADC channel and the `load_cell` sums
++them, making this suitable for under-bed configurations with multiple strain
++gauges. Each chip is read on its own data ready edge and never waits on another,
++so chips do not need to be phase-aligned.
++```
++[load_cell]
++sensor_type: hx711s
++sdo_pins:
++#   Comma-separated list of pins connected to the HX711 DOUT lines, one per
++#   chip. Between 1 and 4 pins must be specified. All pins must be on the same
++#   MCU. The first chip listed paces the sample stream. This parameter must be
++#   provided.
++sclk_pins:
++#   Comma-separated list of pins connected to the HX711 SCLK lines, one per
++#   chip. Must match the order and count of sdo_pins. This parameter must be
++#   provided.
++#gain: A-128
++#   Valid values are: A-128, A-64, B-32. The default is A-128. Changing the
++#   gain also selects the input channel. This setting applies to all chips.
++#sample_rate: 80
++#   Valid values are 80 or 10. The default is 80. This must match the hardware
++#   wiring of the RATE pin, which is shared by all chips. The sample rate
++#   cannot be changed in software.
++```
++
++#### HX717S
++Support for 1 to 4 HX717 chips wired as a multi-channel load cell sensor. The
++HX717 is the higher sample rate version of the HX711. See [HX711S](#hx711s)
++for wiring notes; the same chip-per-pin model applies.
++```
++[load_cell]
++sensor_type: hx717s
++sdo_pins:
++#   Comma-separated list of pins connected to the HX717 DOUT lines, one per
++#   chip. Between 1 and 4 pins must be specified. All pins must be on the same
++#   MCU.
++sclk_pins:
++#   Comma-separated list of pins connected to the HX717 SCLK lines, one per
++#   chip. Must match the order and count of sdo_pins.
++#gain: A-128
++#   Valid values are: A-128, B-64, A-64, B-8. The default is A-128.
++#sample_rate: 320
++#   Valid values are: 10, 20, 80, 320. The default is 320. This must match
++#   the hardware wiring of the RATE pin shared by all chips.
++```
++
+ 
+ ### [load_cell_probe]
+ Load Cell Probe. This combines the functionality of a [probe] and a [load_cell].
+diff --git a/docs/Load_Cell.md b/docs/Load_Cell.md
+index bbeea1cb..5c24c13c 100644
+--- a/docs/Load_Cell.md
++++ b/docs/Load_Cell.md
+@@ -24,6 +24,8 @@ reference_tare_counts: 12345
+ 
+   * [`hx711`](Config_Reference.md#hx711)
+   * [`hx717`](Config_Reference.md#hx717)
++  * [`hx711s`](Config_Reference.md#hx711s)
++  * [`hx717s`](Config_Reference.md#hx717s)
+   * [`ads1220`](Config_Reference.md#ads1220)
+   * [`ads131m02`](Config_Reference.md#ads131m02)
+   * [`ads131m04`](Config_Reference.md#ads131m04)
+@@ -500,3 +502,25 @@ These sensors are popular but have limitations:
+ - Cannot communicate reset events to the MCU, hiding electrical faults
+ - HX717 (320 Hz) strongly preferred over HX711 (80 Hz) for probing; limit HX711 probing speed to 2 mm/s
+ - HX711 Sample rate is hardware-configured, not software-configurable; 10 SPS versions must be rewired for 80 SPS
++
++**Multi-sensor (hx711s / hx717s):**
++The `hx711s` and `hx717s` sensor types support 1 to 4 chips wired in parallel.
++Each chip is read on its own data ready edge and never waits on another, so the
++chips do not need to be phase-aligned; they only need to be strapped to the same
++sample rate. The first chip listed paces the sample stream, and the remaining
++channels are held at their most recent reading. Each chip's reading is reported
++as a separate ADC channel and the `load_cell` sums all channels for force
++measurement and probe triggering, equivalent to a hardware summing box. Example
++with two HX717 chips:
++
++```ini
++[load_cell_probe]
++sensor_type: hx717s
++sdo_pins: PA4, PA6
++sclk_pins: PA5, PA7
++sample_rate: 320
++counts_per_gram: 490
++reference_tare_counts: 24690
++trigger_force: 75
++z_offset: 0.0
++```
+diff --git a/klippy/extras/load_cell/__init__.py b/klippy/extras/load_cell/__init__.py
+index dfe33727..6af39bc7 100644
+--- a/klippy/extras/load_cell/__init__.py
++++ b/klippy/extras/load_cell/__init__.py
+@@ -6,7 +6,7 @@
+ from klippy.configfile import ConfigWrapper
+ from klippy.printer import Printer, SubsystemComponentCollection
+ 
+-from . import ads131m0x, ads1220, cs1237, hx71x
++from . import ads131m0x, ads1220, cs1237, hx71x, hx711s
+ from .load_cell import LoadCell
+ 
+ 
+@@ -17,6 +17,7 @@ def register_components(subsystem: SubsystemComponentCollection):
+         | ads1220.ADS1220_SENSOR_TYPE
+         | ads131m0x.ADS131M0X_SENSOR_TYPES
+         | cs1237.CS1237_SENSOR_TYPE
++        | hx711s.HX711S_SENSOR_TYPES
+     )
+     for name, sensor in sensors.items():
+         subsystem.register_component("load_cell_sensors", name, sensor)
+diff --git a/klippy/extras/load_cell/hx711s.py b/klippy/extras/load_cell/hx711s.py
+new file mode 100644
+index 00000000..8f8d9c44
+--- /dev/null
++++ b/klippy/extras/load_cell/hx711s.py
+@@ -0,0 +1,245 @@
++# Multi-Sensor HX711 and HX717 Support
++#
++# Copyright (C) 2026 James Turton <james.turton@gmx.com>
++# Original HX711 driver Copyright (C) 2024 Gareth Farrington <gareth@waves.ky>
++#
++# This file may be distributed under the terms of the GNU GPLv3 license.
++import logging
++
++from klippy.mcu import MCU
++
++from .. import bulk_sensor
++from .interfaces import BulkAdcData, BulkAdcDataCallback, LoadCellSensor
++
++#
++# Constants
++#
++UPDATE_INTERVAL = 0.10
++SAMPLE_ERROR_DESYNC = -0x80000000
++SAMPLE_ERROR_LONG_READ = 0x40000000
++
++
++# Implementation of multiple HX711 and HX717 chips as one load cell
++class HX711SBase(LoadCellSensor):
++    def __init__(
++        self,
++        config,
++        sensor_type,
++        sample_rate_options,
++        default_sample_rate,
++        gain_options,
++        default_gain,
++    ):
++        self.printer = printer = config.get_printer()
++        self.name = config.get_name().split()[-1]
++        self.last_error_count = 0
++        self.consecutive_fails = 0
++        self.sensor_type = sensor_type
++        # Chip options
++        ppins = printer.lookup_object("pins")
++        dout_pin_names = [p.strip() for p in config.get("dout_pins").split(",")]
++        sclk_pin_names = [p.strip() for p in config.get("sclk_pins").split(",")]
++        if len(dout_pin_names) != len(sclk_pin_names):
++            raise config.error(
++                f"{sensor_type}: dout_pins and sclk_pins must have the same"
++                " number of entries"
++            )
++        self.sensor_count = len(dout_pin_names)
++        if self.sensor_count < 1 or self.sensor_count > 4:
++            raise config.error(
++                f"{sensor_type}: must specify 1 to 4 sensor pin pairs"
++            )
++        # Resolve all pins and validate they share one MCU
++        dout_ppins = [ppins.lookup_pin(p) for p in dout_pin_names]
++        sclk_ppins = [ppins.lookup_pin(p) for p in sclk_pin_names]
++        mcu: MCU = dout_ppins[0]["chip"]
++        self.mcu: MCU = mcu
++        for ppin in dout_ppins[1:] + sclk_ppins:
++            if ppin["chip"] is not mcu:
++                raise config.error(
++                    f"{sensor_type}: all pins must be on the same MCU"
++                )
++        self.dout_pins = [p["pin"] for p in dout_ppins]
++        self.sclk_pins = [p["pin"] for p in sclk_ppins]
++        # Samples per second choices
++        self.sps = config.getchoice(
++            "sample_rate", sample_rate_options, default=default_sample_rate
++        )
++        # gain/channel choices
++        self.gain_channel = int(
++            config.getchoice("gain", gain_options, default=default_gain)
++        )
++        self.oid = mcu.create_oid()
++        ## Bulk Sensor Setup
++        # Clock tracking
++        chip_smooth = self.sps * UPDATE_INTERVAL * 2
++        unpack_format = "<" + ("i" * self.sensor_count)
++        self.ffreader = bulk_sensor.FixedFreqReader(mcu, chip_smooth,
++                                                    unpack_format)
++        # Process messages in batches
++        self.batch_bulk = bulk_sensor.BatchBulkHelper(
++            self.printer,
++            self._process_batch,
++            self._start_measurements,
++            self._finish_measurements,
++            UPDATE_INTERVAL,
++        )
++        # Command Configuration
++        self.query_hx711s_cmd = None
++        self.attach_probe_cmd = None
++        mcu.add_config_cmd(
++            f"config_hx711s oid={self.oid}"
++            f" sensor_count={self.sensor_count}"
++            f" gain_channel={self.gain_channel}"
++        )
++        for i, (dout, sclk) in enumerate(zip(self.dout_pins, self.sclk_pins)):
++            mcu.add_config_cmd(
++                f"add_hx711s oid={self.oid} index={i}"
++                f" dout_pin={dout} sclk_pin={sclk}"
++            )
++        mcu.add_config_cmd(
++            f"query_hx711s oid={self.oid} rest_ticks=0", on_restart=True
++        )
++        mcu.register_config_callback(self._build_config)
++
++    def _build_config(self):
++        self.query_hx711s_cmd = self.mcu.lookup_command(
++            "query_hx711s oid=%c rest_ticks=%u"
++        )
++        self.attach_probe_cmd = self.mcu.lookup_command(
++            "hx711s_attach_load_cell_probe oid=%c load_cell_probe_oid=%c"
++        )
++        self.ffreader.setup_query_command(
++            "query_hx711s_status oid=%c",
++            oid=self.oid,
++            cq=self.mcu.alloc_command_queue(),
++        )
++
++    def get_mcu(self) -> MCU:
++        return self.mcu
++
++    def get_samples_per_second(self) -> int:
++        return self.sps
++
++    # returns a tuple of the minimum and maximum value of the sensor, used to
++    # detect if a data value is saturated
++    def get_range(self) -> tuple[int, int]:
++        return -0x800000, 0x7FFFFF
++
++    def get_channel_count(self) -> int:
++        return self.sensor_count
++
++    # add_client interface, direct pass through to bulk_sensor API
++    def add_client(self, callback: BulkAdcDataCallback):
++        self.batch_bulk.add_client(callback)
++
++    def attach_load_cell_probe(self, load_cell_probe_oid: int):
++        self.attach_probe_cmd.send([self.oid, load_cell_probe_oid])
++
++    # Measurement decoding
++    def _convert_samples(self, samples):
++        adc_factor = 1.0 / (1 << 23)
++        count = 0
++        for sample in samples:
++            ptime = sample[0]
++            channel_counts = sample[1:]
++            val = channel_counts[0]
++            if val == SAMPLE_ERROR_DESYNC:
++                self.last_error_count += 1
++                logging.error("%s: DESYNC at t=%.3f", self.name, ptime)
++                break  # errors latch in the MCU, the rest are duplicates
++            elif val == SAMPLE_ERROR_LONG_READ:
++                self.last_error_count += 1
++                logging.error("%s: READ_TOO_LONG at t=%.3f", self.name, ptime)
++                break  # errors latch in the MCU, the rest are duplicates
++            converted = [round(ptime, 6)]
++            for ch in channel_counts:
++                converted.append(ch)
++                converted.append(round(ch * adc_factor, 9))
++            samples[count] = tuple(converted)
++            count += 1
++        del samples[count:]
++
++    # Start, stop, and process message batches
++    def _start_measurements(self):
++        self.consecutive_fails = 0
++        self.last_error_count = 0
++        # Start bulk reading
++        rest_ticks = self.mcu.seconds_to_clock(
++            1.0 / (10.0 * self.get_samples_per_second())
++        )
++        self.query_hx711s_cmd.send([self.oid, rest_ticks])
++        logging.info(
++            "%s starting '%s' measurements", self.sensor_type, self.name
++        )
++        # Initialize clock tracking
++        self.ffreader.note_start()
++
++    def _finish_measurements(self):
++        # don't use serial connection after shutdown
++        if self.printer.is_shutdown():
++            return
++        # Halt bulk reading
++        self.query_hx711s_cmd.send_wait_ack([self.oid, 0])
++        self.ffreader.note_end()
++        logging.info(
++            "%s finished '%s' measurements", self.sensor_type, self.name
++        )
++
++    def _process_batch(self, eventtime) -> BulkAdcData:
++        prev_overflows = self.ffreader.get_last_overflows()
++        prev_error_count = self.last_error_count
++        samples = self.ffreader.pull_samples()
++        self._convert_samples(samples)
++        overflows = self.ffreader.get_last_overflows() - prev_overflows
++        errors = self.last_error_count - prev_error_count
++        if errors > 0:
++            logging.error("%s: Forced sensor restart due to error", self.name)
++            self._finish_measurements()
++            self._start_measurements()
++        elif overflows > 0:
++            self.consecutive_fails += 1
++            if self.consecutive_fails > 4:
++                logging.error(
++                    "%s: Forced sensor restart due to overflows", self.name
++                )
++                self._finish_measurements()
++                self._start_measurements()
++        else:
++            self.consecutive_fails = 0
++        return {
++            "data": samples,
++            "errors": self.last_error_count,
++            "overflows": self.ffreader.get_last_overflows(),
++        }
++
++
++class HX711S(HX711SBase):
++    def __init__(self, config):
++        super(HX711S, self).__init__(
++            config,
++            "hx711s",
++            # HX711 sps options
++            {80: 80, 10: 10},
++            80,
++            # HX711 gain/channel options
++            {"A-128": 1, "B-32": 2, "A-64": 3},
++            "A-128",
++        )
++
++
++class HX717S(HX711SBase):
++    def __init__(self, config):
++        super(HX717S, self).__init__(
++            config,
++            "hx717s",
++            # HX717 sps options
++            {320: 320, 80: 80, 20: 20, 10: 10},
++            320,
++            # HX717 gain/channel options
++            {"A-128": 1, "B-64": 2, "A-64": 3, "B-8": 4},
++            "A-128",
++        )
++
++
++HX711S_SENSOR_TYPES = {"hx711s": HX711S, "hx717s": HX717S}
+diff --git a/klippy/extras/load_cell_probe.py b/klippy/extras/load_cell_probe.py
+index cc46c587..16a67de8 100644
+--- a/klippy/extras/load_cell_probe.py
++++ b/klippy/extras/load_cell_probe.py
+@@ -3,7 +3,7 @@
+ # Copyright (C) 2025  Gareth Farrington <gareth@waves.ky>
+ #
+ # This file may be distributed under the terms of the GNU GPLv3 license.
+-from klippy.extras.load_cell import ads131m0x, ads1220, cs1237, hx71x
++from klippy.extras.load_cell import ads131m0x, ads1220, cs1237, hx71x, hx711s
+ from klippy.extras.load_cell.load_cell_probe import LoadCellPrinterProbe
+ from klippy.extras.load_cell.tap_analysis import TapClassifierModule
+ from klippy.extras.load_cell.tap_quality_classifier import TapQualityClassifier
+@@ -17,6 +17,7 @@ def register_components(subsystem: SubsystemComponentCollection):
+         | ads1220.ADS1220_SENSOR_TYPE
+         | ads131m0x.ADS131M0X_SENSOR_TYPES
+         | cs1237.CS1237_SENSOR_TYPE
++        | hx711s.HX711S_SENSOR_TYPES
+     )
+     for name, sensor in sensors.items():
+         subsystem.register_component("load_cell_probe_sensors", name, sensor)
+diff --git a/src/Kconfig b/src/Kconfig
+index f312debe..8396c85c 100644
+--- a/src/Kconfig
++++ b/src/Kconfig
+@@ -199,6 +199,10 @@ config WANT_HX71X
+     bool
+     depends on HAVE_GPIO
+     default y
++config WANT_HX711S
++    bool
++    depends on HAVE_GPIO
++    default y
+ config WANT_ADS1220
+     bool
+     depends on WANT_SPI
+@@ -235,11 +239,12 @@ config NEED_SENSOR_BULK
+     bool
+     depends on WANT_ADXL345 || WANT_LIS2DW || WANT_MPU9250 || WANT_ICM20948 \
+         || WANT_HX71X || WANT_ADS1220 || WANT_ADS131M0X || WANT_CS1237 \
+-        || WANT_LDC1612 || WANT_SENSOR_ANGLE
++        || WANT_HX711S || WANT_LDC1612 || WANT_SENSOR_ANGLE
+     default y
+ config NEED_LOAD_CELL_PROBE
+     bool
+-    depends on WANT_HX71X || WANT_ADS1220 || WANT_ADS131M0X || WANT_CS1237
++    depends on WANT_HX71X || WANT_ADS1220 || WANT_ADS131M0X || WANT_CS1237 \
++    || WANT_HX711S
+     default y
+ config NEED_SOS_FILTER
+     bool
+@@ -318,6 +323,9 @@ config WANT_THERMOCOUPLE
+ config WANT_HX71X
+     bool "Support HX711 and HX717 ADC chips"
+     depends on HAVE_GPIO
++config WANT_HX711S
++    bool "Support multi-sensor HX711 and HX717 ADC chips"
++    depends on HAVE_GPIO
+ config WANT_ADS1220
+     bool "Support ADS 1220 ADC chip"
+     depends on WANT_SPI
+diff --git a/src/Makefile b/src/Makefile
+index 2914a263..d48dc517 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -24,6 +24,7 @@ src-$(CONFIG_WANT_LDC1612) += sensor_ldc1612.c
+ src-$(CONFIG_WANT_MPU9250) += sensor_mpu9250.c
+ src-$(CONFIG_WANT_ICM20948) += sensor_icm20948.c
+ src-$(CONFIG_WANT_HX71X) += sensor_hx71x.c
++src-$(CONFIG_WANT_HX711S) += sensor_hx711s.c
+ src-$(CONFIG_WANT_ADS1220) += sensor_ads1220.c
+ src-$(CONFIG_WANT_ADS131M0X) += sensor_ads131m0x.c
+ src-$(CONFIG_WANT_CS1237) += sensor_cs1237.c
+diff --git a/src/sensor_hx711s.c b/src/sensor_hx711s.c
+new file mode 100644
+index 00000000..452ad496
+--- /dev/null
++++ b/src/sensor_hx711s.c
+@@ -0,0 +1,394 @@
++// Support for multi-sensor HX711 and HX717 ADC chips
++//
++// Copyright (C) 2026 James Turton <james.turton@gmx.com>
++// Original HX711 driver Copyright (C) 2024 Gareth Farrington <gareth@waves.ky>
++//
++// This file may be distributed under the terms of the GNU GPLv3 license.
++
++#include "autoconf.h" // CONFIG_MACH_AVR
++#include "board/gpio.h" // gpio_out_write
++#include "board/irq.h" // irq_poll
++#include "board/misc.h" // timer_read_time
++#include "basecmd.h" // oid_alloc
++#include "command.h" // DECL_COMMAND
++#include "sched.h" // sched_add_timer
++#include "sensor_bulk.h" // sensor_bulk_report
++#include "load_cell_probe.h" // load_cell_probe_report_sample
++#include <stdbool.h>
++#include <stdint.h>
++
++#define MAX_SENSORS 4
++
++struct hx711s_adc;
++
++// Each chip runs its own read state machine. The chips free-run on their
++// own oscillators with no way to synchronise them, so a chip is polled and
++// read on its own data ready edge and never waits on a sibling. Reading a
++// chip only when every chip is ready would leave the earliest one holding
++// its result until the drift between oscillators pushed that wait onto its
++// next conversion, tearing the frame being clocked out.
++struct hx711s_chip {
++    struct timer timer;
++    struct hx711s_adc *adc; // the sensor this chip belongs to
++    struct gpio_in dout; // pin used to receive data from the hx711s
++    struct gpio_out sclk; // pin used to generate clock for the hx711s
++    int32_t counts; // most recent reading, held until the chip is read again
++    uint32_t counts_ticks; // when counts was last refreshed
++    uint8_t index;
++    uint8_t flags;
++    uint8_t settle_remaining; // conversions still to discard after a wake
++};
++
++struct hx711s_adc {
++    uint8_t gain_channel;   // the gain+channel selection (1-4)
++    uint8_t sensor_count;   // number of chips in use (1-4)
++    uint8_t sample_bytes;   // bytes in one multi-channel sample
++    uint8_t chip_mask;      // bit per configured chip
++    uint8_t have_counts;    // chips that have produced a reading
++    uint32_t rest_ticks;
++    uint32_t last_error;
++    struct hx711s_chip chips[MAX_SENSORS];
++    struct sensor_bulk sb;
++    struct load_cell_probe *lce;
++};
++
++enum {
++    HX_PENDING = 1<<0, HX_OVERFLOW = 1<<1,
++};
++
++#define BYTES_PER_SAMPLE 4
++#define SETTLE_CONVERSIONS 4
++#define STALE_CONVERSIONS 3
++#define SAMPLE_ERROR_DESYNC 1L << 31
++#define SAMPLE_ERROR_READ_TOO_LONG 1L << 30
++
++static struct task_wake wake_hx711s;
++
++
++/****************************************************************
++ * Low-level bit-banging
++ ****************************************************************/
++
++#define MIN_PULSE_TIME nsecs_to_ticks(200)
++
++static uint32_t
++nsecs_to_ticks(uint32_t ns)
++{
++    return timer_from_us(ns * 1000) / 1000000;
++}
++
++// Pause for 200ns
++static void
++hx711s_delay_noirq(void)
++{
++    if (CONFIG_MACH_AVR) {
++        // Optimize avr, as calculating time takes longer than needed delay
++        asm("nop\n    nop");
++        return;
++    }
++    uint32_t end = timer_read_time() + MIN_PULSE_TIME;
++    while (timer_is_before(timer_read_time(), end))
++        ;
++}
++
++// Pause for a minimum of 200ns
++static void
++hx711s_delay(void)
++{
++    if (CONFIG_MACH_AVR)
++        // Optimize avr, as calculating time takes longer than needed delay
++        return;
++    uint32_t end = timer_read_time() + MIN_PULSE_TIME;
++    while (timer_is_before(timer_read_time(), end))
++        irq_poll();
++}
++
++// Read 'num_bits' from one chip
++static uint32_t
++hx711s_raw_read(struct gpio_in dout, struct gpio_out sclk, int num_bits)
++{
++    uint32_t bits_read = 0;
++    while (num_bits--) {
++        irq_disable();
++        gpio_out_toggle_noirq(sclk);
++        hx711s_delay_noirq();
++        gpio_out_toggle_noirq(sclk);
++        uint_fast8_t bit = gpio_in_read(dout);
++        irq_enable();
++        hx711s_delay();
++        bits_read = (bits_read << 1) | bit;
++    }
++    return bits_read;
++}
++
++
++/****************************************************************
++ * Multi-sensor HX711 and HX717 Support
++ ****************************************************************/
++
++// Check if data is ready
++static uint_fast8_t
++hx711s_is_data_ready(struct hx711s_chip *chip)
++{
++    return !gpio_in_read(chip->dout);
++}
++
++// Event handler that wakes wake_hx711s() periodically. One timer per chip,
++// so a chip that is slow to convert cannot delay polling of the others.
++static uint_fast8_t
++hx711s_event(struct timer *timer)
++{
++    struct hx711s_chip *chip = container_of(timer, struct hx711s_chip, timer);
++    struct hx711s_adc *hx711s = chip->adc;
++    uint32_t rest_ticks = hx711s->rest_ticks;
++    uint8_t flags = chip->flags;
++    if (flags & HX_PENDING) {
++        hx711s->sb.possible_overflows++;
++        chip->flags = HX_PENDING | HX_OVERFLOW;
++        rest_ticks *= 4;
++    } else if (hx711s_is_data_ready(chip)) {
++        // New sample pending
++        chip->flags = HX_PENDING;
++        sched_wake_task(&wake_hx711s);
++        rest_ticks *= 8;
++    }
++    chip->timer.waketime += rest_ticks;
++    return SF_RESCHEDULE;
++}
++
++// The load cell is the sum of every chip, the value the probe triggers on
++static int32_t
++hx711s_sum(struct hx711s_adc *hx711s)
++{
++    int32_t sum = 0;
++    for (uint8_t i = 0; i < hx711s->sensor_count; i++)
++        sum += hx711s->chips[i].counts;
++    return sum;
++}
++
++// Emit one sample carrying the latest reading from every chip
++static void
++add_sample(struct hx711s_adc *hx711s, uint8_t oid, uint8_t force_flush)
++{
++    for (uint8_t i = 0; i < hx711s->sensor_count; i++) {
++        struct hx711s_chip *chip = &hx711s->chips[i];
++        uint32_t counts = (uint32_t)chip->counts;
++
++        // forever send errors until reset
++        if (hx711s->last_error != 0) {
++            counts = hx711s->last_error;
++        }
++        
++        // Add measurement to buffer
++        hx711s->sb.data[hx711s->sb.data_count] = counts;
++        hx711s->sb.data[hx711s->sb.data_count + 1] = counts >> 8;
++        hx711s->sb.data[hx711s->sb.data_count + 2] = counts >> 16;
++        hx711s->sb.data[hx711s->sb.data_count + 3] = counts >> 24;
++        hx711s->sb.data_count += BYTES_PER_SAMPLE;
++    }
++
++    if (hx711s->sb.data_count + hx711s->sample_bytes
++        > ARRAY_SIZE(hx711s->sb.data) || force_flush)
++        sensor_bulk_report(&hx711s->sb, oid);
++}
++
++// hx711s ADC query
++static void
++hx711s_read_adc(struct hx711s_chip *chip)
++{
++    struct hx711s_adc *hx711s = chip->adc;
++
++    // Read from sensor
++    uint_fast8_t gain_channel = hx711s->gain_channel;
++    uint32_t adc = hx711s_raw_read(chip->dout, chip->sclk, 24 + gain_channel);
++
++    // Clear pending flag (and note if an overflow occurred)
++    irq_disable();
++    uint8_t flags = chip->flags;
++    chip->flags = 0;
++    irq_enable();
++
++    // Discard the first 4 conversions after a wake as it hasn't settled yet
++    if (chip->settle_remaining) {
++        chip->settle_remaining--;
++        return;
++    }
++
++    // Extract report from raw data
++    uint32_t counts = adc >> gain_channel;
++    if (counts & 0x800000)
++        counts |= 0xFF000000;
++
++    // Check for errors
++    uint_fast8_t extras_mask = (1 << gain_channel) - 1;
++    if ((adc & extras_mask) != extras_mask) {
++        // Transfer did not complete correctly
++        hx711s->last_error = SAMPLE_ERROR_DESYNC;
++    } else if (flags & HX_OVERFLOW) {
++        // Transfer took too long
++        hx711s->last_error = SAMPLE_ERROR_READ_TOO_LONG;
++    } else {
++        chip->counts = (int32_t)counts;
++        chip->counts_ticks = timer_read_time();
++        hx711s->have_counts |= 1 << chip->index;
++    }
++}
++
++// Create a hx711s sensor
++void
++command_config_hx711s(uint32_t *args)
++{
++    struct hx711s_adc *hx711s = oid_alloc(args[0]
++                , command_config_hx711s, sizeof(*hx711s));
++    uint8_t sensor_count = args[1];
++    if (sensor_count < 1 || sensor_count > MAX_SENSORS) {
++        shutdown("HX711S sensor count out of range 1-4");
++    }
++    hx711s->sensor_count = sensor_count;
++    hx711s->sample_bytes = sensor_count * BYTES_PER_SAMPLE;
++    hx711s->chip_mask = (1 << sensor_count) - 1;
++    uint8_t gain_channel = args[2];
++    if (gain_channel < 1 || gain_channel > 4) {
++        shutdown("HX711S gain/channel out of range 1-4");
++    }
++    hx711s->gain_channel = gain_channel;
++    for (uint8_t i = 0; i < sensor_count; i++) {
++        struct hx711s_chip *chip = &hx711s->chips[i];
++        chip->timer.func = hx711s_event;
++        chip->adc = hx711s;
++        chip->index = i;
++    }
++}
++DECL_COMMAND(command_config_hx711s, "config_hx711s oid=%c sensor_count=%c"
++             " gain_channel=%c");
++
++// Assign the pins of one chip
++void
++command_add_hx711s(uint32_t *args)
++{
++    uint8_t oid = args[0];
++    struct hx711s_adc *hx711s = oid_lookup(oid, command_config_hx711s);
++    uint8_t index = args[1];
++    if (index >= hx711s->sensor_count) {
++        shutdown("HX711S sensor index out of range");
++    }
++    struct hx711s_chip *chip = &hx711s->chips[index];
++    chip->dout = gpio_in_setup(args[2], 1);
++    chip->sclk = gpio_out_setup(args[3], 0);
++    gpio_out_write(chip->sclk, 1); // put chip in power down state
++}
++DECL_COMMAND(command_add_hx711s, "add_hx711s oid=%c index=%c"
++             " dout_pin=%u sclk_pin=%u");
++
++void
++hx711s_attach_load_cell_probe(uint32_t *args) {
++    uint8_t oid = args[0];
++    struct hx711s_adc *hx711s = oid_lookup(oid, command_config_hx711s);
++    hx711s->lce = load_cell_probe_oid_lookup(args[1]);
++}
++DECL_COMMAND(hx711s_attach_load_cell_probe, "hx711s_attach_load_cell_probe"
++    " oid=%c load_cell_probe_oid=%c");
++
++// start/stop capturing ADC data
++void
++command_query_hx711s(uint32_t *args)
++{
++    uint8_t oid = args[0];
++    struct hx711s_adc *hx711s = oid_lookup(oid, command_config_hx711s);
++    for (uint8_t i = 0; i < hx711s->sensor_count; i++) {
++        sched_del_timer(&hx711s->chips[i].timer);
++        hx711s->chips[i].flags = 0;
++    }
++    hx711s->last_error = 0;
++    hx711s->have_counts = 0;
++    hx711s->rest_ticks = args[1];
++    if (!hx711s->rest_ticks) {
++        // End measurements
++        for (uint8_t i = 0; i < hx711s->sensor_count; i++)
++            gpio_out_write(hx711s->chips[i].sclk, 1); // power down state
++        return;
++    }
++    // Start new measurements
++    for (uint8_t i = 0; i < hx711s->sensor_count; i++)
++        gpio_out_write(hx711s->chips[i].sclk, 0); // wake chip from power down
++    sensor_bulk_reset(&hx711s->sb);
++    irq_disable();
++    uint32_t waketime = timer_read_time() + hx711s->rest_ticks;
++    for (uint8_t i = 0; i < hx711s->sensor_count; i++) {
++        hx711s->chips[i].settle_remaining = SETTLE_CONVERSIONS;
++        hx711s->chips[i].counts_ticks = waketime;
++        hx711s->chips[i].timer.waketime = waketime;
++        sched_add_timer(&hx711s->chips[i].timer);
++    }
++    irq_enable();
++}
++DECL_COMMAND(command_query_hx711s, "query_hx711s oid=%c rest_ticks=%u");
++
++void
++command_query_hx711s_status(const uint32_t *args)
++{
++    uint8_t oid = args[0];
++    struct hx711s_adc *hx711s = oid_lookup(oid, command_config_hx711s);
++    irq_disable();
++    const uint32_t start_t = timer_read_time();
++    // The primary chip paces the sample stream, so only a conversion pending
++    // on that chip is a sample the host has not been sent yet
++    uint8_t is_data_ready = hx711s_is_data_ready(&hx711s->chips[0]);
++    irq_enable();
++    uint8_t pending_bytes = is_data_ready ? hx711s->sample_bytes : 0;
++    sensor_bulk_status(&hx711s->sb, oid, start_t, 0, pending_bytes);
++}
++DECL_COMMAND(command_query_hx711s_status, "query_hx711s_status oid=%c");
++
++// Background task that performs measurements
++void
++hx711s_capture_task(void)
++{
++    if (!sched_check_wake(&wake_hx711s))
++        return;
++    uint8_t oid;
++    struct hx711s_adc *hx711s;
++    foreach_oid(oid, hx711s, command_config_hx711s) {
++        // Read every chip holding data before emitting, so a sample carries
++        // the freshest reading available from each of them
++        uint8_t read_primary = 0;
++        for (uint8_t i = 0; i < hx711s->sensor_count; i++) {
++            if (!hx711s->chips[i].flags)
++                continue;
++            hx711s_read_adc(&hx711s->chips[i]);
++            if (i == 0)
++                read_primary = 1;
++        }
++        // Drop a chip that has stopped producing readings. Its held counts
++        // are stale and a sum missing a cell reads low, which would trigger
++        // the probe late or not at all. A poll is a tenth of a conversion.
++        uint32_t stale_ticks = hx711s->rest_ticks * 10 * STALE_CONVERSIONS;
++        uint32_t now = timer_read_time();
++        for (uint8_t i = 0; i < hx711s->sensor_count; i++) {
++            if (timer_is_before(hx711s->chips[i].counts_ticks + stale_ticks
++                                , now))
++                hx711s->have_counts &= ~(1 << i);
++        }
++        // The primary chip sets the sample rate. Its conversions are evenly
++        // spaced, which is what the host clock tracking assumes, while the
++        // remaining channels are held at their most recent reading. Wait for
++        // every chip to report once so no sample carries an unset channel.
++        if (read_primary && (hx711s->last_error
++                             || hx711s->have_counts == hx711s->chip_mask)) {
++            // probe is optional, report if enabled. Reporting here rather
++            // than on each chip read keeps the probe's filter running at the
++            // rate its coefficients were designed for. A bad frame is still
++            // reported: the held counts are at most one conversion old, far
++            // too little to move the force past the trigger, and withholding
++            // reports would starve the probe watchdog and abort the homing
++            // move instead.
++            if (hx711s->last_error == 0 && hx711s->lce) {
++                load_cell_probe_report_sample(hx711s->lce,
++                                              hx711s_sum(hx711s));
++            }
++            // Add measurement to buffer
++            add_sample(hx711s, oid, false);
++        }
++    }
++}
++DECL_TASK(hx711s_capture_task);
+-- 
+2.53.0
+
