@@ -276,7 +276,6 @@
 	vqmmc-supply = <&reg_1v8>;
 	cap-mmc-highspeed;
 	mmc-ddr-1_8v;
-	/delete-property/ mmc-ddr-3_3v;
 	non-removable;
 	cap-mmc-hw-reset;
 	bus-width = <4>;
