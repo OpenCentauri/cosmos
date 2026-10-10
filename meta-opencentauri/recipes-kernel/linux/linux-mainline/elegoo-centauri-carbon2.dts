@@ -270,17 +270,16 @@
 };
 
 &mmc2 {
-	pinctrl-0 = <&mmc2_pins>;
-	pinctrl-names = "default";
-	vmmc-supply = <&reg_3v3>;
-	vqmmc-supply = <&reg_1v8>;
-	cap-mmc-highspeed;
-	mmc-hs200-1_8v;
-	non-removable;
-	cap-mmc-hw-reset;
-	bus-width = <4>;
-	max-frequency = <150000000>;
-	status = "okay";
+    pinctrl-0 = <&mmc2_pins>;
+    pinctrl-names = "default";
+    vmmc-supply = <&reg_3v3>;
+    vqmmc-supply = <&reg_1v8>;
+    cap-mmc-highspeed;
+    non-removable;
+    cap-mmc-hw-reset;
+    bus-width = <4>;
+    max-frequency = <16000000>;
+    status = "okay";
 };
 
 &ehci0 {
