@@ -277,11 +277,10 @@
 	cap-mmc-highspeed;
 	mmc-ddr-1_8v;
 	/delete-property/ mmc-ddr-3_3v;
-	mmc-hs200-1_8v;
 	non-removable;
 	cap-mmc-hw-reset;
 	bus-width = <4>;
-	max-frequency = <150000000>;
+	max-frequency = <52000000>;
 	status = "okay";
 };
 
