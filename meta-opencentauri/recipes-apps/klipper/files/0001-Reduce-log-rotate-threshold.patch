@@ -4,8 +4,8 @@ Date: Tue, 30 Jun 2026 22:00:01 +0200
 Subject: [PATCH] Reduce log rotate threshold
 
 ---
- klippy/queuelogger.py | 15 +++++----------
- 1 file changed, 5 insertions(+), 10 deletions(-)
+ klippy/queuelogger.py | 18 +++++-------------
+ 1 file changed, 5 insertions(+), 13 deletions(-)
 
 diff --git a/klippy/queuelogger.py b/klippy/queuelogger.py
 index 413a1934..444d8bbd 100644
@@ -32,11 +32,14 @@ index 413a1934..444d8bbd 100644
          self.bg_queue = queue.Queue()
          self.bg_thread = threading.Thread(target=self._bg_thread)
          self.bg_thread.start()
-@@ -64,7 +59,7 @@ class QueueListener(logging.handlers.TimedRotatingFileHandler):
+@@ -64,10 +59,7 @@ class QueueListener(logging.handlers.TimedRotatingFileHandler):
          self.rollover_info.clear()
- 
+
      def doRollover(self):
+-        before = self.rolloverAt
 -        logging.handlers.TimedRotatingFileHandler.doRollover(self)
+-        if self.rolloverAt <= before:
+-            return
 +        logging.handlers.RotatingFileHandler.doRollover(self)
          lines = [
              self.rollover_info[name] for name in sorted(self.rollover_info)
