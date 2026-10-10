@@ -13,7 +13,7 @@ Subject: [PATCH] serial: 8250_dw: fix RS485 and baud changes on Allwinner
 diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw.c
 --- a/drivers/tty/serial/8250/8250_dw.c
 +++ b/drivers/tty/serial/8250/8250_dw.c
-@@ -95,6 +95,7 @@
+@@ -79,6 +79,7 @@
  	unsigned int		in_idle:1;
  
  	u8			no_int_count;
@@ -21,7 +21,7 @@ diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw
  };
  
  static inline struct dw8250_data *to_dw8250_data(struct dw8250_port_data *data)
-@@ -135,7 +136,7 @@
+@@ -109,7 +110,7 @@
  
  	if (up->capabilities & UART_CAP_FIFO)
  		serial_port_out(p, UART_FCR, up->fcr);
@@ -30,7 +30,7 @@ diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw
  	serial_port_out(p, UART_IER, up->ier);
  
  	/* DMA Rx is restarted by IRQ handler as needed. */
-@@ -185,7 +186,8 @@
+@@ -159,7 +160,8 @@
  	serial8250_fifo_wait_for_lsr_thre(up, p->fifosize);
  	ndelay(p->frame_time);
  
@@ -40,7 +40,7 @@ diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw
  
  	retries = 4;	/* Arbitrary limit, 2 was always enough in tests */
  	do {
-@@ -214,12 +216,13 @@
+@@ -188,12 +190,13 @@
  static void dw8250_set_divisor(struct uart_port *p, unsigned int baud,
  			       unsigned int quot, unsigned int quot_frac)
  {
@@ -56,7 +56,7 @@ diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw
  
  	serial_port_out(p, UART_LCR, up->lcr | UART_LCR_DLAB);
  	if (!(serial_port_in(p, UART_LCR) & UART_LCR_DLAB))
-@@ -227,9 +230,25 @@
+@@ -201,9 +204,25 @@
  
  	serial_dl_write(up, quot);
  	serial_port_out(p, UART_LCR, up->lcr);
@@ -82,17 +82,17 @@ diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw
  }
  
  /*
-@@ -839,6 +858,11 @@
+@@ -770,6 +789,11 @@
  	if (data->data.line < 0)
  		return data->data.line;
- 
+
 +	/* Autoconfig drops UART_CAP_NOTEMT, which em485 needs here */
 +	if (!data->skip_autocfg)
 +		serial8250_get_port(data->data.line)->capabilities |=
 +			UART_CAP_NOTEMT;
 +
- 	/*
- 	 * Some platforms may provide a reference clock shared between several
- 	 * devices. In this case any clock state change must be known to the
+ 	platform_set_drvdata(pdev, data);
+
+ 	pm_runtime_enable(dev);
 -- 
 2.43.0

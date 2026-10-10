@@ -17,8 +17,7 @@
 #include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
-#include <linux/gpio.h>
-#include <linux/of_gpio.h>
+#include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -60,8 +59,8 @@ struct sitronix_ts {
 	struct mutex        lock;
 
 	/* DT-provided GPIOs */
-	int           irq_gpio;
-	int           rst_gpio;
+	struct gpio_desc *irq_gpio;
+	struct gpio_desc *rst_gpio;
 
 	/* IC capabilities (read from registers at probe) */
 	uint8_t  fw_revision[4];
@@ -212,12 +211,12 @@ static int stx_init_ic(struct sitronix_ts *ts)
 
 static void stx_hw_reset(struct sitronix_ts *ts)
 {
-	if (!gpio_is_valid(ts->rst_gpio))
+	if (!ts->rst_gpio)
 		return;
 
-	gpio_direction_output(ts->rst_gpio, 0);
+	gpiod_direction_output(ts->rst_gpio, 0);
 	msleep(1);
-	gpio_set_value(ts->rst_gpio, 1);
+	gpiod_set_value(ts->rst_gpio, 1);
 	msleep(100);
 	dev_dbg(&ts->client->dev, "hw reset done\n");
 }
@@ -347,30 +346,23 @@ static int sitronix_ts_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, ts);
 
 	/* ---- GPIO setup ---------------------------------------------------- */
-	ts->irq_gpio = of_get_named_gpio(dev->of_node, "irq-gpio", 0);
-	ts->rst_gpio = of_get_named_gpio(dev->of_node, "reset-gpio", 0);
-	if (!gpio_is_valid(ts->rst_gpio))
-		ts->rst_gpio = of_get_named_gpio(dev->of_node, "rst-gpio", 0);
-
-	if (gpio_is_valid(ts->rst_gpio)) {
-		ret = devm_gpio_request_one(dev, ts->rst_gpio,
-					    GPIOF_OUT_INIT_HIGH, "sitronix_rst");
-		if (ret) {
-			dev_err(dev, "failed to request rst-gpio: %d\n", ret);
-			return ret;
-		}
+	ts->rst_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
+	if (!ts->rst_gpio)
+		ts->rst_gpio = devm_gpiod_get_optional(dev, "rst", GPIOD_OUT_HIGH);
+	if (IS_ERR(ts->rst_gpio)) {
+		ret = PTR_ERR(ts->rst_gpio);
+		dev_err(dev, "failed to request rst-gpio: %d\n", ret);
+		return ret;
 	}
 
-	if (gpio_is_valid(ts->irq_gpio)) {
-		ret = devm_gpio_request_one(dev, ts->irq_gpio,
-					    GPIOF_IN, "sitronix_irq");
-		if (ret) {
-			dev_err(dev, "failed to request irq-gpio: %d\n", ret);
-			return ret;
-		}
-		if (!client->irq)
-			client->irq = gpio_to_irq(ts->irq_gpio);
+	ts->irq_gpio = devm_gpiod_get_optional(dev, "irq", GPIOD_IN);
+	if (IS_ERR(ts->irq_gpio)) {
+		ret = PTR_ERR(ts->irq_gpio);
+		dev_err(dev, "failed to request irq-gpio: %d\n", ret);
+		return ret;
 	}
+	if (ts->irq_gpio && !client->irq)
+		client->irq = gpiod_to_irq(ts->irq_gpio);
 
 	if (!client->irq) {
 		dev_err(dev, "no IRQ assigned\n");
@@ -472,8 +464,8 @@ static void sitronix_ts_remove(struct i2c_client *client)
 		synchronize_irq(client->irq);
 	}
 
-	if (ts && gpio_is_valid(ts->rst_gpio)) {
-		gpio_set_value(ts->rst_gpio, 0);
+	if (ts && ts->rst_gpio) {
+		gpiod_set_value(ts->rst_gpio, 0);
 		msleep(1);  // let any in-flight I2C byte settle before line idles
 		mutex_destroy(&ts->lock);
 	}
