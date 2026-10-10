@@ -22,3 +22,4 @@ SRC_URI:append = " \
 "
 
 SRC_URI:append:centauri-carbon-2 = " file://cc2-mmc-debug.cfg"
+SRC_URI:append:centauri-carbon-1 = " file://cc1-debugfs.cfg"
