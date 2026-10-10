@@ -72,6 +72,11 @@ jobs:
           TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
           MACHINE=centauri-carbon-2 bitbake cosmos
 
+      - name: Build CC2 USB image
+        run: |
+          TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
+          MACHINE=centauri-carbon-2 bitbake cosmos-image-usb
+
       - name: Upload build artifacts CC1 (SWU only)
         uses: actions/upload-artifact@v4
         with:
@@ -89,6 +94,33 @@ jobs:
         with:
           name: centauri-carbon-2 Elegoo OTA
           path: build/tmp/deploy/images/centauri-carbon-2/cc2_eeb001_*.zip.sig
+
+      - name: Upload build artifacts C2 (Elegoo OTA bundle)
+        uses: actions/upload-artifact@v4
+        with:
+          name: centauri-2 Elegoo OTA
+          path: build/tmp/deploy/images/centauri-carbon-2/c2_eeb001_*.zip.sig
+
+      - name: Stage CC2 USB artifacts
+        run: |
+          d=build/tmp/deploy/images/centauri-carbon-2
+          mkdir -p usb-artifacts
+          cp $d/cosmos-image-usb-centauri-carbon-2.wic.gz usb-artifacts/centauri-carbon-2-usb-image.wic.gz
+          cp $d/cosmos-image-usb-centauri-carbon-2.wic.bmap usb-artifacts/centauri-carbon-2-usb-image.wic.bmap
+          cp $d/u-boot-sunxi-with-spl.bin-usb usb-artifacts/centauri-carbon-2-u-boot-sunxi-with-spl-usb.bin
+          cp $d/u-boot-sunxi-with-spl.bin-usb-msd usb-artifacts/centauri-carbon-2-u-boot-sunxi-with-spl-usb-msd.bin
+
+      - name: Upload build artifacts CC2 (USB image)
+        uses: actions/upload-artifact@v4
+        with:
+          name: centauri-carbon-2 USB Image
+          path: usb-artifacts/centauri-carbon-2-usb-image.wic.*
+
+      - name: Upload build artifacts CC2 (USB U-Boot)
+        uses: actions/upload-artifact@v4
+        with:
+          name: centauri-carbon-2 USB U-Boot
+          path: usb-artifacts/centauri-carbon-2-u-boot-sunxi-with-spl-usb*.bin
 
       - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}

@@ -71,6 +71,12 @@ software =
                     name = "setargs_mainline";
                     value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
                 },
+                /*
+                 * Debug variant (eMMC investigation): append to the setargs_mainline
+                 * value above, before the closing quote (match the escaping of the
+                 * surrounding quotes):
+                 *   loglevel=8 'dyndbg="func sunxi_mmc_dump_errinfo +p; func sunxi_mmc_clk_set_rate +p"'
+                 */
                 {
                     name = "bootcmd_";
                     value = "run setargs_mmc boot_dsp0 boot_normal";
@@ -168,6 +174,12 @@ software =
                     name = "setargs_mainline";
                     value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
                 },
+                /*
+                 * Debug variant (eMMC investigation): append to the setargs_mainline
+                 * value above, before the closing quote (match the escaping of the
+                 * surrounding quotes):
+                 *   loglevel=8 'dyndbg="func sunxi_mmc_dump_errinfo +p; func sunxi_mmc_clk_set_rate +p"'
+                 */
                 {
                     name = "bootcmd_";
                     value = "run setargs_mmc boot_dsp0 boot_normal";

@@ -13,6 +13,8 @@
 #   8KiB 
 #
 
-part u-boot --source rawcopy --sourceparams="file=${SPL_BINARY}" --ondisk sda --no-table --align 8
+# Boots from the USB u-boot variant (u-boot-cc2-usb.config), not the
+# eMMC SPL that ${SPL_BINARY} resolves to.
+part u-boot --source rawcopy --sourceparams="file=u-boot-sunxi-with-spl.bin-usb" --ondisk sda --no-table --align 8
 part /boot --source bootimg-partition --ondisk sda --fstype=vfat --label boot --active --align 2048 --fixed-size ${SUNXI_BOOT_SPACE}
 part /     --source rootfs --ondisk sda --fstype=ext4 --align 2048

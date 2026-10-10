@@ -6,3 +6,4 @@ tmpfs                /var/volatile        tmpfs      defaults              0  0
 /dev/mmcblk0p13      /user-resource       auto       defaults              0  0
 /dev/mmcblk0p1       /boot-resource       auto       defaults              0  0
 /dev/mmcblk0p11      /board-resource      auto       defaults              0  0
+debugfs              /sys/kernel/debug    debugfs    defaults              0  0
