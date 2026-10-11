@@ -7,7 +7,6 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 SRC_URI = " \
     file://factory-reset \
     file://update-cosmos \
-    file://switch-to-stock \
     file://switch-to-oc-patched \
     file://swu-decrypt.py \
     file://restore-mcu-firmware \
@@ -43,7 +42,6 @@ do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${S}/factory-reset ${D}${bindir}/
     install -m 0755 ${S}/update-cosmos ${D}${bindir}/
-    install -m 0755 ${S}/switch-to-stock ${D}${bindir}/
     install -m 0755 ${S}/switch-to-oc-patched ${D}${bindir}/
     install -m 0755 ${S}/swu-decrypt.py ${D}${bindir}/
     install -m 0755 ${S}/restore-mcu-firmware ${D}${bindir}/
@@ -65,7 +63,6 @@ do_install:append:centauri-carbon-2() {
 FILES:${PN} += " \
     ${bindir}/factory-reset \
     ${bindir}/update-cosmos \
-    ${bindir}/switch-to-stock \
     ${bindir}/switch-to-oc-patched \
     ${bindir}/swu-decrypt.py \
     ${bindir}/restore-mcu-firmware \
