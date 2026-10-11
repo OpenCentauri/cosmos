@@ -90,6 +90,12 @@ jobs:
           name: centauri-carbon-2 Elegoo OTA
           path: build/tmp/deploy/images/centauri-carbon-2/cc2_eeb001_*.zip.sig
 
+      - name: Upload build artifacts C2 (Elegoo OTA bundle)
+        uses: actions/upload-artifact@v4
+        with:
+          name: centauri-2 Elegoo OTA
+          path: build/tmp/deploy/images/centauri-carbon-2/c2_eeb001_*.zip.sig
+
       - name: Upload build artifacts CC1
         if: ${{ inputs.upload_all_artifacts }}
         uses: actions/upload-artifact@v4

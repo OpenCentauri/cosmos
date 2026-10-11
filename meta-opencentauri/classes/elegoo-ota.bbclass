@@ -1,4 +1,4 @@
-# Wrap a plain SWU into the Elegoo CC2 OTA bundle (.zip.sig).
+# Wrap a plain SWU into Elegoo CC2 and C2 OTA bundles (.zip.sig).
 # 
 #   <name>.zip.sig          ELEG header (type 4, unencrypted) + zip
 #   zip: ota-package-list.json.sig   ELEG header (type 3, AES-256-CBC) + ciphertext
@@ -7,7 +7,7 @@
 # ELEG header is 512 bytes, little-endian:
 #   0x00 magic "ELEG"           0x08 plain filesize (u64)
 #   0x04 type | (0x80 if enc)   0x10 filename (48 bytes)
-#   0x05 version 1.2 (2 bytes)  0x90 encrypt_offset (u64) = 0
+#   0x05 major (u8), 0x06 minor (u16)  0x90 encrypt_offset (u64) = 0
 #                               0x98 encrypt_length (u64) = enc size if enc else 0
 #                               0xA0 AES IV (16 bytes)      0xB0 encrypt_filesize (u64)
 #                               0xE0 sha256(payload as shipped) (32 bytes)
@@ -24,6 +24,12 @@ ELEGOO_OTA_AES_KEY ??= "d14e150843e9d16893890756d8f77f674e161a8bebb8f720737ee60e
 
 ELEGOO_OTA_SWU     ??= "${IMAGE_LINK_NAME}.swu"
 ELEGOO_OTA_IMAGE   ??= "${ELEGOO_OTA_PREFIX}_${ELEGOO_OTA_VERSION}.zip.sig"
+
+# C2 uses the same centauri-carbon-2 SWU, but requires header version 1.3
+# on the outer bundle AND both encrypted members. CC2 requires 1.2.
+# Set ELEGOO_OTA_C2_IMAGE = "" to omit the additional C2 bundle.
+ELEGOO_OTA_C2_PREFIX ??= "c2_eeb001"
+ELEGOO_OTA_C2_IMAGE  ??= "${ELEGOO_OTA_C2_PREFIX}_${ELEGOO_OTA_VERSION}.zip.sig"
 
 ELEGOO_OTA_DEPLOY_DIR = "${WORKDIR}/deploy-${PN}-elegoo-ota"
 
@@ -82,13 +88,13 @@ python do_elegoo_ota() {
         return run(['openssl', 'dgst', '-sha256', '-sign', priv_key_path], payload)
 
 
-    def build_header(*, package_type, encrypted, filename, filesize,
+    def build_header(*, package_type, encrypted, header_minor, filename, filesize,
                     encrypt_filesize, iv, payload, priv_key_path):
         hdr = bytearray(HEADER_SIZE)
         hdr[0:4] = MAGIC
         hdr[0x04] = (package_type & 0x7F) | (0x80 if encrypted else 0)
-        hdr[0x05] = 1  # version_major (stock packages all use 1.2)
-        hdr[0x06] = 2  # version_minor
+        hdr[0x05] = 1  # version_major
+        struct.pack_into('<H', hdr, 0x06, header_minor)
         struct.pack_into('<Q', hdr, 0x08, filesize)
         name = filename.encode('ascii')
         if len(name) >= 48:
@@ -106,12 +112,12 @@ python do_elegoo_ota() {
         return bytes(hdr)
 
 
-    def eleg_encrypt(pkg_type, filename, plain, key_hex, priv_key_path):
+    def eleg_encrypt(pkg_type, filename, plain, key_hex, priv_key_path, header_minor):
         # deterministic IV based off key, filename, plaintext
         iv = hmac.new(bytes.fromhex(key_hex), filename.encode('ascii') + b'\0' + plain,
                       hashlib.sha256).digest()[:16]
         enc, enc_size = aes_cbc_encrypt(key_hex, iv, plain)
-        return build_header(package_type=pkg_type, encrypted=True, filename=filename,
+        return build_header(package_type=pkg_type, encrypted=True, header_minor=header_minor, filename=filename,
                             filesize=len(plain), encrypt_filesize=enc_size,
                             iv=iv, payload=enc, priv_key_path=priv_key_path) + enc
 
@@ -124,42 +130,53 @@ python do_elegoo_ota() {
     swu_path = os.path.join(d.getVar('DEPLOY_DIR_IMAGE'), d.getVar('ELEGOO_OTA_SWU'))
     if not os.path.exists(swu_path):
         bb.fatal("elegoo-ota: SWU not found: %s" % swu_path)
-    out_path = os.path.join(d.getVar('ELEGOO_OTA_DEPLOY_DIR'), d.getVar('ELEGOO_OTA_IMAGE'))
     fw_version = d.getVar('ELEGOO_OTA_VERSION')
     update_class = d.getVar('ELEGOO_OTA_CLASS')
-    prefix = d.getVar('ELEGOO_OTA_PREFIX')
 
     key_hex = d.getVar('ELEGOO_OTA_AES_KEY')
     priv = d.getVar('ELEGOO_OTA_PRIVATE_KEY')
 
-    swu = open(swu_path, 'rb').read()
+    with open(swu_path, 'rb') as f:
+        swu = f.read()
     sde = time.gmtime(int(d.getVar('SOURCE_DATE_EPOCH')))
     stamp = time.strftime('%Y%m%d%H%M%S', sde)
-    base = f'{prefix}_{fw_version}_{stamp}'
+    variants = [
+        (d.getVar('ELEGOO_OTA_PREFIX'),    2, d.getVar('ELEGOO_OTA_IMAGE')),
+        (d.getVar('ELEGOO_OTA_C2_PREFIX'), 3, d.getVar('ELEGOO_OTA_C2_IMAGE'))
+    ]
+    if len({image for _, _, image in variants}) != len(variants):
+        bb.fatal('elegoo-ota: CC2 and C2 output filenames must differ')
 
-    # inner: encrypted swu
-    swu_sig = eleg_encrypt(0, f'{base}.swu', swu, key_hex, priv)
+    for variant_prefix, header_minor, image_name in variants:
+        if not image_name:
+            continue
 
-    # ota package list (daemon version gate: fw_version must be in its whitelist)
-    pkglist = {'packages': [{'file': f'{base}.swu.sig', 'hash': hashlib.sha256(swu_sig).hexdigest()}],
-               'version': fw_version, 'update_class': update_class}
-    json_sig = eleg_encrypt(3, 'ota-package-list.json',
-                            json.dumps(pkglist).encode('ascii'), key_hex, priv)
+        base = f'{variant_prefix}_{fw_version}_{stamp}'
+        out_path = os.path.join(d.getVar('ELEGOO_OTA_DEPLOY_DIR'), image_name)
 
-    # outer: unencrypted zip of the two .sig members
-    zbio = io.BytesIO()
-    with zipfile.ZipFile(zbio, 'w') as zf:
-        zip_add(zf, 'ota-package-list.json.sig', json_sig, sde[:6])
-        zip_add(zf, f'{base}.swu.sig', swu_sig, sde[:6])
-    blob = zbio.getvalue()
+        # inner: encrypted swu
+        swu_sig = eleg_encrypt(0, f'{base}.swu', swu, key_hex, priv, header_minor)
 
-    outer = build_header(package_type=4, encrypted=False, filename=f'{base}.zip',
-                         filesize=len(blob), encrypt_filesize=len(blob),
-                         iv=b'\x00' * 16, payload=blob, priv_key_path=priv) + blob
+        # ota package list (daemon version gate: fw_version must be in its whitelist)
+        pkglist = {'packages': [{'file': f'{base}.swu.sig', 'hash': hashlib.sha256(swu_sig).hexdigest()}],
+                   'version': fw_version, 'update_class': update_class}
+        json_sig = eleg_encrypt(3, 'ota-package-list.json',
+                                json.dumps(pkglist).encode('ascii'), key_hex, priv, header_minor)
 
-    with open(out_path, 'wb') as f:
-        f.write(outer)
-    bb.note(f'elegoo-ota: wrote {out_path} ({len(outer)} bytes), swu member {base}.swu.sig')
+        # outer: unencrypted zip of the two .sig members
+        zbio = io.BytesIO()
+        with zipfile.ZipFile(zbio, 'w') as zf:
+            zip_add(zf, 'ota-package-list.json.sig', json_sig, sde[:6])
+            zip_add(zf, f'{base}.swu.sig', swu_sig, sde[:6])
+        blob = zbio.getvalue()
+
+        outer = build_header(package_type=4, encrypted=False, header_minor=header_minor, filename=f'{base}.zip',
+                             filesize=len(blob), encrypt_filesize=len(blob),
+                             iv=b'\x00' * 16, payload=blob, priv_key_path=priv) + blob
+
+        with open(out_path, 'wb') as f:
+            f.write(outer)
+        bb.note(f'elegoo-ota: wrote {out_path} ({len(outer)} bytes), swu member {base}.swu.sig')
 }
 addtask elegoo_ota after do_swuimage before do_build
 
