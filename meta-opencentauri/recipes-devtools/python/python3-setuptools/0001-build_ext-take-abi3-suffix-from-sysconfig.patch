@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: James Turton <james.turton@gmx.com>
+Date: Mon, 12 Oct 2026 00:00:00 +0200
+Subject: [PATCH] build_ext: take abi3 suffix from sysconfig
+
+get_abi3_suffix() picks the first abi3 entry of
+importlib.machinery.EXTENSION_SUFFIXES, which describes the running
+interpreter. When cross-compiling, that is the build host's Python, so
+py_limited_api extensions get the host's platform tag. Python 3.15 lists
+".abi3-<SOABI_PLATFORM>.so" before ".abi3.so", so on an x86_64 build host
+an ARM extension is named "foo.abi3-x86_64-linux-gnu.so" and the target
+interpreter never finds it.
+
+Python 3.15 exports SOABI_PLATFORM in sysconfig, which (like EXT_SUFFIX)
+describes the target. Build the suffix from it, matching the first abi3
+entry of CPython's _PyImport_DynLoadFiletab. Native builds get the same
+suffix as before.
+---
+ setuptools/command/build_ext.py | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/setuptools/command/build_ext.py b/setuptools/command/build_ext.py
+index dbb956d..61bef52 100644
+--- a/setuptools/command/build_ext.py
++++ b/setuptools/command/build_ext.py
+@@ -78,6 +78,9 @@ elif os.name != 'nt':
+
+ def get_abi3_suffix():
+     """Return the file extension for an abi3-compliant Extension()"""
++    soabi_platform = get_config_var('SOABI_PLATFORM')
++    if soabi_platform and not get_config_var('Py_GIL_DISABLED'):
++        return f".abi3-{soabi_platform}{get_config_var('SHLIB_SUFFIX')}"
+     for suffix in EXTENSION_SUFFIXES:
+         if '.abi3' in suffix:  # Unix
+             return suffix
