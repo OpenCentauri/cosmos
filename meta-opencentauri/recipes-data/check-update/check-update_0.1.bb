@@ -14,6 +14,8 @@ RDEPENDS:${PN} = " \
     screen-actions \
 "
 
+S = "${UNPACKDIR}"
+
 do_install[vardeps] += "DISTRO_VERSION"
 
 do_install() {
