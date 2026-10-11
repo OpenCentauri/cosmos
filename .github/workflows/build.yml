@@ -12,6 +12,9 @@ on:
       upload_all_artifacts:
         type: boolean
         default: false
+      ota_bundles:
+        type: boolean
+        default: true
       version:
         type: string
         default: ''
@@ -29,6 +32,10 @@ on:
         description: 'Upload all artifacts'
         type: boolean
         default: false
+      ota_bundles:
+        description: 'Build and upload Elegoo OTA bundles'
+        type: boolean
+        default: true
       version:
         description: 'Override distro version'
         type: string
@@ -62,6 +69,13 @@ jobs:
           version="${version:0:10}"
           sed -i -E "s/^DISTRO_VERSION = \".*\"/DISTRO_VERSION = \"${version}\"/" meta-opencentauri/conf/distro/cosmos.conf
 
+      - name: Disable Elegoo OTA bundles
+        if: ${{ !inputs.ota_bundles }}
+        run: |
+          TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
+          # Removing this format also disables the do_elegoo_ota task.
+          printf '\nIMAGE_FSTYPES:remove = "zip.sig"\n' >> conf/local.conf
+
       - name: Build CC1 image
         run: |
           TEMPLATECONF="$PWD/meta-opencentauri/conf/templates/opencentauri" source openembedded-core/oe-init-build-env build
@@ -85,12 +99,14 @@ jobs:
           path: build/tmp/deploy/images/centauri-carbon-2/cosmos-centauri-carbon-2.swu
 
       - name: Upload build artifacts CC2 (Elegoo OTA bundle)
+        if: ${{ inputs.ota_bundles }}
         uses: actions/upload-artifact@v4
         with:
           name: centauri-carbon-2 Elegoo OTA
           path: build/tmp/deploy/images/centauri-carbon-2/cc2_eeb001_*.zip.sig
 
       - name: Upload build artifacts C2 (Elegoo OTA bundle)
+        if: ${{ inputs.ota_bundles }}
         uses: actions/upload-artifact@v4
         with:
           name: centauri-2 Elegoo OTA
