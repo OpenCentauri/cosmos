@@ -25,7 +25,7 @@ SRCREV = "9e676eba6b02661a4dfa3ec6e7ac3f3504498e6d"
 
 PR = "r3"
 
-inherit python3-dir update-rc.d
+inherit python3native update-rc.d
 
 DEPENDS = " \
     python3-native \
@@ -74,6 +74,8 @@ do_install() {
     # Install moonraker python package
     install -d ${D}${datadir}/moonraker
     cp -r ${S}/moonraker ${D}${datadir}/moonraker/
+    ${PYTHON} -m compileall -q --invalidation-mode checked-hash \
+        -d ${datadir}/moonraker/moonraker ${D}${datadir}/moonraker/moonraker
 
     # Install default moonraker config
     install -d ${D}${sysconfdir}/klipper

@@ -23,7 +23,7 @@ SRC_URI += " \
 SRC_URI:append:centauri-carbon-1 = " file://canvas-toolhead.cfg"
 SRC_URI:append:centauri-carbon-2 = " file://enclosed.cfg"
 
-inherit python3-dir update-rc.d
+inherit python3native update-rc.d
 
 RDEPENDS:${PN} = " \
     python3 \
@@ -97,6 +97,9 @@ do_install() {
     # Remove any .pyc files to avoid TMPDIR references
     find ${D} -name '*.pyc' -delete
     find ${D} -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
+    ${PYTHON} -m compileall -q --invalidation-mode checked-hash \
+        -d ${datadir}/klipper/klippy ${D}${datadir}/klipper/klippy
 
     # Make config_examples to suppress moonraker warnings
     install -d ${D}${datadir}/klipper/config
