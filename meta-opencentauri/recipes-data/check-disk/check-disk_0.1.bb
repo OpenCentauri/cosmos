@@ -11,6 +11,8 @@ RDEPENDS:${PN} = " \
     screen-actions \
 "
 
+S = "${UNPACKDIR}"
+
 do_install() {
     install -d ${D}${bindir}
     install -m 0755 ${UNPACKDIR}/check-disk.sh ${D}${bindir}/check-disk
