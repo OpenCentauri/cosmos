@@ -19,6 +19,7 @@ SRC_URI = " \
     file://0001-Reduce-log-rotate-threshold.patch \
     file://0001-Add-support-for-SWUDeploy.patch \
     file://0002-Add-sysvinit-as-machine-provider.patch \
+    file://0001-Webcam-allow-ports-in-local-url.patch \
 "
 
 SRCREV = "9e676eba6b02661a4dfa3ec6e7ac3f3504498e6d"
