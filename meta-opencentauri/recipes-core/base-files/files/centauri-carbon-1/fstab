@@ -6,3 +6,4 @@ tmpfs                /var/volatile        tmpfs      defaults              0  0
 /dev/mmcblk0p13      /user-resource       auto       defaults              0  0
 /dev/mmcblk0p1       /boot-resource       auto       defaults              0  0
 /dev/mmcblk0p11      /board-resource      auto       defaults              0  0
+/etc/klipper/plugins /usr/share/klipper/klippy/plugins none bind           0  0

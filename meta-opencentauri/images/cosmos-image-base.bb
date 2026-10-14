@@ -49,6 +49,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     afc \
     tmc-autotune \ 
     dragonbreath \
+    git \
 "
 
 CORE_IMAGE_EXTRA_INSTALL:append:centauri-carbon-2 = " centauri-carbon-2-detect"

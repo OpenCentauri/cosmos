@@ -120,6 +120,10 @@ do_install() {
     # Install SysVinit script
     install -d ${D}${sysconfdir}/init.d
     install -m 0755 ${UNPACKDIR}/klipper-init-d ${D}${sysconfdir}/init.d/klipper
+
+    # Klipper plugins
+    install -d ${D}${sysconfdir}/klipper/plugins
+    install -m 0644 ${S}/klippy/plugins/__init__.py ${D}${sysconfdir}/klipper/plugins
 }
 
 do_install:append:centauri-carbon-1() {
@@ -136,6 +140,7 @@ FILES:${PN} = " \
     ${datadir}/klipper \
     ${sysconfdir}/init.d/klipper \
     ${sysconfdir}/klipper/config \
+    ${sysconfdir}/klipper/plugins \
 "
 
 CONFFILES:${PN} = " \
