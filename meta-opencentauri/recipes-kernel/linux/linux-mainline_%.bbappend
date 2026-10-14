@@ -20,3 +20,6 @@ SRC_URI:append = " \
 	file://0001-Make-CONFIG_FB-select-CONFIG_FB_BACKLIGHT.patch \
 	file://0001-Add-support-for-st77922-touchscreen-driver.patch \
 "
+
+KERNEL_MODULE_PROBECONF += "rtw88_core"
+module_conf_rtw88_core = "options rtw88_core disable_lps_deep=Y"

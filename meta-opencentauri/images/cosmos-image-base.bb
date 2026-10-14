@@ -19,7 +19,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     libgpiod \
     libgpiod-tools \
     kernel-modules \
-    rtw88 \
+    linux-firmware-rtl8821 \
     aic8800 \
     kalico \
     moonraker \
