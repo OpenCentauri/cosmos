@@ -23,6 +23,7 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     aic8800 \
     kalico \
     moonraker \
+    addon \
     mainsail \
     fluidd \
     atomscreen \
@@ -48,7 +49,6 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     chrony \
     afc \
     tmc-autotune \ 
-    dragonbreath \
     git \
 "
 
