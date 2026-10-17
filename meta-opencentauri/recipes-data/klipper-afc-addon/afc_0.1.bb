@@ -14,7 +14,7 @@ SRC_URI = " \
     file://canvas_rfid.cfg \
 "
 
-SRCREV = "c8e66cde68d2d12a6baf272a5a73973e62a9e78e"
+SRCREV = "5418034e78824f379d7cbe970526e7de79c31034"
 
 DEPENDS = " \
     python3-native \
