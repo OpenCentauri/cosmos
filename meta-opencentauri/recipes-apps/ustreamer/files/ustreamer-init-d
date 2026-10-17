@@ -10,7 +10,7 @@
 
 USTREAMER_EXEC="/usr/bin/ustreamer"
 CAMERA_DEVICE="/dev/video0"
-USTREAMER_ARGS="-d $CAMERA_DEVICE -r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
+USTREAMER_ARGS="-d $CAMERA_DEVICE -r 1280x720 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
 PIDFILE="/var/run/ustreamer.pid"
 
 case "$1" in
