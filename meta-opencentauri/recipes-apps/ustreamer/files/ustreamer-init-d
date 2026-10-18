@@ -1,42 +1,66 @@
 #!/bin/sh
+
 ### BEGIN INIT INFO
-# Provides:          ustreamer
-# Required-Start:    $local_fs $remote_fs $network
-# Required-Stop:     $local_fs $remote_fs $network
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
+# Provides: ustreamer
+# Required-Start: $local_fs $remote_fs $network
+# Required-Stop: $local_fs $remote_fs $network
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
 # Short-Description: uStreamer MJPEG-HTTP streamer
 ### END INIT INFO
 
 USTREAMER_EXEC="/usr/bin/ustreamer"
 CAMERA_DEVICE="/dev/video0"
-USTREAMER_ARGS="-d $CAMERA_DEVICE -r 1280x720 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
 PIDFILE="/var/run/ustreamer.pid"
 
+# Returns "cc2" or "cc1". Defaults to cc1 if the model can't be determined.
+# NOTE: adjust the match below to however COSMOS identifies the CC2.
+detect_model() {
+    MODEL_STR=""
+    if [ -r /proc/device-tree/model ]; then
+        MODEL_STR=$(tr -d '\0' < /proc/device-tree/model)
+    fi
+    case "$MODEL_STR" in
+        *[Cc][Cc]2*|*"Carbon 2"*|*"Carbon2"*)
+            echo "cc2"
+            ;;
+        *)
+            echo "cc1"
+            ;;
+    esac
+}
+
+case "$(detect_model)" in
+    cc2)
+        USTREAMER_ARGS="-d $CAMERA_DEVICE -r 1280x720 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
+        ;;
+    *)
+        USTREAMER_ARGS="-d $CAMERA_DEVICE -r 864x480 -c HW -m MJPEG -b 1 -w 1 -f 10 -l --host=0.0.0.0 --allow-origin=*"
+        ;;
+esac
+
 case "$1" in
-    start)
+start)
         if [ ! -c "$CAMERA_DEVICE" ]; then
             echo "Skipping ustreamer: camera device $CAMERA_DEVICE is unavailable."
             exit 0
         fi
-
         echo "Starting ustreamer..."
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $USTREAMER_EXEC -- $USTREAMER_ARGS
-
         echo 1000 > /proc/$(cat $PIDFILE)/oom_score_adj
         ;;
-    stop)
+stop)
         echo "Stopping ustreamer..."
         start-stop-daemon -K -p $PIDFILE -R 10
         rm -f $PIDFILE
         ;;
-    restart|force-reload)
+restart|force-reload)
         $0 stop
         sleep 1
         $0 start
         ;;
-    status)
+status)
         if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2>/dev/null; then
             echo "ustreamer is running (PID $(cat $PIDFILE))"
         else
@@ -44,7 +68,7 @@ case "$1" in
             exit 1
         fi
         ;;
-    *)
+*)
         echo "Usage: $0 {start|stop|restart|status}"
         exit 1
         ;;
