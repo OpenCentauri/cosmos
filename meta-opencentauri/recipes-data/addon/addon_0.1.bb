@@ -11,10 +11,8 @@ inherit allarch
 
 RDEPENDS:${PN} = " \
     git \
-    klipper \
-    moonraker \
+    kalico \
     python3-core \
-    python3-datetime \
 "
 
 do_install() {

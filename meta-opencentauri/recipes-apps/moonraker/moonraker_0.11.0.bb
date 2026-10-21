@@ -33,6 +33,7 @@ DEPENDS = " \
 "
 
 RDEPENDS:${PN} = " \
+    addon \
     python3 \
     python3-tornado \
     python3-pyserial \
