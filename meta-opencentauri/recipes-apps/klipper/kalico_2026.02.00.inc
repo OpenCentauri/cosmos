@@ -13,16 +13,15 @@ SRC_URI = "git://github.com/KalicoCrew/kalico.git;protocol=https;branch=main \
     file://0001-force-specific-input-shaper.patch \
     file://0003-drv8833-motor-control.patch \
     file://0004-allow-config-exclude.patch \
-    file://0001-Increase-max-velocity-in-resonance-tester.patch \
     file://0005-stm32-serial-rs485-de-pin.patch \
     file://0006-Add-support-for-hifi4.patch \
     file://0007-Add-HX711s-load-cell-probe-driver.patch \
     file://canvas_rfid.py;subdir=${BP}/klippy/extras \
     file://canvas_filament_sensor.py;subdir=${BP}/klippy/extras \
 "
-SRCREV = "26e46bd536cd5b55c4028dd2409a2210262fc9ed"
+SRCREV = "5b5942799ba33e50cf2b67b5258acff7214b3001"
 
-PR = "r18"
+PR = "r19"
 
 DEPENDS = " \
     python3-native \
