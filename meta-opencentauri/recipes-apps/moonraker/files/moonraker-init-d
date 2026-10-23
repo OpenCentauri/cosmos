@@ -36,6 +36,8 @@ case "$1" in
 
         ln -sf "/var/www/$(config-manager ui web_ui)/" /etc/webui
 
+        addon init || exit $?
+
         start-stop-daemon -S -b -m -p $PIDFILE \
             -x $MOONRAKER_EXEC -- $MOONRAKER_ARGS
         ;;
