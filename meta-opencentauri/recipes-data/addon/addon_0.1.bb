@@ -17,8 +17,7 @@ RDEPENDS:${PN} = " \
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${S}/addon.py ${D}${bindir}/addon
-    ln -s addon ${D}${bindir}/addons
+    install -m 0755 ${S}/addon.py ${D}${bindir}/addons
 }
 
-FILES:${PN} = "${bindir}/addon ${bindir}/addons"
+FILES:${PN} = "${bindir}/addons"
