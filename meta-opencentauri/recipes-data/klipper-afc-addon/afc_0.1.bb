@@ -8,6 +8,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI = " \
     git://github.com/suchmememanyskill/AFC-Klipper-Add-On.git;protocol=https;branch=DEV \
+    file://0001-cosmos-skew-maintenance.patch \
     file://afc.cfg \
     file://canvas.cfg \
     file://boxturtle.cfg \
