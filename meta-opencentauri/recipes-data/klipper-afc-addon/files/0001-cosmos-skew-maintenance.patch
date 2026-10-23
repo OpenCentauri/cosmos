@@ -36,10 +36,15 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
          """
          restore_pos function restores the previous saved position, speed and coord type. The resume uses
          the z_hop value to lift, move to previous x,y coords, then lower to saved z position.
-@@ -1633,6 +1647,13 @@
+@@ -1633,6 +1647,18 @@
              self.afc_stats.increase_load_error_count(self)
  
      def TOOL_LOAD(self, cur_lane: AFCLane, purge_length: Optional[float]=None, set_start_time=False):
++        # Bypass can reject without pausing; do not suspend for this no-work exit.
++        if self._check_bypass():
++            if set_start_time:
++                self.afcDeltaTime.set_start_time()
++            return False
 +        state = self._cosmos_skew_suspend()
 +        success = self._TOOL_LOAD(cur_lane, purge_length, set_start_time)
 +        if success:
@@ -50,7 +55,7 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
          """
          This function handles the loading of a specified lane into the tool. It performs
          several checks and movements to ensure the lane is properly loaded.
-@@ -2068,7 +2089,42 @@
+@@ -2068,7 +2094,43 @@
          # User manually unloaded spool from toolhead, remove spool from active status
          self.spool.set_active_spool(None)
  
@@ -62,20 +67,21 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
 +        self.gcode.run_script_from_command('_SKEW_SUSPEND')
 +        return state
 +
++    def _cosmos_skew_resume_valid(self, state):
++        # Only explicit resume owners may accept paused SD stats awaiting note_start.
++        eventtime = self.reactor.monotonic()
++        current = self.printer.lookup_object(
++            'gcode_macro LOAD_SKEW_IF_EXISTS').get_status(eventtime)
++        print_state = self.printer.lookup_object('print_stats').get_status(eventtime)['state']
++        return (not self.error_state and current['generation'] == state['generation']
++                and current['phase'] == 'printing' and not self.function.is_paused()
++                and print_state in ('printing', 'paused'))
++
 +    def _cosmos_skew_restore(self, state, resuming=False):
 +        if self.error_state:
 +            return
 +        if resuming:
-+            # RESUME_BASE only schedules virtual-SD work: print_stats may still
-+            # say paused until note_start runs. Restore the profile already
-+            # authorized by COSMOS RESUME, without weakening ordinary tails.
-+            eventtime = self.reactor.monotonic()
-+            current = self.printer.lookup_object(
-+                'gcode_macro LOAD_SKEW_IF_EXISTS').get_status(eventtime)
-+            print_state = self.printer.lookup_object('print_stats').get_status(eventtime)['state']
-+            if (state['enabled'] and current['generation'] == state['generation']
-+                and current['phase'] == 'printing' and not self.function.is_paused()
-+                and print_state in ('printing', 'paused')):
++            if state['enabled'] and self._cosmos_skew_resume_valid(state):
 +                self.gcode.run_script_from_command('LOAD_SKEW_IF_EXISTS')
 +        else:
 +            self.gcode.run_script_from_command(
@@ -93,7 +99,7 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
          """
          This function handles the unloading of a specified lane from the tool. It performs
          several checks and movements to ensure the lane is properly unloaded.
-@@ -2598,6 +2654,11 @@
+@@ -2598,6 +2660,11 @@
              self.error.AFC_error(f"Error trying to lookup lane for {Tcmd}")
  
      def CHANGE_TOOL(self, cur_lane: AFCLane, purge_length: Optional[float]=None, restore_pos: bool=True, new_extruder_temp: Optional[float]=None) -> None:
@@ -105,7 +111,7 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
          try:
              self.afcDeltaTime.set_start_time()
              # Check if the bypass filament sensor detects filament; if so, abort the tool change.
-@@ -2717,6 +2778,7 @@
+@@ -2717,6 +2784,7 @@
                      # Error happened, reset toolchanges without error count
                      # and increase load error count
                      self.afc_stats.increase_load_error_count(self)
@@ -113,7 +119,7 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
              else:
                  # Calling handle activate extruder just to make sure lanes are synced as tool
                  # could have been changed with KTC SELECT_TOOL and lane might not be synced
-@@ -2726,6 +2788,7 @@
+@@ -2726,6 +2794,7 @@
                  self.logger.info("{} already loaded".format(cur_lane.name))
                  if not self.error_state and self.current_toolchange == -1:
                      self.current_toolchange += 1
@@ -121,6 +127,49 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
          # Copilot yes this is a bare exception, ignore please since this is being done on purpose
          # to make sure all exceptions are catched
          except Exception:
+--- a/extras/AFC_lane.py
++++ b/extras/AFC_lane.py
+@@ -1052,14 +1052,17 @@
+         self.afc.error.pause_resume.send_pause_command()
+         # Saving position after printer is paused
+         self.afc.save_pos()
++        # Own correction through the complete rollover, not just CHANGE_TOOL.
++        skew_state = self.afc._cosmos_skew_suspend()
+ 
+ 
+         # Position will be restored after new lane loaded so that nozzle does not sit
+         # on print while lane is unloading
+         self.afc.CHANGE_TOOL(change_lane, restore_pos=False)
+ 
+-        # Only continue if a error did not happen
+-        if not self.afc.error_state:
++        # A False load can leave error_state clear but the toolchange unfinished.
++        if (not self.afc.error_state and not self.afc.in_toolchange
++            and self.afc.current == change_lane.name):
+             try:
+                 # Swap mapping with runout lane
+                 self.gcode.run_script_from_command(
+@@ -1081,8 +1084,20 @@
+ 
++            skew = self.afc.printer.lookup_object('skew_correction', None)
++            if (not skew_state['enabled'] and skew is not None
++                and 'my_skew_profile' in skew.skew_profiles):
++                # An outer maintenance owner cannot safely resume this SD pause.
++                if self.afc._cosmos_skew_resume_valid(skew_state):
++                    self.gcode.run_script_from_command('_SKEW_PAUSE\nPAUSE_BASE')
++                    self.unit_obj.lane_not_ready(self)
++                return
++
+             # Resume pos
+             self.afc.restore_pos()
++            if not self.afc._cosmos_skew_resume_valid(skew_state):
++                return
+             # Resume with manual issued command
+             self.afc.error.pause_resume.send_resume_command()
++            self.afc._cosmos_skew_restore(skew_state, resuming=True)
+             # Set LED to not ready
+             self.unit_obj.lane_not_ready(self)
+ 
 --- a/extras/AFC_error.py
 +++ b/extras/AFC_error.py
 @@ -279,6 +279,8 @@

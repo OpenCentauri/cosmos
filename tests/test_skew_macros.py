@@ -179,6 +179,23 @@ class MacroRunner:
 
 
 class MaintenanceSkewTests(unittest.TestCase):
+    def test_rejected_kick_preserves_printing_correction(self):
+        for variant in ("cc1", "canvas", "cc2"):
+            for failure in ("target", "cold", "unhomed"):
+                with self.subTest(variant=variant, failure=failure):
+                    runner = MacroRunner(variant)
+                    runner.run("LOAD_SKEW_IF_EXISTS")
+                    if failure == "target":
+                        runner.printer["extruder"]["target"] = 170
+                    elif failure == "cold":
+                        runner.printer["extruder"]["can_extrude"] = False
+                    else:
+                        runner.printer["toolhead"]["homed_axes"] = "z"
+                    with self.assertRaises(MacroError):
+                        runner.run("KICK")
+                    self.assertTrue(runner.skew)
+                    self.assertFalse(runner.moves)
+
     def test_partial_homing_preserves_axes_without_malformed_arguments(self):
         for axes, expected in (("X", ["X"]), ("Y", ["Y"]),
                                ("XY", ["Y", "X", "Y"]), ("Z", ["Z"]),
@@ -248,7 +265,7 @@ class MaintenanceSkewTests(unittest.TestCase):
                 else:
                     runner.fail_command = "G1"
                 with self.assertRaises(MacroError):
-                    runner.run("KICK")
+                    runner.run("PURGE" if failure == "render" else "KICK")
                 self.assertFalse(runner.skew)
                 runner.printer["extruder"]["can_extrude"] = True
                 runner.fail_command = None

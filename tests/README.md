@@ -29,7 +29,9 @@ python -m unittest discover -s tests -v
 Git is needed to export AFC and check/apply recipe patches in an isolated temporary
 directory. No source downloads occur. Update the integration fixtures deliberately
 when rebasing either dependency. `AFC_TEST_UNPATCHED=1` is a diagnostic negative
-control for the AFC regression, not a release-validation setting.
+control for the AFC regression; `KALICO_TEST_UNPATCHED=1` disables the host-side
+pause patch for the manual-error negative control. Neither is a release-validation
+setting.
 
 ### Scope
 
@@ -45,6 +47,11 @@ control for the AFC regression, not a release-validation setting.
   state/pause methods, virtual-SD resume scheduling, and COSMOS templates. Hardware,
   sensor and telemetry doubles replace unrelated dependencies. A reversible
   downstream offset stands in for bed mesh to detect double application.
+- `test_manual_skew_errors.py` applies the host Kalico recipe patch and registers
+  its real command-error handler. It runs the pinned G-code dispatcher and SD
+  worker to verify that rejected requests preserve correction, while errors after
+  suspension stop the job before another print move. Recovery is checked both
+  with and without AFC, including the first resumed print move.
 
 These are not full firmware simulations. Real mesh interpolation, kinematic limits,
 heaters, sensors and the motion queue remain outside scope. A full BitBake build
@@ -66,15 +73,27 @@ A profile name is not an enabled flag: Kalico retains it after `SET_SKEW CLEAR=1
   wrappers see correction off, so only the outermost owner restores it.
 - Lifecycle cleanup increments a generation number, invalidating earlier owners.
   A pause/cancel/end inside maintenance cannot be undone by an old restore tail.
-- Render/command errors abort before restoration and leave correction off. After a
-  manual maintenance error during a print, pause and resolve the error before
-  resuming; do not continue printing with failed maintenance and skew suspended.
+- KICK validates homing and temperature before suspension. A rejected request
+  does not change correction or pause an otherwise valid print.
+- Errors after suspension abort before restoration and leave correction off. The
+  host Kalico command-error handler stops an active printing phase automatically,
+  saves uncorrected recovery frames, and marks it paused without parking or other
+  recovery motion. Resolve the error before resuming. This applies to manual
+  console errors too, not just commands originating in the SD file.
 - Private bodies preserve public parameters and variables and ensure an early
   `RETURN` cannot bypass the owner's restoration. Separate public wrappers are
   intentional: Kalico forbids recursive calls to the same generic wrapper macro.
 - The AFC recipe patch suspends at entire load/unload/tool-change boundaries,
   including native moves outside COSMOS callbacks. Success-only restoration uses
   stack-local ownership, so errors cannot strand a global nesting counter.
+- Automatic spool rollover owns suspension across the raw SD pause/change/restore/
+  resume sequence. Its successful final boundary reloads before queued print work;
+  lifecycle interruptions must not resume the job or restore correction. If rollover
+  is nested inside another maintenance owner with configured skew, it retains the
+  AFC return position and stays paused without further recovery motion. Finish the
+  outer maintenance, then explicitly RESUME; it must not release printing early.
+- A bypass load rejection is a no-work outcome, not failed maintenance: it leaves
+  existing print correction untouched when bypass policy does not request a pause.
 - AFC saved positions are normalized to the coordinate frame **below skew and
   above bed mesh** using the actual transform at save time. This handles snapshots
   made both with skew enabled and after a maintenance error cleared it. Restoring
@@ -93,4 +112,6 @@ recovery, saved-coordinate frames, and resume ordering.
 User overrides should retain public safety wrappers and customize private motion
 bodies instead. In particular, CC1 CANVAS overrides `_CLEAN_NOZZLE` while retaining
 the guarded public `CLEAN_NOZZLE` entry point. Deploy the AFC recipe patch together
-with the updated macro configuration; its lifecycle helpers require these macros.
+with the host Kalico pause patch and updated macro configuration; the lifecycle
+helpers require these macros. The pause patch is in the host recipe only, not the
+shared MCU firmware recipe include.

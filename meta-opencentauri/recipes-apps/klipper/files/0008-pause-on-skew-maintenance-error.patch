@@ -1,0 +1,53 @@
+From: COSMOS maintainers
+Subject: [PATCH] pause an active print on suspended-maintenance errors
+
+A console command error does not stop the virtual-SD worker. When COSMOS
+maintenance has suspended the configured print skew, stop the job and save
+uncorrected recovery frames without attempting further maintenance motion.
+Leave ordinary rejected console commands and printers without the profile alone.
+
+Upstream-Status: Inappropriate [COSMOS lifecycle integration]
+
+--- a/klippy/extras/pause_resume.py
++++ b/klippy/extras/pause_resume.py
+@@ -16,6 +16,9 @@
+         self.pause_command_sent = False
+         self.printer.register_event_handler(
+             "klippy:connect", self.handle_connect
++        )
++        self.printer.register_event_handler(
++            "gcode:command_error", self._handle_cosmos_maintenance_error
+         )
+         self.gcode.register_command(
+             "PAUSE", self.cmd_PAUSE, desc=self.cmd_PAUSE_help
+@@ -44,6 +47,30 @@
+ 
+     def handle_connect(self):
+         self.v_sd = self.printer.lookup_object("virtual_sdcard", None)
++
++    def _handle_cosmos_maintenance_error(self):
++        state_macro = self.printer.lookup_object(
++            "gcode_macro LOAD_SKEW_IF_EXISTS", None
++        )
++        skew = self.printer.lookup_object("skew_correction", None)
++        if (self.is_paused or state_macro is None or skew is None
++                or "my_skew_profile" not in skew.skew_profiles):
++            return
++        state = state_macro.get_status(self.printer.get_reactor().monotonic())
++        if state["phase"] != "printing" or state["enabled"]:
++            return
++        # A console error does not stop the independent SD worker. Stop it
++        # before releasing the G-code mutex; do not park after a motion error.
++        self.send_pause_command()
++        afc = self.printer.lookup_object("AFC", None)
++        if afc is not None:
++            afc.save_pos()
++        # Mark paused before invoking commands, preventing recursive recovery
++        # if state capture itself fails. Both saved frames have skew suspended.
++        self.is_paused = True
++        self.gcode.run_script_from_command(
++            "_SKEW_PAUSE\nSAVE_GCODE_STATE NAME=PAUSE_STATE"
++        )
+ 
+     def _handle_cancel_request(self, web_request):
+         self.gcode.run_script("CANCEL_PRINT")
