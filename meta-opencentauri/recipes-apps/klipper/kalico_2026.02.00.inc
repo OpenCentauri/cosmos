@@ -19,6 +19,7 @@ SRC_URI = "git://github.com/KalicoCrew/kalico.git;protocol=https;branch=main \
     file://0007-Add-HX711s-load-cell-probe-driver.patch \
     file://canvas_rfid.py;subdir=${BP}/klippy/extras \
     file://canvas_filament_sensor.py;subdir=${BP}/klippy/extras \
+    file://0008-hifi4-preserve-rx-during-consumption.patch \
 "
 SRCREV = "26e46bd536cd5b55c4028dd2409a2210262fc9ed"
 
