@@ -25,7 +25,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/Kconfig           |   50 +
  src/hifi4/Makefile          |   65 ++
  src/hifi4/alloc.c           |   23 +
- src/hifi4/com.c             |  138 +++
+ src/hifi4/com.c             |  161 +++
  src/hifi4/com.h             |    8 +
  src/hifi4/gpio.c            |  112 ++
  src/hifi4/gpio.h            |   50 +
@@ -46,7 +46,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/util.h            |   28 +
  src/hifi4/virtio_vring.h    |  122 +++
  src/hifi4/watchdog.c        |   39 +
- 42 files changed, 8647 insertions(+)
+ 42 files changed, 8670 insertions(+)
  create mode 100644 lib/hifi4/cache.c
  create mode 100644 lib/hifi4/ccu.c
  create mode 100644 lib/hifi4/gpadc.c
@@ -6897,10 +6897,10 @@ index 00000000..7db329c2
 +}
 diff --git a/src/hifi4/com.c b/src/hifi4/com.c
 new file mode 100644
-index 00000000..72cf74c7
+index 00000000..f70251be
 --- /dev/null
 +++ b/src/hifi4/com.c
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,161 @@
 +// Support for serial port over sharespace with msgbox interrupts
 +//
 +// Copyright (C) 2026  James Turton <james.turton@gmx.com>
@@ -6908,6 +6908,8 @@ index 00000000..72cf74c7
 +// This file may be distributed under the terms of the GNU GPLv3 license.
 +
 +#include "util.h" // memmove
++#include "board/io.h" // readb
++#include "board/irq.h" // irq_save
 +#include "board/misc.h" // console_sendf
 +#include "board/pgm.h" // READP
 +#include "command.h" // DECL_CONSTANT
@@ -6958,6 +6960,33 @@ index 00000000..72cf74c7
 +    sched_wake_task(&rpmsg_consume_wake);
 +}
 +
++// Remove consumed bytes while preserving data appended by the RX interrupt.
++// As in generic/serial_irq.c, copy with interrupts enabled and retry if the
++// producer appended input. Only committing receive_pos needs a critical section.
++static void
++rpmsg_pop_input(uint_fast8_t len)
++{
++    uint_fast8_t copied = 0;
++    for (;;) {
++        uint_fast8_t rpos = readb(&receive_pos);
++        uint_fast8_t needcopy = rpos - len;
++        if (needcopy) {
++            memmove(&receive_buf[copied], &receive_buf[copied + len]
++                    , needcopy - copied);
++            copied = needcopy;
++        }
++        irqstatus_t flag = irq_save();
++        if (rpos != readb(&receive_pos)) {
++            // Raced with RX - copy the newly appended tail before committing.
++            irq_restore(flag);
++            continue;
++        }
++        receive_pos = needcopy;
++        irq_restore(flag);
++        break;
++    }
++}
++
 +// Process any incoming commands
 +void
 +rpmsg_consume_task(void)
@@ -6965,20 +6994,14 @@ index 00000000..72cf74c7
 +    if (!sched_check_wake(&rpmsg_consume_wake))
 +        return;
 +
-+    uint_fast8_t rpos = receive_pos, pop_count;
++    uint_fast8_t rpos = readb(&receive_pos), pop_count;
 +
 +    // Process a message block
 +    int_fast8_t ret = command_find_and_dispatch(receive_buf, rpos, &pop_count);
-+    if (ret) {
-+        // Move buffer
-+        uint_fast8_t needcopy = rpos - pop_count;
-+        if (needcopy)
-+            memmove(receive_buf, &receive_buf[pop_count], needcopy);
-+        rpos = needcopy;
-+    }
-+    receive_pos = rpos;
++    if (ret)
++        rpmsg_pop_input(pop_count);
 +
-+    if (rpos)
++    if (readb(&receive_pos))
 +        sched_wake_task(&rpmsg_consume_wake);
 +}
 +DECL_TASK(rpmsg_consume_task);
