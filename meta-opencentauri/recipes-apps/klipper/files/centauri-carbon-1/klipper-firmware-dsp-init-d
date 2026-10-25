@@ -10,15 +10,6 @@
 
 REMOTEPROCFILE="/sys/class/remoteproc/remoteproc0/state"
 
-set_gpio(){
-    GPIO="$1"
-    STATE="$2"
-
-    echo $GPIO > /sys/class/gpio/export
-    echo $STATE > /sys/class/gpio/gpio$GPIO/direction
-    echo $GPIO > /sys/class/gpio/unexport
-}
-
 case "$1" in
     start)
         echo "Starting klipper-firmware-dsp..."
@@ -28,15 +19,15 @@ case "$1" in
         echo "Stopping klipper-firmware-dsp..."
         echo stop > $REMOTEPROCFILE
 
-        set_gpio 205 low  # heated bed PG13
-        set_gpio 138 high # stepper x enable PE10, active low
-        set_gpio 143 high # stepper y enable PE15, active low
-        set_gpio 193 high # stepper z enable PG1, active low
-        set_gpio 197 low  # buzzer PG5
-        set_gpio 208 low  # mainboard fan PG16
-        set_gpio 209 low  # aux fan PG17
-        set_gpio 210 low  # case fan PG18
-        set_gpio 207 low  # case led PG15
+        gpioset --chip gpiochip0 --toggle 0 205=0 # heated bed PG13
+        gpioset --chip gpiochip0 --toggle 0 138=1 # stepper x enable PE10, active low
+        gpioset --chip gpiochip0 --toggle 0 143=1 # stepper y enable PE15, active low
+        gpioset --chip gpiochip0 --toggle 0 193=1 # stepper z enable PG1, active low
+        gpioset --chip gpiochip0 --toggle 0 197=0 # buzzer PG5
+        gpioset --chip gpiochip0 --toggle 0 208=0 # mainboard fan PG16
+        gpioset --chip gpiochip0 --toggle 0 209=0 # aux fan PG17
+        gpioset --chip gpiochip0 --toggle 0 210=0 # case fan PG18
+        gpioset --chip gpiochip0 --toggle 0 207=0 # case led PG15
         ;;
     restart|force-reload)
         $0 stop

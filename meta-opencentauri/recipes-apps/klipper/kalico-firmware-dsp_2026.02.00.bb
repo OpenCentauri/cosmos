@@ -11,6 +11,7 @@ SRC_URI += " file://config.mainboard \
 DEPENDS += " gcc-xtensa-hifi4-elf-native"
 
 RPROVIDES:${PN} += "klipper-firmware-dsp"
+RDEPENDS:${PN} += "libgpiod-tools"
 
 EXTRA_OEMAKE += " KCONFIG_CONFIG=../config.mainboard"
 
