@@ -25,7 +25,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/Kconfig           |   50 +
  src/hifi4/Makefile          |   65 ++
  src/hifi4/alloc.c           |   23 +
- src/hifi4/com.c             |  161 +++
+ src/hifi4/com.c             |  138 +++
  src/hifi4/com.h             |    8 +
  src/hifi4/gpio.c            |  112 ++
  src/hifi4/gpio.h            |   50 +
@@ -38,7 +38,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/resource_table.c  |   93 ++
  src/hifi4/rpmsg.c           |  346 +++++++
  src/hifi4/rpmsg.h           |  208 ++++
- src/hifi4/rpmsg_transport.c |  146 +++
+ src/hifi4/rpmsg_transport.c |  157 +++
  src/hifi4/serial.c          |   78 ++
  src/hifi4/timer.c           |   80 ++
  src/hifi4/timer.h           |    9 +
@@ -46,7 +46,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/util.h            |   28 +
  src/hifi4/virtio_vring.h    |  122 +++
  src/hifi4/watchdog.c        |   39 +
- 42 files changed, 8670 insertions(+)
+ 42 files changed, 8658 insertions(+)
  create mode 100644 lib/hifi4/cache.c
  create mode 100644 lib/hifi4/ccu.c
  create mode 100644 lib/hifi4/gpadc.c
@@ -6897,10 +6897,10 @@ index 00000000..7db329c2
 +}
 diff --git a/src/hifi4/com.c b/src/hifi4/com.c
 new file mode 100644
-index 00000000..f70251be
+index 00000000..92ba8de9
 --- /dev/null
 +++ b/src/hifi4/com.c
-@@ -0,0 +1,161 @@
+@@ -0,0 +1,138 @@
 +// Support for serial port over sharespace with msgbox interrupts
 +//
 +// Copyright (C) 2026  James Turton <james.turton@gmx.com>
@@ -6908,8 +6908,6 @@ index 00000000..f70251be
 +// This file may be distributed under the terms of the GNU GPLv3 license.
 +
 +#include "util.h" // memmove
-+#include "board/io.h" // readb
-+#include "board/irq.h" // irq_save
 +#include "board/misc.h" // console_sendf
 +#include "board/pgm.h" // READP
 +#include "command.h" // DECL_CONSTANT
@@ -6941,7 +6939,7 @@ index 00000000..f70251be
 +
 +static struct task_wake rpmsg_consume_wake;
 +
-+// Called from RPMsg endpoint callback (interrupt context)
++// Called from the RPMsg RX task (or during transport initialization).
 +void
 +rpmsg_notify_rx(const void *data, uint32_t len)
 +{
@@ -6960,33 +6958,6 @@ index 00000000..f70251be
 +    sched_wake_task(&rpmsg_consume_wake);
 +}
 +
-+// Remove consumed bytes while preserving data appended by the RX interrupt.
-+// As in generic/serial_irq.c, copy with interrupts enabled and retry if the
-+// producer appended input. Only committing receive_pos needs a critical section.
-+static void
-+rpmsg_pop_input(uint_fast8_t len)
-+{
-+    uint_fast8_t copied = 0;
-+    for (;;) {
-+        uint_fast8_t rpos = readb(&receive_pos);
-+        uint_fast8_t needcopy = rpos - len;
-+        if (needcopy) {
-+            memmove(&receive_buf[copied], &receive_buf[copied + len]
-+                    , needcopy - copied);
-+            copied = needcopy;
-+        }
-+        irqstatus_t flag = irq_save();
-+        if (rpos != readb(&receive_pos)) {
-+            // Raced with RX - copy the newly appended tail before committing.
-+            irq_restore(flag);
-+            continue;
-+        }
-+        receive_pos = needcopy;
-+        irq_restore(flag);
-+        break;
-+    }
-+}
-+
 +// Process any incoming commands
 +void
 +rpmsg_consume_task(void)
@@ -6994,14 +6965,20 @@ index 00000000..f70251be
 +    if (!sched_check_wake(&rpmsg_consume_wake))
 +        return;
 +
-+    uint_fast8_t rpos = readb(&receive_pos), pop_count;
++    uint_fast8_t rpos = receive_pos, pop_count;
 +
 +    // Process a message block
 +    int_fast8_t ret = command_find_and_dispatch(receive_buf, rpos, &pop_count);
-+    if (ret)
-+        rpmsg_pop_input(pop_count);
++    if (ret) {
++        // Move buffer
++        uint_fast8_t needcopy = rpos - pop_count;
++        if (needcopy)
++            memmove(receive_buf, &receive_buf[pop_count], needcopy);
++        rpos = needcopy;
++    }
++    receive_pos = rpos;
 +
-+    if (readb(&receive_pos))
++    if (rpos)
 +        sched_wake_task(&rpmsg_consume_wake);
 +}
 +DECL_TASK(rpmsg_consume_task);
@@ -8170,7 +8147,7 @@ index 00000000..429c2327
 +}
 diff --git a/src/hifi4/rpmsg.h b/src/hifi4/rpmsg.h
 new file mode 100644
-index 00000000..eae827ca
+index 00000000..6db46aa2
 --- /dev/null
 +++ b/src/hifi4/rpmsg.h
 @@ -0,0 +1,208 @@
@@ -8327,7 +8304,7 @@ index 00000000..eae827ca
 +/*
 + * Process incoming messages.
 + *
-+ * Call this from your main loop or MSGBOX interrupt handler.
++ * Call during initialization or from a cooperative task, never from an IRQ.
 + * It checks the RX vring for new messages and dispatches them
 + * to the appropriate endpoint callbacks.
 + *
@@ -8384,10 +8361,10 @@ index 00000000..eae827ca
 +#endif // __HIFI4_RPMSG_H
 diff --git a/src/hifi4/rpmsg_transport.c b/src/hifi4/rpmsg_transport.c
 new file mode 100644
-index 00000000..8dce6564
+index 00000000..6aa443ff
 --- /dev/null
 +++ b/src/hifi4/rpmsg_transport.c
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,157 @@
 +// RPMsg transport integration for HiFi4 DSP.
 +//
 +// This connects the MSGBOX hardware (kick mechanism) to the RPMsg
@@ -8401,7 +8378,7 @@ index 00000000..8dce6564
 +#include "rpmsg.h"
 +#include "com.h"
 +#include "log.h"
-+#include "sched.h" // DECL_INIT
++#include "sched.h" // DECL_INIT, DECL_TASK, sched_wake_task
 +
 +// Forward declaration
 +void com_set_endpoint(struct rpmsg_endpoint *ept);
@@ -8440,11 +8417,13 @@ index 00000000..8dce6564
 +// MSGBOX interrupt handler
 +// ---------------------------------------------------------------------------
 +
++static struct task_wake rpmsg_rx_wake;
++
 +/*
 + * Called when Linux kicks us via MSGBOX.
 + *
 + * The message value is the virtqueue ID that Linux wants us to process.
-+ * We call rpmsg_process() to handle any incoming messages.
++ * Wake the RX task; leave vring processing out of interrupt context.
 + */
 +static void
 +rpmsg_msgbox_rx_callback(uint8_t channel, uint32_t message, void *arg)
@@ -8453,8 +8432,17 @@ index 00000000..8dce6564
 +    (void)arg;
 +    (void)message;
 +
++    sched_wake_task(&rpmsg_rx_wake);
++}
++
++void
++rpmsg_rx_task(void)
++{
++    if (!sched_check_wake(&rpmsg_rx_wake))
++        return;
 +    rpmsg_process();
 +}
++DECL_TASK(rpmsg_rx_task);
 +
 +// ---------------------------------------------------------------------------
 +// Example endpoint callback
