@@ -1,0 +1,106 @@
+{
+    "macros": {
+        "mode": "expert",
+        "hiddenMacros": [],
+        "macrogroups": {
+            "user": {
+                "name": "User",
+                "color": "primary",
+                "showInStandby": true,
+                "showInPrinting": true,
+                "showInPause": true,
+                "macros": [
+                    {
+                        "pos": 1,
+                        "name": "MOVE_TO_TRAY",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 2,
+                        "name": "MANUAL_LEVELING",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 3,
+                        "name": "CHECK_CALIBRATION",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 4,
+                        "name": "SET_PAUSE_AT_LAYER",
+                        "color": "group",
+                        "showInStandby": false,
+                        "showInPrinting": true,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 5,
+                        "name": "SET_PAUSE_NEXT_LAYER",
+                        "color": "group",
+                        "showInStandby": false,
+                        "showInPrinting": true,
+                        "showInPause": false
+                    }
+                ]
+            },
+            "advanced": {
+                "name": "Advanced",
+                "color": "warning",
+                "showInStandby": true,
+                "showInPrinting": false,
+                "showInPause": true,
+                "macros": [
+                    {
+                        "pos": 1,
+                        "name": "CALIBRATE_Z_OFFSET",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 2,
+                        "name": "CUT_FILAMENT",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 3,
+                        "name": "CLEAN_NOZZLE",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 4,
+                        "name": "SET_LANE_LOADED",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": true
+                    },
+                    {
+                        "pos": 5,
+                        "name": "UNSET_LANE_LOADED",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": true
+                    }
+                ]
+            }
+        }
+    }
+}
