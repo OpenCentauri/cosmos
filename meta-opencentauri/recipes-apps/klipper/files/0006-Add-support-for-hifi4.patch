@@ -38,7 +38,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/resource_table.c  |   93 ++
  src/hifi4/rpmsg.c           |  346 +++++++
  src/hifi4/rpmsg.h           |  208 ++++
- src/hifi4/rpmsg_transport.c |  146 +++
+ src/hifi4/rpmsg_transport.c |  157 +++
  src/hifi4/serial.c          |   78 ++
  src/hifi4/timer.c           |   80 ++
  src/hifi4/timer.h           |    9 +
@@ -46,7 +46,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/util.h            |   28 +
  src/hifi4/virtio_vring.h    |  122 +++
  src/hifi4/watchdog.c        |   39 +
- 42 files changed, 8647 insertions(+)
+ 42 files changed, 8658 insertions(+)
  create mode 100644 lib/hifi4/cache.c
  create mode 100644 lib/hifi4/ccu.c
  create mode 100644 lib/hifi4/gpadc.c
@@ -6897,7 +6897,7 @@ index 00000000..7db329c2
 +}
 diff --git a/src/hifi4/com.c b/src/hifi4/com.c
 new file mode 100644
-index 00000000..72cf74c7
+index 00000000..92ba8de9
 --- /dev/null
 +++ b/src/hifi4/com.c
 @@ -0,0 +1,138 @@
@@ -6939,7 +6939,7 @@ index 00000000..72cf74c7
 +
 +static struct task_wake rpmsg_consume_wake;
 +
-+// Called from RPMsg endpoint callback (interrupt context)
++// Called from the RPMsg RX task (or during transport initialization).
 +void
 +rpmsg_notify_rx(const void *data, uint32_t len)
 +{
@@ -8147,7 +8147,7 @@ index 00000000..429c2327
 +}
 diff --git a/src/hifi4/rpmsg.h b/src/hifi4/rpmsg.h
 new file mode 100644
-index 00000000..eae827ca
+index 00000000..6db46aa2
 --- /dev/null
 +++ b/src/hifi4/rpmsg.h
 @@ -0,0 +1,208 @@
@@ -8304,7 +8304,7 @@ index 00000000..eae827ca
 +/*
 + * Process incoming messages.
 + *
-+ * Call this from your main loop or MSGBOX interrupt handler.
++ * Call during initialization or from a cooperative task, never from an IRQ.
 + * It checks the RX vring for new messages and dispatches them
 + * to the appropriate endpoint callbacks.
 + *
@@ -8361,10 +8361,10 @@ index 00000000..eae827ca
 +#endif // __HIFI4_RPMSG_H
 diff --git a/src/hifi4/rpmsg_transport.c b/src/hifi4/rpmsg_transport.c
 new file mode 100644
-index 00000000..8dce6564
+index 00000000..6aa443ff
 --- /dev/null
 +++ b/src/hifi4/rpmsg_transport.c
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,157 @@
 +// RPMsg transport integration for HiFi4 DSP.
 +//
 +// This connects the MSGBOX hardware (kick mechanism) to the RPMsg
@@ -8378,7 +8378,7 @@ index 00000000..8dce6564
 +#include "rpmsg.h"
 +#include "com.h"
 +#include "log.h"
-+#include "sched.h" // DECL_INIT
++#include "sched.h" // DECL_INIT, DECL_TASK, sched_wake_task
 +
 +// Forward declaration
 +void com_set_endpoint(struct rpmsg_endpoint *ept);
@@ -8417,11 +8417,13 @@ index 00000000..8dce6564
 +// MSGBOX interrupt handler
 +// ---------------------------------------------------------------------------
 +
++static struct task_wake rpmsg_rx_wake;
++
 +/*
 + * Called when Linux kicks us via MSGBOX.
 + *
 + * The message value is the virtqueue ID that Linux wants us to process.
-+ * We call rpmsg_process() to handle any incoming messages.
++ * Wake the RX task; leave vring processing out of interrupt context.
 + */
 +static void
 +rpmsg_msgbox_rx_callback(uint8_t channel, uint32_t message, void *arg)
@@ -8430,8 +8432,17 @@ index 00000000..8dce6564
 +    (void)arg;
 +    (void)message;
 +
++    sched_wake_task(&rpmsg_rx_wake);
++}
++
++void
++rpmsg_rx_task(void)
++{
++    if (!sched_check_wake(&rpmsg_rx_wake))
++        return;
 +    rpmsg_process();
 +}
++DECL_TASK(rpmsg_rx_task);
 +
 +// ---------------------------------------------------------------------------
 +// Example endpoint callback
