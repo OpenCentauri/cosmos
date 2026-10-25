@@ -22,7 +22,7 @@ SRC_URI = "git://github.com/KalicoCrew/kalico.git;protocol=https;branch=main \
 "
 SRCREV = "26e46bd536cd5b55c4028dd2409a2210262fc9ed"
 
-PR = "r19"
+PR = "r20"
 
 DEPENDS = " \
     python3-native \
