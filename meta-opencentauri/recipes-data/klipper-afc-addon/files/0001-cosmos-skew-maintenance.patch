@@ -67,21 +67,21 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
 +        self.gcode.run_script_from_command('_SKEW_SUSPEND')
 +        return state
 +
-+    def _cosmos_skew_resume_valid(self, state):
-+        # Only explicit resume owners may accept paused SD stats awaiting note_start.
++    def _cosmos_sd_resume_valid(self, state):
++        # Raw SD may resume preparation before PRINT_START grants skew eligibility.
 +        eventtime = self.reactor.monotonic()
 +        current = self.printer.lookup_object(
 +            'gcode_macro LOAD_SKEW_IF_EXISTS').get_status(eventtime)
 +        print_state = self.printer.lookup_object('print_stats').get_status(eventtime)['state']
 +        return (not self.error_state and current['generation'] == state['generation']
-+                and current['phase'] == 'printing' and not self.function.is_paused()
++                and current['phase'] in ('off', 'printing') and not self.function.is_paused()
 +                and print_state in ('printing', 'paused'))
 +
 +    def _cosmos_skew_restore(self, state, resuming=False):
 +        if self.error_state:
 +            return
 +        if resuming:
-+            if state['enabled'] and self._cosmos_skew_resume_valid(state):
++            if state['enabled'] and state['phase'] == 'printing' and self._cosmos_sd_resume_valid(state):
 +                self.gcode.run_script_from_command('LOAD_SKEW_IF_EXISTS')
 +        else:
 +            self.gcode.run_script_from_command(
@@ -152,17 +152,17 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
 @@ -1081,8 +1084,20 @@
  
 +            skew = self.afc.printer.lookup_object('skew_correction', None)
-+            if (not skew_state['enabled'] and skew is not None
++            if (skew_state['phase'] == 'printing' and not skew_state['enabled'] and skew is not None
 +                and 'my_skew_profile' in skew.skew_profiles):
 +                # An outer maintenance owner cannot safely resume this SD pause.
-+                if self.afc._cosmos_skew_resume_valid(skew_state):
++                if self.afc._cosmos_sd_resume_valid(skew_state):
 +                    self.gcode.run_script_from_command('_SKEW_PAUSE\nPAUSE_BASE')
 +                    self.unit_obj.lane_not_ready(self)
 +                return
 +
              # Resume pos
              self.afc.restore_pos()
-+            if not self.afc._cosmos_skew_resume_valid(skew_state):
++            if not self.afc._cosmos_sd_resume_valid(skew_state):
 +                return
              # Resume with manual issued command
              self.afc.error.pause_resume.send_resume_command()
@@ -210,3 +210,16 @@ Upstream-Status: Inappropriate [COSMOS macro lifecycle policy]
              # Verify that printer is in absolute mode
              self.afc.function.check_absolute_mode("AFC_PAUSE")
              move_z_pos = self.afc.last_gcode_position[2] + self.afc.z_hop
+--- a/extras/AFC_utils.py
++++ b/extras/AFC_utils.py
+@@ -248,6 +248,10 @@
+         except Exception:
+             # Last ditch effort to call klipper pause since something bad happened
+             pause_resume: PauseResume = self.printer.lookup_object("pause_resume")
++            if (not pause_resume.is_paused
++                and self.printer.lookup_object('gcode_macro LOAD_SKEW_IF_EXISTS', None) is not None):
++                # Native callback errors bypass the host command-error hook.
++                self.gcode.run_script_from_command('_SKEW_PAUSE\n_SAVE_FAN_STATE')
+             pause_cmd: GCodeCommand = self.gcode.create_gcode_command("PAUSE", "PAUSE", {})
+             # Calling Pause command directly since user/plugins could have overridden this command
+             pause_resume.cmd_PAUSE(pause_cmd)

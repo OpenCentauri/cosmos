@@ -85,6 +85,18 @@ class PinnedParserTests(unittest.TestCase):
                 self.assertEqual(actual, expected)
                 self.assertEqual(MacroRunner.parse_params("__HOMING_OVERRIDE", axes), actual)
 
+    def test_chamber_warmup_keeps_native_argument_syntax(self):
+        for args in ("S40", "S 40", "S40.5", "S0", "S-1"):
+            with self.subTest(args=args):
+                actual = self.parse_command("M191", args).get_command_parameters()
+                self.assertEqual(MacroRunner.parse_params("M191", args), actual)
+                runner = self.runner()
+                runner.printer['temperature_sensor chamber'] = {'temperature': 40.}
+                runner.run("LOAD_SKEW_IF_EXISTS")
+                runner.run("M191", args)
+                self.assertFalse(any(move[2] for move in runner.moves))
+                self.assertTrue(runner.skew)
+
     def test_native_parser_rejects_bare_axes_for_extended_macro(self):
         runner = self.runner()
         with self.assertRaises(self.firmware.CommandError):

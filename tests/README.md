@@ -16,8 +16,9 @@ Provide local source roots from the recipe revisions:
 
 - AFC: `0fd50f2229b685cdb9b84793150ab0798e16eb03`, as a Git checkout containing that
   commit. Tests export the pinned files, not the checkout's working-tree contents.
-- Kalico: `26e46bd536cd5b55c4028dd2409a2210262fc9ed`, containing `klippy/gcode.py` and
-  `klippy/extras/{skew_correction,gcode_move,pause_resume,virtual_sdcard}.py`.
+- Kalico: `26e46bd536cd5b55c4028dd2409a2210262fc9ed`, containing
+  `klippy/{gcode,configfile,mathutil,queuelogger}.py` and
+  `klippy/extras/{__init__,danger_options,gcode_macro,homing_override,skew_correction,gcode_move,pause_resume,virtual_sdcard}.py`.
   Tests verify hashes of the files they execute and check recipe pins.
 
 ```sh
@@ -26,8 +27,8 @@ COSMOS_KALICO_SOURCE=/path/to/kalico \
 python -m unittest discover -s tests -v
 ```
 
-Git is needed to export AFC and check/apply recipe patches in an isolated temporary
-directory. No source downloads occur. Update the integration fixtures deliberately
+Git and GNU `patch` are needed to export AFC and check/apply recipe patches in
+isolated temporary directories. No source downloads occur. Update the integration fixtures deliberately
 when rebasing either dependency. `AFC_TEST_UNPATCHED=1` is a diagnostic negative
 control for the AFC regression; `KALICO_TEST_UNPATCHED=1` disables the host-side
 pause patch for the manual-error negative control. Neither is a release-validation
@@ -40,18 +41,30 @@ setting.
   rejection, `RETURN`, variables, strict extended-command arguments, and the order
   of skew changes and motion. Unknown commands fail unless explicitly modeled or
   declared inert/stubbed.
+- The macro runner also loads `calibration.cfg`; chamber warm-up and full
+  calibration keep ownership across their own positioning and nested helpers.
 - `test_klipper_parser.py` checks rendered homing, calibration and cancel commands
-  against the pinned Kalico parser, including cancellation reaching heater shutdown.
+  against the pinned Kalico parser, including M191's traditional arguments and
+  cancellation reaching heater shutdown.
+- `test_klipper_config.py` uses the recipe-patched Kalico configuration parser and
+  native template loader for shared, calibration and model-specific configuration.
+  It checks homing startup and equivalent inherited CANVAS public wrappers.
 - `test_afc_skew_integration.py` applies the recipe patch and executes actual pinned
   AFC operation/save/restore/pause/resume methods, Kalico coordinate transforms and
   state/pause methods, virtual-SD resume scheduling, and COSMOS templates. Hardware,
   sensor and telemetry doubles replace unrelated dependencies. A reversible
   downstream offset stands in for bed mesh to detect double application.
+- `test_afc_callback_recovery.py` executes the native debounce exception fallback
+  and verifies correction, cooling and coordinates on the first resumed SD move.
+  Preparation rollover is exercised at the real SD worker's first read/yield,
+  before PRINT_START, with and without a profile and with lifecycle interruptions.
 - `test_manual_skew_errors.py` applies the host Kalico recipe patch and registers
   its real command-error handler. It runs the pinned G-code dispatcher and SD
   worker to verify that rejected requests preserve correction, while errors after
   suspension stop the job before another print move. Recovery is checked both
-  with and without AFC, including the first resumed print move.
+  with and without AFC, including cooling on the first resumed print move.
+  An actual empty-lane startup failure verifies that a synchronous AFC pause
+  defers skew activation until explicit recovery.
 
 These are not full firmware simulations. Real mesh interpolation, kinematic limits,
 heaters, sensors and the motion queue remain outside scope. A full BitBake build
@@ -65,9 +78,12 @@ arbitrary direct `SET_SKEW`/`SKEW_PROFILE` commands bypass the lifecycle bookkee
 A profile name is not an enabled flag: Kalico retains it after `SET_SKEW CLEAR=1`.
 
 - Start clears stale correction before preparation and loads only at its end.
+  If an AFC failure paused startup without aborting the macro, final activation
+  is deferred until an explicit RESUME rather than loading while paused.
 - COSMOS pause clears before saving its return position. Resume rejects unpaused
   calls, restores that position with correction still off, then reloads for a
-  paused printing phase. A pause during preparation does not enable correction.
+  paused printing phase. A pause/resume before startup's final activation point
+  does not enable correction.
 - Each maintenance wrapper snapshots whether correction was enabled, suspends it,
   calls a separate private body, and conditionally restores afterward. Nested
   wrappers see correction off, so only the outermost owner restores it.
@@ -77,9 +93,11 @@ A profile name is not an enabled flag: Kalico retains it after `SET_SKEW CLEAR=1
   does not change correction or pause an otherwise valid print.
 - Errors after suspension abort before restoration and leave correction off. The
   host Kalico command-error handler stops an active printing phase automatically,
-  saves uncorrected recovery frames, and marks it paused without parking or other
-  recovery motion. Resolve the error before resuming. This applies to manual
-  console errors too, not just commands originating in the SD file.
+  saves uncorrected recovery frames and current fan settings, and marks it paused
+  without parking or other recovery motion. Resolve the error before resuming.
+  This applies to manual console errors too, not just commands originating in the
+  SD file. Native AFC debounce failures enter the same motion-free pause lifecycle
+  and save cooling before native pause capture; an existing pause is not overwritten.
 - Private bodies preserve public parameters and variables and ensure an early
   `RETURN` cannot bypass the owner's restoration. Separate public wrappers are
   intentional: Kalico forbids recursive calls to the same generic wrapper macro.
@@ -92,6 +110,8 @@ A profile name is not an enabled flag: Kalico retains it after `SET_SKEW CLEAR=1
   is nested inside another maintenance owner with configured skew, it retains the
   AFC return position and stays paused without further recovery motion. Finish the
   outer maintenance, then explicitly RESUME; it must not release printing early.
+  During startup preparation, a successful rollover resumes raw SD without loading
+  correction; only PRINT_START's final activation grants printing eligibility.
 - A bypass load rejection is a no-work outcome, not failed maintenance: it leaves
   existing print correction untouched when bypass policy does not request a pause.
 - AFC saved positions are normalized to the coordinate frame **below skew and

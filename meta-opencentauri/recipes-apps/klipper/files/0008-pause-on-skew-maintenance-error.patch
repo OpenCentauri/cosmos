@@ -46,7 +46,7 @@ Upstream-Status: Inappropriate [COSMOS lifecycle integration]
 +        # if state capture itself fails. Both saved frames have skew suspended.
 +        self.is_paused = True
 +        self.gcode.run_script_from_command(
-+            "_SKEW_PAUSE\nSAVE_GCODE_STATE NAME=PAUSE_STATE"
++            "_SKEW_PAUSE\n_SAVE_FAN_STATE\nSAVE_GCODE_STATE NAME=PAUSE_STATE"
 +        )
  
      def _handle_cancel_request(self, web_request):

@@ -259,7 +259,7 @@ class AFCIntegrationTests(unittest.TestCase):
         cls.addClassCleanup(cls.temp.cleanup)
         dest = Path(cls.temp.name)
         # Export committed bytes, never a modified developer worktree.
-        for file in ('AFC.py','AFC_error.py','AFC_functions.py','AFC_lane.py','AFC_canvas.py'):
+        for file in ('AFC.py','AFC_error.py','AFC_functions.py','AFC_lane.py','AFC_canvas.py','AFC_utils.py'):
             path = dest / 'extras' / file
             path.parent.mkdir(exist_ok=True)
             path.write_bytes(subprocess.check_output(['git','-C',str(source),'show',f'{pin}:extras/{file}']))
@@ -297,6 +297,7 @@ class AFCIntegrationTests(unittest.TestCase):
                 ['check_homed','is_printing','is_moving'], env),
             'error': extract_class(dest/'extras/AFC_error.py','afcError',
                 ['cmd_AFC_PAUSE','cmd_AFC_RESUME','AFC_error','pause_print','set_error_state'], env),
+            'debounce': extract_class(dest/'extras/AFC_utils.py','DebounceButton', ['_debounce_event']),
             'move': extract_class(kalico/'gcode_move.py','GCodeMove', ['reset_last_position','cmd_G1',
                 'cmd_G90','cmd_G91','cmd_G92','cmd_M82','cmd_M83','cmd_SAVE_GCODE_STATE','cmd_RESTORE_GCODE_STATE']),
             'skew': extract_class(kalico/'skew_correction.py','PrinterSkew', ['calc_skew','calc_unskew',

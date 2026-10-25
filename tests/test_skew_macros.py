@@ -27,7 +27,8 @@ class MacroRunner:
         self.variables = {}
         self.sections = {}
         machine = "centauri-carbon-2" if variant == "cc2" else "centauri-carbon-1"
-        paths = [FILES / "client.cfg", FILES / "shared-macros.cfg", FILES / machine / "macros.cfg"]
+        paths = [FILES / "client.cfg", FILES / "shared-macros.cfg",
+                 FILES / "calibration.cfg", FILES / machine / "macros.cfg"]
         if variant == "canvas":
             paths.append(FILES / machine / "canvas-toolhead.cfg")
         for path in paths:
@@ -87,9 +88,10 @@ class MacroRunner:
 
     @staticmethod
     def parse_params(name, rawparams):
-        if name == "__HOMING_OVERRIDE":
+        if name in ("__HOMING_OVERRIDE", "M191"):
             # Match Kalico's traditional tokenization: XY is ONE key, not X/Y.
-            parts = re.split(r"([A-Z_]+|[A-Z*])", ("G28 " + rawparams).split(";", 1)[0].upper())
+            command = "G28" if name == "__HOMING_OVERRIDE" else name
+            parts = re.split(r"([A-Z_]+|[A-Z*])", (command + " " + rawparams).split(";", 1)[0].upper())
             return {parts[i]: parts[i + 1].strip() for i in range(1, len(parts), 2)}
         params = {}
         for token in shlex.split(rawparams, comments=True):
@@ -333,6 +335,30 @@ class MaintenanceSkewTests(unittest.TestCase):
                 self.assertTrue(runner.moves)
                 self.assertFalse(any(move[2] for move in runner.moves))
                 self.assertTrue(runner.skew)
+
+    def test_outer_maintenance_keeps_lifecycle_ownership(self):
+        for macro, args, boundary in (("M191", "S40", "TEMPERATURE_WAIT"),
+                                      ("_CALIBRATE_ALL_STEP_2", "", "PID_CALIBRATE")):
+            for mode in ("printing", "idle", "paused", "no_profile", "preparation", "interrupted"):
+                with self.subTest(macro=macro, mode=mode):
+                    runner = MacroRunner(profile=mode != "no_profile",
+                                         printing=mode != "idle", paused=mode == "paused")
+                    runner.printer['temperature_sensor chamber'] = {'temperature': 40.}
+                    runner.printer['gcode_macro _COSMOS_SETTINGS'] = {
+                        'full_calibrate_hotend_temperature': 230, 'full_calibrate_bed_temperature': 60}
+                    runner.stubs.update({'RUN_SHELL_COMMAND', 'SHAPER_CALIBRATE', 'PID_CALIBRATE',
+                                         'ACCELEROMETER_DEBUG_READ', '_SAVE_CONFIG_PROMPT'})
+                    if mode in ("printing", "interrupted"):
+                        runner.run("LOAD_SKEW_IF_EXISTS")
+                    if mode == "interrupted":
+                        runner.hooks[boundary] = lambda current: current.run("CLEAR_SKEW_IF_EXISTS")
+                    runner.trace.clear()
+                    runner.run(macro, args)
+                    self.assertTrue(runner.moves)
+                    self.assertFalse(any(move[2] for move in runner.moves))
+                    self.assertEqual(runner.skew, mode == "printing")
+                    loads = [cmd for _, cmd, _, _ in runner.trace if cmd == "SKEW_PROFILE"]
+                    self.assertEqual(len(loads), int(mode == "printing"))
 
     def test_unload_suspends_skew_through_its_final_exit_move(self):
         runner = MacroRunner()
