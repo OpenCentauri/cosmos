@@ -36,17 +36,17 @@
                     },
                     {
                         "pos": 4,
-                        "name": "SET_PAUSE_AT_LAYER",
+                        "name": "EXHAUST_OPEN",
                         "color": "group",
-                        "showInStandby": false,
+                        "showInStandby": true,
                         "showInPrinting": true,
                         "showInPause": false
                     },
                     {
                         "pos": 5,
-                        "name": "SET_PAUSE_NEXT_LAYER",
+                        "name": "EXHAUST_CLOSE",
                         "color": "group",
-                        "showInStandby": false,
+                        "showInStandby": true,
                         "showInPrinting": true,
                         "showInPause": false
                     }
@@ -98,6 +98,22 @@
                         "showInStandby": true,
                         "showInPrinting": false,
                         "showInPause": true
+                    },
+                    {
+                        "pos": 6,
+                        "name": "LOADCELL_Z_HOME",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
+                    },
+                    {
+                        "pos": 7,
+                        "name": "PURGE",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
                     }
                 ]
             }
