@@ -22,7 +22,7 @@ RPROVIDES:${PN} += "klipper-firmware-canvas"
 EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.canvas"
 
 INITSCRIPT_NAME = "klipper-firmware-canvas"
-INITSCRIPT_PARAMS = "defaults 94 4"
+INITSCRIPT_PARAMS = "defaults 93 7"
 
 do_install() {
     install -d ${D}/lib/firmware
