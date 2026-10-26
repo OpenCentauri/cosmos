@@ -11,10 +11,10 @@ part /boot-resource  --source rootfs            --ondisk mmcblk0 --fstype=vfat  
 part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env             --fixed-size 251k     --offset 27032k  --align 1
 part                 --source rawcopy           --ondisk mmcblk0 --sourceparams="file=u-boot-initial-env-emmc" --part-name env-redund      --fixed-size 251k     --offset 27284k  --align 1
 part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootA               --part-name bootA           --fixed-size 6299k    --offset 27536k  --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --part-name rootfsA         --fixed-size 131125k  --offset 33836k  --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --part-name rootfsA         --fixed-size 131125k  --offset 33836k  --align 1 --mkfs-extraopts="-comp lz4"
 part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0A               --part-name dsp0A           --fixed-size 1007k    --offset 165002k --align 1
 part                 --source bootimg-partition --ondisk mmcblk0 --fstype=vfat     --label bootB               --part-name bootB           --fixed-size 6299k    --offset 166010k --align 1
-part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --part-name rootfsB         --fixed-size 131125k  --offset 172310k --align 1
+part                 --source rootfs            --ondisk mmcblk0 --fstype=squashfs                             --part-name rootfsB         --fixed-size 131125k  --offset 172310k --align 1 --mkfs-extraopts="-comp lz4"
 part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label dsp0B               --part-name dsp0B           --fixed-size 1007k    --offset 303476k --align 1
 part                 --source empty             --ondisk mmcblk0 --fstype=ext4     --label rootfs_data         --part-name rootfs_data     --fixed-size 131125k  --offset 304484k --align 1
 part /board-resource --source empty             --ondisk mmcblk0 --fstype=ext4     --label user                --part-name user            --fixed-size 131125k  --offset 435650k --align 1
