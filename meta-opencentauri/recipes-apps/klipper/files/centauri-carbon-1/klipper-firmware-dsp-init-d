@@ -19,15 +19,17 @@ case "$1" in
         echo "Stopping klipper-firmware-dsp..."
         echo stop > $REMOTEPROCFILE
 
-        gpioset --chip gpiochip0 --toggle 0 205=0 # heated bed PG13
-        gpioset --chip gpiochip0 --toggle 0 138=1 # stepper x enable PE10, active low
-        gpioset --chip gpiochip0 --toggle 0 143=1 # stepper y enable PE15, active low
-        gpioset --chip gpiochip0 --toggle 0 193=1 # stepper z enable PG1, active low
-        gpioset --chip gpiochip0 --toggle 0 197=0 # buzzer PG5
-        gpioset --chip gpiochip0 --toggle 0 208=0 # mainboard fan PG16
-        gpioset --chip gpiochip0 --toggle 0 209=0 # aux fan PG17
-        gpioset --chip gpiochip0 --toggle 0 210=0 # case fan PG18
-        gpioset --chip gpiochip0 --toggle 0 207=0 # case led PG15
+        PINS=""
+        PINS="$PINS 205=0" # heated bed PG13
+        PINS="$PINS 138=1" # stepper x enable PE10, active low
+        PINS="$PINS 143=1" # stepper y enable PE15, active low
+        PINS="$PINS 193=1" # stepper z enable PG1, active low
+        PINS="$PINS 197=0" # buzzer PG5
+        PINS="$PINS 208=0" # mainboard fan PG16
+        PINS="$PINS 209=0" # aux fan PG17
+        PINS="$PINS 210=0" # case fan PG18
+        PINS="$PINS 207=0" # case led PG15
+        gpioset --chip gpiochip0 --toggle 0 $PINS
         ;;
     restart|force-reload)
         $0 stop
