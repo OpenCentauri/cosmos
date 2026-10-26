@@ -20,12 +20,7 @@ update(){
     FLASHER=$!
     sleep 1
 
-    echo $GPIO > /sys/class/gpio/export
-    echo out > /sys/class/gpio/gpio$GPIO/direction
-    echo 0 > /sys/class/gpio/gpio$GPIO/value
-    sleep 2
-    echo 1 > /sys/class/gpio/gpio$GPIO/value
-    echo $GPIO > /sys/class/gpio/unexport
+    gpioset --chip gpiochip0 --toggle 2s,0 $GPIO=0
 
     if wait $FLASHER; then
         cp $FIRMWARE_VERSION $INSTALLED_VERSION
@@ -39,10 +34,7 @@ update(){
 case "$1" in
     start)
         echo "Starting klipper-firmware-toolhead..."
-        echo $GPIO > /sys/class/gpio/export
-        echo out > /sys/class/gpio/gpio$GPIO/direction
-        echo 1 > /sys/class/gpio/gpio$GPIO/value
-        echo $GPIO > /sys/class/gpio/unexport
+        gpioset --chip gpiochip0 --toggle 0 $GPIO=1
         sleep 1
 
         if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
@@ -57,10 +49,7 @@ case "$1" in
         ;;
     stop)
         echo "Stopping klipper-firmware-toolhead..."
-        echo $GPIO > /sys/class/gpio/export
-        echo out > /sys/class/gpio/gpio$GPIO/direction
-        echo 0 > /sys/class/gpio/gpio$GPIO/value
-        echo $GPIO > /sys/class/gpio/unexport
+        gpioset --chip gpiochip0 --toggle 0 $GPIO=0
         ;;
     restart|force-reload)
         $0 stop
@@ -68,9 +57,7 @@ case "$1" in
         $0 start
         ;;
     status)
-        echo $GPIO > /sys/class/gpio/export
-        gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
-        echo $GPIO > /sys/class/gpio/unexport
+        gpio_value=$(gpioget --chip gpiochip0 --as-is --numeric $GPIO)
         if [ "$gpio_value" = "1" ]; then
             echo "klipper-firmware-toolhead is running"
         else

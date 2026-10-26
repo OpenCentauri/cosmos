@@ -16,6 +16,7 @@ RDEPENDS:${PN} = " \
     flashtool \
     toolhead-bootloader-upgrade \
     mcu-flasher \
+    libgpiod-tools \
 "
 
 RPROVIDES:${PN} += "klipper-firmware-toolhead"
@@ -23,7 +24,7 @@ RPROVIDES:${PN} += "klipper-firmware-toolhead"
 EXTRA_OEMAKE += "KCONFIG_CONFIG=../config.toolhead"
 
 INITSCRIPT_NAME = "klipper-firmware-toolhead"
-INITSCRIPT_PARAMS = "defaults 94 4"
+INITSCRIPT_PARAMS = "defaults 93 7"
 
 do_install() {
     install -d ${D}/lib/firmware
