@@ -10,3 +10,12 @@ DEPENDS = " \
     python3-setuptools-native \
     python3-wheel-native \
 "
+
+RDEPENDS:${PN} += " \
+    python3-certifi \
+    python3-click \
+    python3-markdown \
+    python3-pyyaml \
+    python3-requests \
+    python3-requests-oauthlib \
+"
