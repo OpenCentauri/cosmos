@@ -15,6 +15,7 @@ RDEPENDS:${PN} = " \
     canvas-bootloader-upgrade \
     config-manager \
     mcu-flasher \
+    libgpiod-tools \
 "
 
 RPROVIDES:${PN} += "klipper-firmware-canvas"

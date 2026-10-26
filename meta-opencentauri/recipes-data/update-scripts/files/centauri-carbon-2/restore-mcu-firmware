@@ -29,12 +29,7 @@ update(){
     FLASHER=$!
     sleep 1
 
-    echo $GPIO > /sys/class/gpio/export 2>/dev/null || true
-    echo out > /sys/class/gpio/gpio$GPIO/direction
-    echo 0 > /sys/class/gpio/gpio$GPIO/value
-    sleep 2
-    echo 1 > /sys/class/gpio/gpio$GPIO/value
-    echo $GPIO > /sys/class/gpio/unexport 2>/dev/null || true
+    gpioset --chip gpiochip0 --toggle 2s,0 $GPIO=0
 
     if wait $FLASHER; then
         echo "Stock firmware flashed to $SERIALPORT."

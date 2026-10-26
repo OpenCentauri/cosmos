@@ -30,10 +30,7 @@ update(){
 case "$1" in
     start)
         echo "Starting klipper-firmware-bed..."
-        echo $GPIO > /sys/class/gpio/export
-        echo out > /sys/class/gpio/gpio$GPIO/direction
-        echo 1 > /sys/class/gpio/gpio$GPIO/value
-        echo $GPIO > /sys/class/gpio/unexport
+        gpioset --chip gpiochip0 --toggle 0 $GPIO=1
         sleep 1
 
         if [ -f "$INSTALLED_VERSION" ] && [ "$(cat $INSTALLED_VERSION)" == "$(cat $FIRMWARE_VERSION)" ]; then
@@ -47,13 +44,8 @@ case "$1" in
                 exit 0
             else
                 echo "Attempting bootloader upgrade..."
-                echo $GPIO > /sys/class/gpio/export
-                echo out > /sys/class/gpio/gpio$GPIO/direction
-                echo 0 > /sys/class/gpio/gpio$GPIO/value
-                sleep 2
-                echo 1 > /sys/class/gpio/gpio$GPIO/value
+                gpioset --chip gpiochip0 --toggle 2s,0 $GPIO=0
                 sleep 1
-                echo $GPIO > /sys/class/gpio/unexport
                 if mcu-flasher --firmware $KATAPULT_DEPLOYER --no-wait $SERIALPORT --firmware-version 6.4.9; then
                     echo "Bootloader deployer flashed successfully, clearing installed version."
                     rm -f $INSTALLED_VERSION
@@ -68,10 +60,7 @@ case "$1" in
         ;;
     stop)
         echo "Stopping klipper-firmware-bed..."
-        echo $GPIO > /sys/class/gpio/export
-        echo out > /sys/class/gpio/gpio$GPIO/direction
-        echo 0 > /sys/class/gpio/gpio$GPIO/value
-        echo $GPIO > /sys/class/gpio/unexport
+        gpioset --chip gpiochip0 --toggle 0 $GPIO=0
         ;;
     restart|force-reload)
         $0 stop
@@ -79,9 +68,7 @@ case "$1" in
         $0 start
         ;;
     status)
-        echo $GPIO > /sys/class/gpio/export
-        gpio_value=$(cat /sys/class/gpio/gpio$GPIO/value)
-        echo $GPIO > /sys/class/gpio/unexport
+        gpio_value=$(gpioget --chip gpiochip0 --as-is --numeric $GPIO)
         if [ "$gpio_value" = "1" ]; then
             echo "klipper-firmware-bed is running"
         else

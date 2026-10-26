@@ -16,6 +16,7 @@ RDEPENDS:${PN} = " \
     flashtool \
     toolhead-bootloader-upgrade \
     mcu-flasher \
+    libgpiod-tools \
 "
 
 RPROVIDES:${PN} += "klipper-firmware-toolhead"

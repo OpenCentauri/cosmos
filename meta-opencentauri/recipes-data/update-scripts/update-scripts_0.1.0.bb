@@ -36,6 +36,7 @@ RDEPENDS:${PN}:append:centauri-carbon-1 = " \
 
 RDEPENDS:${PN}:append:centauri-carbon-2 = " \
     mcu-flasher \
+    libgpiod-tools \
 "
 
 do_install() {
