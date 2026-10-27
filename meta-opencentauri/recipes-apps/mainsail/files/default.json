@@ -19,7 +19,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     },
                     {
                         "pos": 2,
@@ -59,7 +59,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     },
                     {
                         "pos": 7,
@@ -67,7 +67,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     }
                 ]
             },
@@ -92,7 +92,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     },
                     {
                         "pos": 3,
@@ -100,7 +100,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     },
                     {
                         "pos": 4,
@@ -132,7 +132,7 @@
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
-                        "showInPause": false
+                        "showInPause": true
                     }
                 ]
             }
