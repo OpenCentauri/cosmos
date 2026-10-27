@@ -1,4 +1,4 @@
-From e9403de78b44680a8ee008521b34e3e5a776cf10 Mon Sep 17 00:00:00 2001
+From d18e7ccfeafe6bd2602ac0d3f4a55f23ac126a26 Mon Sep 17 00:00:00 2001
 From: James Turton <james.turton@gmx.com>
 Date: Tue, 26 May 2026 22:09:28 +0200
 Subject: [PATCH] Add HX711s load cell probe driver
@@ -7,20 +7,20 @@ Subject: [PATCH] Add HX711s load cell probe driver
  docs/Config_Reference.md            |  48 ++++
  docs/Load_Cell.md                   |  24 ++
  klippy/extras/load_cell/__init__.py |   3 +-
- klippy/extras/load_cell/hx711s.py   | 245 +++++++++++++++++
+ klippy/extras/load_cell/hx711s.py   | 244 +++++++++++++++++
  klippy/extras/load_cell_probe.py    |   3 +-
  src/Kconfig                         |  12 +-
  src/Makefile                        |   1 +
  src/sensor_hx711s.c                 | 394 ++++++++++++++++++++++++++++
- 8 files changed, 726 insertions(+), 4 deletions(-)
+ 8 files changed, 725 insertions(+), 4 deletions(-)
  create mode 100644 klippy/extras/load_cell/hx711s.py
  create mode 100644 src/sensor_hx711s.c
 
 diff --git a/docs/Config_Reference.md b/docs/Config_Reference.md
-index 60548249..8fdfb949 100644
+index 4b2f85de..4bafc17c 100644
 --- a/docs/Config_Reference.md
 +++ b/docs/Config_Reference.md
-@@ -6161,6 +6161,54 @@ data_ready_pin:
+@@ -6293,6 +6293,54 @@ data_ready_pin:
  #   are: 0, 1, 2, 3. The default is 0.
  ```
  
@@ -137,10 +137,10 @@ index dfe33727..6af39bc7 100644
          subsystem.register_component("load_cell_sensors", name, sensor)
 diff --git a/klippy/extras/load_cell/hx711s.py b/klippy/extras/load_cell/hx711s.py
 new file mode 100644
-index 00000000..8f8d9c44
+index 00000000..329c1ef7
 --- /dev/null
 +++ b/klippy/extras/load_cell/hx711s.py
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,244 @@
 +# Multi-Sensor HX711 and HX717 Support
 +#
 +# Copyright (C) 2026 James Turton <james.turton@gmx.com>
@@ -175,7 +175,7 @@ index 00000000..8f8d9c44
 +    ):
 +        self.printer = printer = config.get_printer()
 +        self.name = config.get_name().split()[-1]
-+        self.last_error_count = 0
++        self.error_count = 0
 +        self.consecutive_fails = 0
 +        self.sensor_type = sensor_type
 +        # Chip options
@@ -280,19 +280,21 @@ index 00000000..8f8d9c44
 +        self.attach_probe_cmd.send([self.oid, load_cell_probe_oid])
 +
 +    # Measurement decoding
-+    def _convert_samples(self, samples):
++    @staticmethod
++    def _convert_samples(samples) -> int:
 +        adc_factor = 1.0 / (1 << 23)
 +        count = 0
++        batch_errors = 0
 +        for sample in samples:
 +            ptime = sample[0]
 +            channel_counts = sample[1:]
 +            val = channel_counts[0]
 +            if val == SAMPLE_ERROR_DESYNC:
-+                self.last_error_count += 1
++                batch_errors += 1
 +                logging.error("%s: DESYNC at t=%.3f", self.name, ptime)
 +                break  # errors latch in the MCU, the rest are duplicates
 +            elif val == SAMPLE_ERROR_LONG_READ:
-+                self.last_error_count += 1
++                batch_errors += 1
 +                logging.error("%s: READ_TOO_LONG at t=%.3f", self.name, ptime)
 +                break  # errors latch in the MCU, the rest are duplicates
 +            converted = [round(ptime, 6)]
@@ -302,11 +304,11 @@ index 00000000..8f8d9c44
 +            samples[count] = tuple(converted)
 +            count += 1
 +        del samples[count:]
++        return batch_errors
 +
 +    # Start, stop, and process message batches
 +    def _start_measurements(self):
 +        self.consecutive_fails = 0
-+        self.last_error_count = 0
 +        # Start bulk reading
 +        rest_ticks = self.mcu.seconds_to_clock(
 +            1.0 / (10.0 * self.get_samples_per_second())
@@ -330,13 +332,10 @@ index 00000000..8f8d9c44
 +        )
 +
 +    def _process_batch(self, eventtime) -> BulkAdcData:
-+        prev_overflows = self.ffreader.get_last_overflows()
-+        prev_error_count = self.last_error_count
-+        samples = self.ffreader.pull_samples()
-+        self._convert_samples(samples)
-+        overflows = self.ffreader.get_last_overflows() - prev_overflows
-+        errors = self.last_error_count - prev_error_count
-+        if errors > 0:
++        samples, overflows = self.ffreader.pull_samples()
++        batch_errors = self._convert_samples(samples)
++        self.error_count += batch_errors
++        if batch_errors > 0:
 +            logging.error("%s: Forced sensor restart due to error", self.name)
 +            self._finish_measurements()
 +            self._start_measurements()
@@ -352,8 +351,8 @@ index 00000000..8f8d9c44
 +            self.consecutive_fails = 0
 +        return {
 +            "data": samples,
-+            "errors": self.last_error_count,
-+            "overflows": self.ffreader.get_last_overflows(),
++            "errors": batch_errors,
++            "overflows": overflows,
 +        }
 +
 +
@@ -408,10 +407,10 @@ index cc46c587..16a67de8 100644
      for name, sensor in sensors.items():
          subsystem.register_component("load_cell_probe_sensors", name, sensor)
 diff --git a/src/Kconfig b/src/Kconfig
-index f312debe..8396c85c 100644
+index 8e880a3e..45cfc11e 100644
 --- a/src/Kconfig
 +++ b/src/Kconfig
-@@ -199,6 +199,10 @@ config WANT_HX71X
+@@ -207,6 +207,10 @@ config WANT_HX71X
      bool
      depends on HAVE_GPIO
      default y
@@ -422,7 +421,7 @@ index f312debe..8396c85c 100644
  config WANT_ADS1220
      bool
      depends on WANT_SPI
-@@ -235,11 +239,12 @@ config NEED_SENSOR_BULK
+@@ -243,11 +247,12 @@ config NEED_SENSOR_BULK
      bool
      depends on WANT_ADXL345 || WANT_LIS2DW || WANT_MPU9250 || WANT_ICM20948 \
          || WANT_HX71X || WANT_ADS1220 || WANT_ADS131M0X || WANT_CS1237 \
@@ -437,7 +436,7 @@ index f312debe..8396c85c 100644
      default y
  config NEED_SOS_FILTER
      bool
-@@ -318,6 +323,9 @@ config WANT_THERMOCOUPLE
+@@ -326,6 +331,9 @@ config WANT_THERMOCOUPLE
  config WANT_HX71X
      bool "Support HX711 and HX717 ADC chips"
      depends on HAVE_GPIO
@@ -448,10 +447,10 @@ index f312debe..8396c85c 100644
      bool "Support ADS 1220 ADC chip"
      depends on WANT_SPI
 diff --git a/src/Makefile b/src/Makefile
-index 2914a263..d48dc517 100644
+index d27d5fed..22190047 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -24,6 +24,7 @@ src-$(CONFIG_WANT_LDC1612) += sensor_ldc1612.c
+@@ -26,6 +26,7 @@ src-$(CONFIG_WANT_LDC1612) += sensor_ldc1612.c
  src-$(CONFIG_WANT_MPU9250) += sensor_mpu9250.c
  src-$(CONFIG_WANT_ICM20948) += sensor_icm20948.c
  src-$(CONFIG_WANT_HX71X) += sensor_hx71x.c
