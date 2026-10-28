@@ -1,16 +1,3 @@
-From: Cosmos contributors
-Subject: [PATCH] fbdev: fit the screen with bilinear scaling
-
-Scale the 320x200 image to the largest rectangle that fits the framebuffer,
-keeping its aspect ratio and clearing the unused borders. Interpolate RGB
-colors rather than palette indices, using precomputed pixel-center maps
-and fixed-point weights. Keep -scaling N as an explicit integer size.
-
-Respect framebuffer stride, color layout and viewport offsets for both
-mapped access and the write fallback, including partial/interrupted writes.
-
-Upstream-Status: Pending
-
 --- a/fbdoom/i_video_fbdev.c
 +++ b/fbdoom/i_video_fbdev.c
 @@ -31,12 +31,15 @@
