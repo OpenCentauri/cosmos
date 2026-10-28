@@ -1,0 +1,361 @@
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -31,12 +31,15 @@
+ #include "d_event.h"
+ #include "d_main.h"
+ #include "i_video.h"
++#include "i_system.h"
+ #include "z_zone.h"
+ 
+ #include "tables.h"
+ #include "doomkeys.h"
+ 
+ #include <stdbool.h>
++#include <errno.h>
++#include <limits.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+@@ -50,10 +53,7 @@
+ #include <linux/fb.h>
+ #include <sys/ioctl.h>
+ 
+-//#define CMAP256
+-
+ struct fb_var_screeninfo fb = {};
+-int fb_scaling = 1;
+ int usemouse = 0;
+ 
+ struct color {
+@@ -73,7 +73,16 @@
+ /* framebuffer file descriptor */
+ int fd_fb = 0;
+ static uint8_t *fb_mmap = NULL;
+-static long fb_screensize = 0;
++static size_t fb_screensize = 0;
++static struct fb_fix_screeninfo finfo;
++static int scaled_width, scaled_height, scaled_x, scaled_y;
++
++typedef struct {
++    int first, second;
++    unsigned int weight;
++} scale_sample_t;
++
++static scale_sample_t *scale_x, *scale_y;
+ 
+ int	X_width;
+ int X_height;
+@@ -114,52 +123,75 @@
+ 
+ static uint16_t rgb565_palette[256];
+ 
+-void cmap_to_rgb565(uint16_t * out, uint8_t * in, int in_pixels)
+-{
+-    int i, j;
+-    struct color c;
+-    uint16_t r, g, b;
+-
+-    for (i = 0; i < in_pixels; i++)
+-    {
+-        c = colors[*in]; 
+-        r = ((uint16_t)(c.r >> 3)) << 11;
+-        g = ((uint16_t)(c.g >> 2)) << 5;
+-        b = ((uint16_t)(c.b >> 3)) << 0;
+-        *out = (r | g | b);
+-
+-        in++;
+-        for (j = 0; j < fb_scaling; j++) {
+-            out++;
+-        }
+-    }
+-}
+-
+-void cmap_to_fb(uint8_t * out, uint8_t * in, int in_pixels)
+-{
+-    int i, j, k;
+-    struct color c;
+-    uint32_t pix;
+-    uint16_t r, g, b;
+-
+-    for (i = 0; i < in_pixels; i++)
+-    {
+-        c = colors[*in];  /* R:8 G:8 B:8 format! */
+-        r = (uint16_t)(c.r >> (8 - fb.red.length));
+-        g = (uint16_t)(c.g >> (8 - fb.green.length));
+-        b = (uint16_t)(c.b >> (8 - fb.blue.length));
+-        pix = r << fb.red.offset;
+-        pix |= g << fb.green.offset;
+-        pix |= b << fb.blue.offset;
+-
+-        for (k = 0; k < fb_scaling; k++) {
+-            for (j = 0; j < fb.bits_per_pixel/8; j++) {
+-                *out = (pix >> (j*8));
+-                out++;
+-            }
+-        }
+-        in++;
+-    }
++/* Pixel-center mapping with clamped edges, calculated only at startup. */
++static scale_sample_t *make_scale_map(int source, int destination)
++{
++    scale_sample_t *map;
++    int i;
++
++    if ((size_t)destination > SIZE_MAX / sizeof(*map))
++        I_Error("Framebuffer scale map is too large");
++    map = malloc((size_t)destination * sizeof(*map));
++
++    if (!map)
++        I_Error("Unable to allocate framebuffer scale map");
++    for (i = 0; i < destination; ++i) {
++        int64_t position = ((2 * (int64_t)i + 1) * source * 128)
++                         / destination - 128;
++        if (position < 0)
++            position = 0;
++        if (position > (source - 1) * 256)
++            position = (source - 1) * 256;
++        map[i].first = position >> 8;
++        map[i].second = map[i].first + (map[i].first < source - 1);
++        map[i].weight = position & 255;
++    }
++    return map;
++}
++
++static void init_scaling(void)
++{
++    int p = M_CheckParmWithArgs("-scaling", 1);
++
++    if (p > 0) {
++        char *end;
++        long factor = strtol(myargv[p + 1], &end, 10);
++        if (*end || factor < 1 || factor > fb.xres / SCREENWIDTH
++            || factor > fb.yres / SCREENHEIGHT)
++            I_Error("-scaling must be a positive integer that fits the framebuffer");
++        scaled_width = SCREENWIDTH * factor;
++        scaled_height = SCREENHEIGHT * factor;
++    } else if ((uint64_t)fb.xres * SCREENHEIGHT
++               <= (uint64_t)fb.yres * SCREENWIDTH) {
++        scaled_width = fb.xres;
++        scaled_height = (uint64_t)fb.xres * SCREENHEIGHT / SCREENWIDTH;
++    } else {
++        scaled_height = fb.yres;
++        scaled_width = (uint64_t)fb.yres * SCREENWIDTH / SCREENHEIGHT;
++    }
++    if (scaled_width < 1) scaled_width = 1;
++    if (scaled_height < 1) scaled_height = 1;
++    scaled_x = (fb.xres - scaled_width) / 2;
++    scaled_y = (fb.yres - scaled_height) / 2;
++    scale_x = make_scale_map(SCREENWIDTH, scaled_width);
++    scale_y = make_scale_map(SCREENHEIGHT, scaled_height);
++    printf("I_InitGraphics: Bilinear scaling to %dx%d at (%d,%d)\n",
++           scaled_width, scaled_height, scaled_x, scaled_y);
++}
++
++/* Blend RGB channels, never palette indices. Weights have eight fraction bits. */
++static unsigned int bilinear(unsigned int a, unsigned int b,
++                             unsigned int c, unsigned int d,
++                             unsigned int wx, unsigned int wy)
++{
++    unsigned int top = a * (256 - wx) + b * wx;
++    unsigned int bottom = c * (256 - wx) + d * wx;
++    return (top * (256 - wy) + bottom * wy + 32768) >> 16;
++}
++
++static uint32_t pack_channel(unsigned int value, struct fb_bitfield field)
++{
++    return field.length ? (value >> (8 - field.length)) << field.offset : 0;
+ }
+ 
+ void I_InitGraphics (void)
+@@ -175,7 +207,31 @@
+     }
+ 
+     /* fetch framebuffer info */
+-    ioctl(fd_fb, FBIOGET_VSCREENINFO, &fb);
++    if (ioctl(fd_fb, FBIOGET_VSCREENINFO, &fb) < 0
++        || ioctl(fd_fb, FBIOGET_FSCREENINFO, &finfo) < 0)
++        I_Error("Unable to read framebuffer information: %s", strerror(errno));
++    if (!fb.xres || !fb.yres || fb.xres > INT_MAX || fb.yres > INT_MAX
++        || (fb.bits_per_pixel != 16 && fb.bits_per_pixel != 24
++            && fb.bits_per_pixel != 32)
++        || finfo.type != FB_TYPE_PACKED_PIXELS
++        || finfo.visual != FB_VISUAL_TRUECOLOR)
++        I_Error("Framebuffer requires packed 16/24/32-bit truecolor pixels");
++    {
++        struct fb_bitfield fields[] = {fb.red, fb.green, fb.blue, fb.transp};
++        for (i = 0; i < 4; ++i) {
++            if (fields[i].length > 8 || fields[i].msb_right
++                || fields[i].offset > fb.bits_per_pixel
++                || fields[i].length > fb.bits_per_pixel - fields[i].offset
++                || (i < 3 && !fields[i].length))
++                I_Error("Unsupported framebuffer color layout");
++        }
++    }
++    if (((uint64_t)fb.xoffset + fb.xres) * (fb.bits_per_pixel / 8)
++        > finfo.line_length
++        || ((uint64_t)fb.yoffset + fb.yres - 1) * finfo.line_length
++           + ((uint64_t)fb.xoffset + fb.xres) * (fb.bits_per_pixel / 8)
++           > finfo.smem_len)
++        I_Error("Framebuffer viewport exceeds its memory");
+     /* change params if needed */
+     //ioctl(fd_fb, FBIOPUT_VSCREENINFO, &fb);
+     printf("I_InitGraphics: framebuffer: x_res: %d, y_res: %d, x_virtual: %d, y_virtual: %d, bpp: %d, grayscale: %d\n",
+@@ -187,36 +243,27 @@
+     printf("I_InitGraphics: DOOM screen size: w x h: %d x %d\n", SCREENWIDTH, SCREENHEIGHT);
+ 
+ 
+-    i = M_CheckParmWithArgs("-scaling", 1);
+-    if (i > 0) {
+-        i = atoi(myargv[i + 1]);
+-        fb_scaling = i;
+-        printf("I_InitGraphics: Scaling factor: %d\n", fb_scaling);
+-    } else {
+-        fb_scaling = fb.xres / SCREENWIDTH;
+-        if (fb.yres / SCREENHEIGHT < fb_scaling)
+-            fb_scaling = fb.yres / SCREENHEIGHT;
+-        printf("I_InitGraphics: Auto-scaling factor: %d\n", fb_scaling);
+-    }
+-
++    init_scaling();
+ 
+     /* mmap the framebuffer for direct access */
+-    struct fb_fix_screeninfo finfo;
+-    ioctl(fd_fb, FBIOGET_FSCREENINFO, &finfo);
+-    fb_screensize = fb.yres_virtual * finfo.line_length;
++    fb_screensize = finfo.smem_len;
+     fb_mmap = mmap(0, fb_screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fd_fb, 0);
+     if (fb_mmap == MAP_FAILED) {
+         fb_mmap = NULL;
+         printf("I_InitGraphics: mmap failed, falling back to write()\n");
+     } else {
+-        printf("I_InitGraphics: mmap OK, screensize=%ld, line_length=%d\n",
++        printf("I_InitGraphics: mmap OK, screensize=%zu, line_length=%u\n",
+                fb_screensize, finfo.line_length);
+         ioctl(fd_fb, FBIOBLANK, 0); /* FB_BLANK_UNBLANK */
+     }
+ 
+     /* Allocate screen to draw to */
+ 	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);  // For DOOM to draw on
+-	I_VideoBuffer_FB = (byte*)malloc(fb.xres * fb.yres * (fb.bits_per_pixel/8));     // For a single write() syscall to fbdev
++	I_VideoBuffer_FB = calloc(fb.yres, finfo.line_length);     // Zero-filled borders and padded rows
++
++    if (!I_VideoBuffer_FB) {
++        I_Error("Unable to allocate framebuffer staging buffer");
++    }
+ 
+ 	screenvisible = true;
+ 
+@@ -232,6 +279,8 @@
+ 	}
+ 	Z_Free (I_VideoBuffer);
+ 	free(I_VideoBuffer_FB);
++    free(scale_x);
++    free(scale_y);
+ }
+ 
+ void I_StartFrame (void)
+@@ -424,59 +473,53 @@
+ 
+ void I_FinishUpdate (void)
+ {
+-    int y;
+-    int x_offset, y_offset, x_offset_end;
+-    unsigned char *line_in, *line_out;
+-
+-    /* Offsets in case FB is bigger than DOOM */
+-    /* 600 = fb heigt, 200 screenheight */
+-    /* 600 = fb heigt, 200 screenheight */
+-    /* 2048 =fb width, 320 screenwidth */
+-    y_offset     = (((fb.yres - (SCREENHEIGHT * fb_scaling)) * fb.bits_per_pixel/8)) / 2;
+-    x_offset     = (((fb.xres - (SCREENWIDTH  * fb_scaling)) * fb.bits_per_pixel/8)) / 2; // XXX: siglent FB hack: /4 instead of /2, since it seems to handle the resolution in a funny way
+-    //x_offset     = 0;
+-    x_offset_end = ((fb.xres - (SCREENWIDTH  * fb_scaling)) * fb.bits_per_pixel/8) - x_offset;
+-
+-    /* DRAW SCREEN */
+-    line_in  = (unsigned char *) I_VideoBuffer;
+-    line_out = (unsigned char *) I_VideoBuffer_FB;
+-
+-    y = SCREENHEIGHT;
+-
+-    while (y--)
+-    {
+-        int i;
+-        for (i = 0; i < fb_scaling; i++) {
+-            line_out += x_offset;
+-#ifdef CMAP256
+-            for (fb_scaling == 1) {
+-                memcpy(line_out, line_in, SCREENWIDTH); /* fb_width is bigger than Doom SCREENWIDTH... */
+-            } else {
+-                //XXX FIXME fb_scaling support!
++    int x, y, byte_index;
++    int bytes = fb.bits_per_pixel / 8;
++    size_t row_bytes = (size_t)fb.xres * bytes;
++    size_t offset = (size_t)fb.yoffset * finfo.line_length + fb.xoffset * bytes;
++    uint32_t alpha = fb.transp.length
++                   ? ((1u << fb.transp.length) - 1) << fb.transp.offset : 0;
++
++    for (y = 0; y < scaled_height; ++y) {
++        scale_sample_t sy = scale_y[y];
++        const byte *top = I_VideoBuffer + sy.first * SCREENWIDTH;
++        const byte *bottom = I_VideoBuffer + sy.second * SCREENWIDTH;
++        byte *out = I_VideoBuffer_FB + (size_t)(scaled_y + y) * finfo.line_length
++                  + (size_t)scaled_x * bytes;
++        for (x = 0; x < scaled_width; ++x) {
++            scale_sample_t sx = scale_x[x];
++            struct color a = colors[top[sx.first]], b = colors[top[sx.second]];
++            struct color c = colors[bottom[sx.first]], d = colors[bottom[sx.second]];
++            uint32_t pixel = alpha
++                | pack_channel(bilinear(a.r, b.r, c.r, d.r, sx.weight, sy.weight), fb.red)
++                | pack_channel(bilinear(a.g, b.g, c.g, d.g, sx.weight, sy.weight), fb.green)
++                | pack_channel(bilinear(a.b, b.b, c.b, d.b, sx.weight, sy.weight), fb.blue);
++            for (byte_index = 0; byte_index < bytes; ++byte_index)
++                *out++ = pixel >> (byte_index * 8);
++        }
++    }
++
++    /* Include the zero-filled borders and respect stride and viewport offsets. */
++    for (y = 0; y < fb.yres; ++y) {
++        byte *row = I_VideoBuffer_FB + (size_t)y * finfo.line_length;
++        size_t target = offset + (size_t)y * finfo.line_length;
++        if (fb_mmap) {
++            memcpy(fb_mmap + target, row, row_bytes);
++        } else {
++            size_t done = 0;
++            while (done < row_bytes) {
++                ssize_t n = pwrite(fd_fb, row + done, row_bytes - done, target + done);
++                if (n < 0 && errno == EINTR)
++                    continue;
++                if (n <= 0)
++                    I_Error("Unable to write framebuffer: %s",
++                            n < 0 ? strerror(errno) : "short write");
++                done += n;
+             }
+-#else
+-            //cmap_to_rgb565((void*)line_out, (void*)line_in, SCREENWIDTH);
+-            cmap_to_fb((void*)line_out, (void*)line_in, SCREENWIDTH);
+-#endif
+-            line_out += (SCREENWIDTH * fb_scaling * (fb.bits_per_pixel/8)) + x_offset_end;
+         }
+-        line_in += SCREENWIDTH;
+-    }
+-
+-    /* Blit to framebuffer */
+-    int draw_bytes = (SCREENHEIGHT * fb_scaling * (fb.bits_per_pixel/8)) * fb.xres;
+-    int offset = y_offset * fb.xres;
+-
+-    if (fb_mmap) {
+-        memcpy(fb_mmap + offset, I_VideoBuffer_FB, draw_bytes);
+-        /* Notify DRM fbdev emulation that the buffer changed */
+-        fb.xoffset = 0;
+-        fb.yoffset = 0;
+-        ioctl(fd_fb, FBIOPAN_DISPLAY, &fb);
+-    } else {
+-        lseek(fd_fb, offset, SEEK_SET);
+-        write(fd_fb, I_VideoBuffer_FB, draw_bytes);
+-    }
++    }
++    /* Notify DRM fbdev emulation that the buffer changed. */
++    ioctl(fd_fb, FBIOPAN_DISPLAY, &fb);
+ }
+ 
+ //
