@@ -2,7 +2,14 @@
 
 set -e
 
-FW_URL="https://github.com/OpenCentauri/OpenCentauri/releases/download/v0.0.0/cc2_eeb001_01.03.02.51_20260421171758.swu"
+ENCLOSED="$(config-manager extras enclosed 2>/dev/null)"
+
+if [ "$ENCLOSED" = "True" ]; then
+    FW_URL="https://github.com/OpenCentauri/OpenCentauri/releases/download/v0.0.0/cc2_eeb001_01.03.02.51_20260421171758.swu"
+else
+    FW_URL="https://github.com/OpenCentauri/OpenCentauri/releases/download/v0.0.0/c2_eeb001_02.01.01.04_20260826185114.swu"
+fi
+
 SWUFILE="/user-resource/update.swu"
 
 # Download firmware
