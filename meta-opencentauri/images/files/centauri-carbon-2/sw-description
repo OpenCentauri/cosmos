@@ -7,6 +7,13 @@ software =
 
         /* now in systemA, we need to upgrade systemB(bootB, rootfsB) */
         now_A_next_B = {
+            scripts: (
+                {
+                    filename = "copy-elegoo.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
+                }
+            );
             images: (
                 {
                     filename = "bootA.img";
@@ -104,6 +111,13 @@ software =
 
         /* now in systemB, we need to upgrade systemA(bootA, rootfsA) */
         now_B_next_A = {
+            scripts: (
+                {
+                    filename = "copy-elegoo.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
+                }
+            );
             images: (
                 {
                     filename = "bootA.img";
@@ -202,8 +216,14 @@ software =
 
     @@MACHINE@@ = {
         cosmos = {
-            now_A_next_B = { ref = "#./../../stable/now_A_next_B"; };
-            now_B_next_A = { ref = "#./../../stable/now_B_next_A"; };
+            now_A_next_B = {
+                images = { ref = "#./../../../stable/now_A_next_B/images"; };
+                bootenv = { ref = "#./../../../stable/now_A_next_B/bootenv"; };
+            };
+            now_B_next_A = {
+                images = { ref = "#./../../../stable/now_B_next_A/images"; };
+                bootenv = { ref = "#./../../../stable/now_B_next_A/bootenv"; };
+            };
         };
     };
 }
