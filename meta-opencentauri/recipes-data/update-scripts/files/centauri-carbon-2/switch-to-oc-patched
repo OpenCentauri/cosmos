@@ -2,7 +2,14 @@
 
 set -e
 
-ENCLOSED="$(config-manager extras enclosed 2>/dev/null)"
+machine_type="$(fw_printenv -n machine_type 2>/dev/null)" || machine_type=""
+case "$machine_type" in
+    centauri-carbon-2) ENCLOSED=True ;;
+    centauri-2) ENCLOSED=False ;;
+    *)
+        ENCLOSED="$(config-manager extras enclosed 2>/dev/null)"
+        ;;
+esac
 
 if [ "$ENCLOSED" = "True" ]; then
     FW_URL="https://github.com/OpenCentauri/OpenCentauri/releases/download/v0.0.0/cc2_eeb001_01.03.02.51_20260421171758.swu"
