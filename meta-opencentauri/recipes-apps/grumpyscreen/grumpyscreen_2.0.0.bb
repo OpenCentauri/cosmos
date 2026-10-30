@@ -28,6 +28,8 @@ RDEPENDS:${PN} = " \
 INITSCRIPT_NAME = "grumpyscreen"
 INITSCRIPT_PARAMS = "disable"
 
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 EXTRA_OEMAKE = " \
     CROSS_COMPILE=yocto- \
     CC='${CC}' \
@@ -35,6 +37,12 @@ EXTRA_OEMAKE = " \
     AR='${AR}' \
     OBJCOPY='${OBJCOPY}' \
     STRIP='${STRIP}' \
+"
+
+EXTRA_OEMAKE:append:centauri-carbon-2 = " \
+    SWITCH_TO_STOCK_TEXT='Switch to\nStock' \
+    SWITCH_TO_STOCK_PROMPT='Are you sure you want to switch to stock?\n\nThis will take some time, **DO NOT TURN OFF YOUR PRINTER**, just wait for it to reboot.' \
+    SWITCH_TO_STOCK_FAILURE='Failed to initiate switch to stock!' \
 "
 
 INSANE_SKIP:${PN} += "already-stripped"
