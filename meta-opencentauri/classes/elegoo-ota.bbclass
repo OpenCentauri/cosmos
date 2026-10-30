@@ -13,7 +13,7 @@
 #                               0xE0 sha256(payload as shipped) (32 bytes)
 #                               0x100 RSA-2048 PKCS1v15 signature over the payload (256 bytes)
 
-SRC_URI:append:centauri-carbon-2 = " file://copy-elegoo.sh"
+SRC_URI:append:centauri-carbon-2 = " file://copy-elegoo.sh file://copy-wifi.sh file://detect-machine.sh"
 
 ELEGOO_OTA_FSTYPE  ??= "zip.sig"
 

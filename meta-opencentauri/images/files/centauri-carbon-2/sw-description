@@ -12,6 +12,16 @@ software =
                     filename = "copy-elegoo.sh";
                     type = "postinstall";
                     sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
+                },
+                {
+                    filename = "copy-wifi.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(copy-wifi.sh)";
+                },
+                {
+                    filename = "detect-machine.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(detect-machine.sh)";
                 }
             );
             images: (
@@ -116,6 +126,16 @@ software =
                     filename = "copy-elegoo.sh";
                     type = "postinstall";
                     sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
+                },
+                {
+                    filename = "copy-wifi.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(copy-wifi.sh)";
+                },
+                {
+                    filename = "detect-machine.sh";
+                    type = "postinstall";
+                    sha256 = "$swupdate_get_sha256(detect-machine.sh)";
                 }
             );
             images: (
