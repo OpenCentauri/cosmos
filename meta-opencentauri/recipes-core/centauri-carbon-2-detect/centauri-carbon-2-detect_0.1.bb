@@ -14,7 +14,7 @@ inherit update-rc.d
 INITSCRIPT_NAME = "centauri-carbon-2-detect"
 INITSCRIPT_PARAMS = "start 93 2 3 4 5 ."
 
-RDEPENDS:${PN} = "config-manager libgpiod-tools python3-core python3-pyserial"
+RDEPENDS:${PN} = "config-manager libgpiod-tools python3-core python3-pyserial u-boot-fw-utils"
 
 do_install() {
     install -d ${D}${sysconfdir}/init.d ${D}${bindir}
