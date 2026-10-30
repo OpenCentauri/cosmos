@@ -25,8 +25,8 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/Kconfig           |   50 +
  src/hifi4/Makefile          |   65 ++
  src/hifi4/alloc.c           |   23 +
- src/hifi4/com.c             |  138 +++
- src/hifi4/com.h             |    8 +
+ src/hifi4/com.c             |  143 +++
+ src/hifi4/com.h             |    9 +
  src/hifi4/gpio.c            |  112 ++
  src/hifi4/gpio.h            |   50 +
  src/hifi4/hifi4.ld          |  142 +++
@@ -36,9 +36,9 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/log.h             |    8 +
  src/hifi4/main.c            |   15 +
  src/hifi4/resource_table.c  |   93 ++
- src/hifi4/rpmsg.c           |  346 +++++++
- src/hifi4/rpmsg.h           |  208 ++++
- src/hifi4/rpmsg_transport.c |  157 +++
+ src/hifi4/rpmsg.c           |  366 +++++++
+ src/hifi4/rpmsg.h           |  212 ++++
+ src/hifi4/rpmsg_transport.c |  167 +++
  src/hifi4/serial.c          |   78 ++
  src/hifi4/timer.c           |   80 ++
  src/hifi4/timer.h           |    9 +
@@ -46,7 +46,7 @@ Subject: [PATCH] Add support for hifi4
  src/hifi4/util.h            |   28 +
  src/hifi4/virtio_vring.h    |  122 +++
  src/hifi4/watchdog.c        |   39 +
- 42 files changed, 8658 insertions(+)
+ 42 files changed, 8698 insertions(+)
  create mode 100644 lib/hifi4/cache.c
  create mode 100644 lib/hifi4/ccu.c
  create mode 100644 lib/hifi4/gpadc.c
@@ -6897,10 +6897,10 @@ index 00000000..7db329c2
 +}
 diff --git a/src/hifi4/com.c b/src/hifi4/com.c
 new file mode 100644
-index 00000000..92ba8de9
+index 00000000..f96aff37
 --- /dev/null
 +++ b/src/hifi4/com.c
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,143 @@
 +// Support for serial port over sharespace with msgbox interrupts
 +//
 +// Copyright (C) 2026  James Turton <james.turton@gmx.com>
@@ -6939,8 +6939,8 @@ index 00000000..92ba8de9
 +
 +static struct task_wake rpmsg_consume_wake;
 +
-+// Called from the RPMsg RX task (or during transport initialization).
-+void
++// Called from the RPMsg RX task; return the number of bytes accepted.
++uint32_t
 +rpmsg_notify_rx(const void *data, uint32_t len)
 +{
 +    // Copy incoming RPMsg payload into the receive buffer
@@ -6948,14 +6948,16 @@ index 00000000..92ba8de9
 +    uint_fast8_t space = sizeof(receive_buf) - rpos;
 +
 +    if (len > space)
-+        len = space;  // Drop excess if buffer is full
++        len = space;  // Leave the remaining payload in its RPMsg descriptor
 +
 +    if (len > 0) {
 +        memcpy(&receive_buf[rpos], data, len);
 +        receive_pos = rpos + len;
 +    }
 +
-+    sched_wake_task(&rpmsg_consume_wake);
++    if (len)
++        sched_wake_task(&rpmsg_consume_wake);
++    return len;
 +}
 +
 +// Process any incoming commands
@@ -6969,16 +6971,19 @@ index 00000000..92ba8de9
 +
 +    // Process a message block
 +    int_fast8_t ret = command_find_and_dispatch(receive_buf, rpos, &pop_count);
-+    if (ret) {
-+        // Move buffer
-+        uint_fast8_t needcopy = rpos - pop_count;
-+        if (needcopy)
-+            memmove(receive_buf, &receive_buf[pop_count], needcopy);
-+        rpos = needcopy;
-+    }
-+    receive_pos = rpos;
++    if (!ret)
++        return;  // Incomplete block: wait for more input, do not busy-loop.
 +
-+    if (rpos)
++    // RX and consumption both run as cooperative tasks.
++    uint_fast8_t needcopy = rpos - pop_count;
++    if (needcopy)
++        memmove(receive_buf, &receive_buf[pop_count], needcopy);
++    receive_pos = needcopy;
++
++    // Retry a retained RPMsg payload even if Linux sends no further kick.
++    if (pop_count)
++        rpmsg_notify_rx_ready();
++    if (needcopy)
 +        sched_wake_task(&rpmsg_consume_wake);
 +}
 +DECL_TASK(rpmsg_consume_task);
@@ -7041,16 +7046,17 @@ index 00000000..92ba8de9
 +}
 diff --git a/src/hifi4/com.h b/src/hifi4/com.h
 new file mode 100644
-index 00000000..d67e306f
+index 00000000..8d4e3e30
 --- /dev/null
 +++ b/src/hifi4/com.h
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,9 @@
 +#ifndef __HIFI4_COM_H
 +#define __HIFI4_COM_H
 +
 +#include <stdint.h> // uint32_t
 +
-+void rpmsg_notify_rx(const void *data, uint32_t len);
++uint32_t rpmsg_notify_rx(const void *data, uint32_t len);
++void rpmsg_notify_rx_ready(void);
 +
 +#endif // com.h
 diff --git a/src/hifi4/gpio.c b/src/hifi4/gpio.c
@@ -7795,10 +7801,10 @@ index 00000000..2ea621c6
 +};
 diff --git a/src/hifi4/rpmsg.c b/src/hifi4/rpmsg.c
 new file mode 100644
-index 00000000..429c2327
+index 00000000..cdecb916
 --- /dev/null
 +++ b/src/hifi4/rpmsg.c
-@@ -0,0 +1,346 @@
+@@ -0,0 +1,366 @@
 +// Minimal RPMsg/virtio implementation for bare-metal HiFi4 DSP.
 +//
 +// This implements just enough of the virtio vring protocol and RPMsg
@@ -7843,6 +7849,8 @@ index 00000000..429c2327
 +// RX vring: we consume buffers that Linux put on avail
 +static struct vring rx_vring;
 +static uint16_t rx_last_avail_idx;
++static int rx_pending_desc = -1;
++static uint32_t rx_pending_offset;
 +
 +// TX vring: we take empty buffers from avail, fill them, put on used
 +static struct vring tx_vring;
@@ -7959,6 +7967,8 @@ index 00000000..429c2327
 +    // RX vring (vring1): DSP reads messages sent by Linux
 +    vring_init(&rx_vring, num_bufs, (void *)rx_vring_addr, RPMSG_VRING_ALIGN);
 +    rx_last_avail_idx = 0;
++    rx_pending_desc = -1;
++    rx_pending_offset = 0;
 +    
 +    // Clear endpoints
 +    memset(endpoints, 0, sizeof(endpoints));
@@ -8088,9 +8098,13 @@ index 00000000..429c2327
 +        pending_announcements = 0;
 +    }
 +
-+    // Process all available messages on the RX vring
-+    while (1) {
-+        int desc_idx = vring_get_avail(&rx_vring, &rx_last_avail_idx);
++    // Bound each invocation so other tasks can consume buffered commands.
++    do {
++        if (rx_pending_desc < 0) {
++            rx_pending_desc = vring_get_avail(&rx_vring, &rx_last_avail_idx);
++            rx_pending_offset = 0;
++        }
++        int desc_idx = rx_pending_desc;
 +        if (desc_idx < 0)
 +            break;
 +
@@ -8104,9 +8118,17 @@ index 00000000..429c2327
 +            if (ept->dst == RPMSG_ADDR_ANY)
 +                ept->dst = hdr->src;
 +
-+            // Dispatch to the endpoint's callback
++            // Only return this descriptor after every payload byte is accepted.
 +            if (ept->cb) {
-+                ept->cb(hdr->src, (void *)hdr + sizeof(*hdr), hdr->len);
++                uint32_t remaining = hdr->len - rx_pending_offset;
++                const uint8_t *payload = (const uint8_t *)hdr + sizeof(*hdr);
++                uint32_t accepted = ept->cb(hdr->src,
++                        payload + rx_pending_offset, remaining);
++                if (accepted > remaining)
++                    accepted = remaining;
++                rx_pending_offset += accepted;
++                if (rx_pending_offset < hdr->len)
++                    break;  // Application will wake RX when space is available.
 +            }
 +        } else {
 +            lprintf("rpmsg: no endpoint for dst=%lu (from src=%lu)\n",
@@ -8115,9 +8137,11 @@ index 00000000..429c2327
 +
 +        // Return the buffer to Linux via the used ring
 +        vring_put_used(&rx_vring, desc_idx, RPMSG_BUF_SIZE);
++        rx_pending_desc = -1;
++        rx_pending_offset = 0;
 +
 +        processed++;
-+    }
++    } while (0);
 +
 +    // Kick Linux so it knows we returned buffers (vring1 = RX = notify_id 1)
 +    if (processed > 0)
@@ -8138,6 +8162,8 @@ index 00000000..429c2327
 +    // just sync to where Linux is now
 +    mb();
 +    rx_last_avail_idx = rx_vring.avail->idx;
++    rx_pending_desc = -1;
++    rx_pending_offset = 0;
 +    tx_last_avail_idx = tx_vring.used->idx;
 +}
 +
@@ -8147,10 +8173,10 @@ index 00000000..429c2327
 +}
 diff --git a/src/hifi4/rpmsg.h b/src/hifi4/rpmsg.h
 new file mode 100644
-index 00000000..6db46aa2
+index 00000000..ac5e9829
 --- /dev/null
 +++ b/src/hifi4/rpmsg.h
-@@ -0,0 +1,208 @@
+@@ -0,0 +1,212 @@
 +// Minimal RPMsg implementation for bare-metal HiFi4 DSP.
 +//
 +// Copyright (C) 2026  James Turton <james.turton@gmx.com>
@@ -8235,9 +8261,12 @@ index 00000000..6db46aa2
 + * Called when a message arrives for a registered endpoint.
 + *   src:  source endpoint address (Linux side)
 + *   data: pointer to payload (after rpmsg_hdr)
-+ *   len:  payload length
++ *   len:  remaining payload length
++ * Returns bytes accepted. A short return retains the descriptor and retries
++ * its remaining payload on a later rpmsg_process() call. Do not retain data
++ * pointers after the callback returns.
 + */
-+typedef void (*rpmsg_rx_cb_t)(uint32_t src, const void *data, uint32_t len);
++typedef uint32_t (*rpmsg_rx_cb_t)(uint32_t src, const void *data, uint32_t len);
 +
 +/*
 + * RPMsg endpoint.
@@ -8304,11 +8333,12 @@ index 00000000..6db46aa2
 +/*
 + * Process incoming messages.
 + *
-+ * Call during initialization or from a cooperative task, never from an IRQ.
-+ * It checks the RX vring for new messages and dispatches them
-+ * to the appropriate endpoint callbacks.
++ * Call only during initialization or from a cooperative task, never an IRQ.
++ * Process at most one descriptor per call. A short callback return retains
++ * the descriptor until the application has space and calls this again.
 + *
-+ * Returns: number of messages processed
++ * Returns: number of descriptors returned to Linux (0 or 1). Call again after
++ * progress to drain queued messages; after a short read, retry when space frees.
 + */
 +int rpmsg_process(void);
 +
@@ -8361,10 +8391,10 @@ index 00000000..6db46aa2
 +#endif // __HIFI4_RPMSG_H
 diff --git a/src/hifi4/rpmsg_transport.c b/src/hifi4/rpmsg_transport.c
 new file mode 100644
-index 00000000..6aa443ff
+index 00000000..fbd35908
 --- /dev/null
 +++ b/src/hifi4/rpmsg_transport.c
-@@ -0,0 +1,157 @@
+@@ -0,0 +1,167 @@
 +// RPMsg transport integration for HiFi4 DSP.
 +//
 +// This connects the MSGBOX hardware (kick mechanism) to the RPMsg
@@ -8419,6 +8449,13 @@ index 00000000..6aa443ff
 +
 +static struct task_wake rpmsg_rx_wake;
 +
++// Also called when command consumption frees receive-buffer space.
++void
++rpmsg_notify_rx_ready(void)
++{
++    sched_wake_task(&rpmsg_rx_wake);
++}
++
 +/*
 + * Called when Linux kicks us via MSGBOX.
 + *
@@ -8432,7 +8469,7 @@ index 00000000..6aa443ff
 +    (void)arg;
 +    (void)message;
 +
-+    sched_wake_task(&rpmsg_rx_wake);
++    rpmsg_notify_rx_ready();
 +}
 +
 +void
@@ -8440,7 +8477,8 @@ index 00000000..6aa443ff
 +{
 +    if (!sched_check_wake(&rpmsg_rx_wake))
 +        return;
-+    rpmsg_process();
++    if (rpmsg_process())
++        rpmsg_notify_rx_ready();  // Check for another queued descriptor.
 +}
 +DECL_TASK(rpmsg_rx_task);
 +
@@ -8455,10 +8493,10 @@ index 00000000..6aa443ff
 + * Called when Linux sends a message to our "rpmsg-klipper" endpoint.
 + * Passes the data into Klipper's command receive pipeline.
 + */
-+static void
++static uint32_t
 +klipper_rpmsg_cb(uint32_t src, const void *data, uint32_t len)
 +{
-+    rpmsg_notify_rx(data, len);
++    return rpmsg_notify_rx(data, len);
 +}
 +
 +// ---------------------------------------------------------------------------
@@ -8506,7 +8544,9 @@ index 00000000..6aa443ff
 +    if (cold_boot) {
 +        // Send the initial NS announcement and process any pending messages.
 +        // Do this BEFORE enabling the MSGBOX IRQ so there's no race.
++        // The task drains any further descriptors after initialization.
 +        rpmsg_process();
++        rpmsg_notify_rx_ready();
 +    } else {
 +        // Warm restart — set dst directly, Linux already knows us
 +        klipper_ept->dst = 0x400;  // The address Linux assigned
