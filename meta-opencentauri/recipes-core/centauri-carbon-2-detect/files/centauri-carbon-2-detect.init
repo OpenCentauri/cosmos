@@ -21,14 +21,21 @@ case "$1" in
         [ ! -f "$MARKER" ] || exit 0
 
         echo "Detecting Centauri Carbon 2 hardware..."
-        # The chamber light presence signal is active-low.
-        chamber_light="$(gpioget --numeric --chip gpiochip0 38)"
-        case "$chamber_light" in
-            0) enclosed=True ;;
-            1) enclosed=False ;;
+        machine_type="$(fw_printenv -n machine_type 2>/dev/null)" || machine_type=""
+        case "$machine_type" in
+            centauri-carbon-2) enclosed=True ;;
+            centauri-2) enclosed=False ;;
             *)
-                echo "Unexpected chamber light presence value: $chamber_light" >&2
-                exit 1
+                # Fall back to the active-low chamber light presence signal.
+                chamber_light="$(gpioget --numeric --chip gpiochip0 38)"
+                case "$chamber_light" in
+                    0) enclosed=True ;;
+                    1) enclosed=False ;;
+                    *)
+                        echo "Unexpected chamber light presence value: $chamber_light" >&2
+                        exit 1
+                        ;;
+                esac
                 ;;
         esac
 
