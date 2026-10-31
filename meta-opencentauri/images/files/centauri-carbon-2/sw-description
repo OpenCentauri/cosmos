@@ -86,7 +86,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt";
                 },
                 {
                     name = "bootcmd_";
@@ -200,7 +200,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt";
                 },
                 {
                     name = "bootcmd_";

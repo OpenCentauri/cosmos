@@ -57,7 +57,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0 gpt";
                 },
                 {
                     name = "bootcmd_";
@@ -142,7 +142,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ earlycon=uart8250,mmio32,@@SERIAL_ADDR@@ root=${mmc_root} rootwait consoleblank=0 gpt";
                 },
                 {
                     name = "bootcmd_";
