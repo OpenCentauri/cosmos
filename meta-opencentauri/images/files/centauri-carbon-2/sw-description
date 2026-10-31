@@ -10,17 +10,17 @@ software =
             scripts: (
                 {
                     filename = "copy-elegoo.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
                 },
                 {
                     filename = "copy-wifi.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(copy-wifi.sh)";
                 },
                 {
                     filename = "detect-machine.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(detect-machine.sh)";
                 }
             );
@@ -124,17 +124,17 @@ software =
             scripts: (
                 {
                     filename = "copy-elegoo.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(copy-elegoo.sh)";
                 },
                 {
                     filename = "copy-wifi.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(copy-wifi.sh)";
                 },
                 {
                     filename = "detect-machine.sh";
-                    type = "postinstall";
+                    type = "preinstall";
                     sha256 = "$swupdate_get_sha256(detect-machine.sh)";
                 }
             );

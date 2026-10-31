@@ -1,5 +1,4 @@
 #!/bin/sh
-set -eu
 
 versions=/opt/inst/firmware_version/versions.json
 if grep -q 'Centauri Carbon 2' "$versions"; then
@@ -7,9 +6,10 @@ if grep -q 'Centauri Carbon 2' "$versions"; then
 elif grep -q 'Centauri 2' "$versions"; then
     machine=centauri-2
 else
-    echo "Unable to detect the printer model from $versions" >&2
-    exit 1
+    exit 0
 fi
 
 fw_setenv machine_type "$machine"
 sync && sync
+
+exit 0

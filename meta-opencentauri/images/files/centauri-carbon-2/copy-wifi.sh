@@ -1,5 +1,4 @@
 #!/bin/sh
-set -eu
 
 src=/opt/usr/wifi/wpa_supplicant.conf
 dest=/mnt/exUDISK/wpa_supplicant.conf
@@ -12,7 +11,6 @@ ssid=$(awk '/^[ \t]*ssid[ \t]*=/ { print; exit }' "$src")
 psk=$(awk '/^[ \t]*psk[ \t]*=/ { print; exit }' "$src")
 
 if [ -z "$ssid" ]; then
-    echo "No saved SSID; skipping WiFi export."
     exit 0
 fi
 
@@ -27,3 +25,5 @@ $psk
 EOF
 
 sync && sync
+
+exit 0
