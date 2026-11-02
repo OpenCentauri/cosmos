@@ -25,6 +25,11 @@ KLIPPY_ADDONS = {
             "__init__.py": "from .src.led_effect import load_config, load_config_prefix",
             "src/__init__.py": ""
         }
+    },
+    "tap_recorder": {
+        "origin": "https://github.com/jamesturton/klipper-tap-recorder",
+        "description": "Adds a [tap_recorder] module that can record tap data.",
+        "branch": "main"
     }
 }
 
