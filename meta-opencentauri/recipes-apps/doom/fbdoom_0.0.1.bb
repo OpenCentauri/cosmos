@@ -11,9 +11,7 @@ SRC_URI = " \
     https://www.jbserver.com/downloads/games/doom/misc/shareware/doom1.wad.zip \
     file://0001-touchscreen-support-ig.patch \
     file://0002-skip-exit-confirmation.patch \
-    file://0003-bilinear-fit-scaling.patch \
-    file://0004-nearest-neighbour-scaling.patch \
-    file://0005-speed-up-nearest-neighbour-scaling.patch \
+    file://0003-nearest-neighbour-fit-scaling.patch \
     file://0006-buffer-simpledrm-framebuffer-writes.patch \
     file://play-doom.sh \
 "
