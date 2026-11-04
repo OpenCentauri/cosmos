@@ -1,0 +1,101 @@
+Subject: [PATCH] Use nearest-neighbour framebuffer scaling
+
+Upstream-Status: Inappropriate [COSMOS framebuffer policy]
+
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -77,12 +77,7 @@
+ static struct fb_fix_screeninfo finfo;
+ static int scaled_width, scaled_height, scaled_x, scaled_y;
+ 
+-typedef struct {
+-    int first, second;
+-    unsigned int weight;
+-} scale_sample_t;
+-
+-static scale_sample_t *scale_x, *scale_y;
++static int *scale_x, *scale_y;
+ 
+ int	X_width;
+ int X_height;
+@@ -124,9 +119,9 @@
+ static uint16_t rgb565_palette[256];
+ 
+ /* Pixel-center mapping with clamped edges, calculated only at startup. */
+-static scale_sample_t *make_scale_map(int source, int destination)
+-{
+-    scale_sample_t *map;
++static int *make_scale_map(int source, int destination)
++{
++    int *map;
+     int i;
+ 
+     if ((size_t)destination > SIZE_MAX / sizeof(*map))
+@@ -136,15 +131,7 @@
+     if (!map)
+         I_Error("Unable to allocate framebuffer scale map");
+     for (i = 0; i < destination; ++i) {
+-        int64_t position = ((2 * (int64_t)i + 1) * source * 128)
+-                         / destination - 128;
+-        if (position < 0)
+-            position = 0;
+-        if (position > (source - 1) * 256)
+-            position = (source - 1) * 256;
+-        map[i].first = position >> 8;
+-        map[i].second = map[i].first + (map[i].first < source - 1);
+-        map[i].weight = position & 255;
++        map[i] = ((2 * (int64_t)i + 1) * source) / (2 * destination);
+     }
+     return map;
+ }
+@@ -175,18 +162,8 @@
+     scaled_y = (fb.yres - scaled_height) / 2;
+     scale_x = make_scale_map(SCREENWIDTH, scaled_width);
+     scale_y = make_scale_map(SCREENHEIGHT, scaled_height);
+-    printf("I_InitGraphics: Bilinear scaling to %dx%d at (%d,%d)\n",
++    printf("I_InitGraphics: Nearest-neighbour scaling to %dx%d at (%d,%d)\n",
+            scaled_width, scaled_height, scaled_x, scaled_y);
+-}
+-
+-/* Blend RGB channels, never palette indices. Weights have eight fraction bits. */
+-static unsigned int bilinear(unsigned int a, unsigned int b,
+-                             unsigned int c, unsigned int d,
+-                             unsigned int wx, unsigned int wy)
+-{
+-    unsigned int top = a * (256 - wx) + b * wx;
+-    unsigned int bottom = c * (256 - wx) + d * wx;
+-    return (top * (256 - wy) + bottom * wy + 32768) >> 16;
+ }
+ 
+ static uint32_t pack_channel(unsigned int value, struct fb_bitfield field)
+@@ -480,20 +457,20 @@
+     uint32_t alpha = fb.transp.length
+                    ? ((1u << fb.transp.length) - 1) << fb.transp.offset : 0;
+ 
++    uint32_t palette[256];
++
++    /* Rebuild after palette/gamma changes, outside the per-pixel loop. */
++    for (x = 0; x < 256; ++x)
++        palette[x] = alpha | pack_channel(colors[x].r, fb.red)
++                           | pack_channel(colors[x].g, fb.green)
++                           | pack_channel(colors[x].b, fb.blue);
++
+     for (y = 0; y < scaled_height; ++y) {
+-        scale_sample_t sy = scale_y[y];
+-        const byte *top = I_VideoBuffer + sy.first * SCREENWIDTH;
+-        const byte *bottom = I_VideoBuffer + sy.second * SCREENWIDTH;
++        const byte *in = I_VideoBuffer + scale_y[y] * SCREENWIDTH;
+         byte *out = I_VideoBuffer_FB + (size_t)(scaled_y + y) * finfo.line_length
+                   + (size_t)scaled_x * bytes;
+         for (x = 0; x < scaled_width; ++x) {
+-            scale_sample_t sx = scale_x[x];
+-            struct color a = colors[top[sx.first]], b = colors[top[sx.second]];
+-            struct color c = colors[bottom[sx.first]], d = colors[bottom[sx.second]];
+-            uint32_t pixel = alpha
+-                | pack_channel(bilinear(a.r, b.r, c.r, d.r, sx.weight, sy.weight), fb.red)
+-                | pack_channel(bilinear(a.g, b.g, c.g, d.g, sx.weight, sy.weight), fb.green)
+-                | pack_channel(bilinear(a.b, b.b, c.b, d.b, sx.weight, sy.weight), fb.blue);
++            uint32_t pixel = palette[in[scale_x[x]]];
+             for (byte_index = 0; byte_index < bytes; ++byte_index)
+                 *out++ = pixel >> (byte_index * 8);
+         }
