@@ -1,0 +1,44 @@
+Subject: [PATCH] Use native pixel stores and reuse repeated scaled rows
+
+Upstream-Status: Inappropriate [COSMOS framebuffer scaling]
+
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -131,7 +131,7 @@
+     if (!map)
+         I_Error("Unable to allocate framebuffer scale map");
+     for (i = 0; i < destination; ++i) {
+-        map[i] = ((2 * (int64_t)i + 1) * source) / (2 * destination);
++        map[i] = ((2 * (int64_t)i + 1) * source) / (2 * (int64_t)destination);
+     }
+     return map;
+ }
+@@ -469,10 +469,24 @@
+         const byte *in = I_VideoBuffer + scale_y[y] * SCREENWIDTH;
+         byte *out = I_VideoBuffer_FB + (size_t)(scaled_y + y) * finfo.line_length
+                   + (size_t)scaled_x * bytes;
+-        for (x = 0; x < scaled_width; ++x) {
+-            uint32_t pixel = palette[in[scale_x[x]]];
+-            for (byte_index = 0; byte_index < bytes; ++byte_index)
+-                *out++ = pixel >> (byte_index * 8);
++        /* Nearest-neighbour upscaling repeats source rows. */
++        if (y > 0 && scale_y[y] == scale_y[y - 1]) {
++            memcpy(out, out - finfo.line_length, (size_t)scaled_width * bytes);
++        } else if (bytes == 4 && ((uintptr_t)out & 3) == 0) {
++            uint32_t *pixels = (uint32_t *)out;
++            for (x = 0; x < scaled_width; ++x)
++                pixels[x] = palette[in[scale_x[x]]];
++        } else if (bytes == 2 && ((uintptr_t)out & 1) == 0) {
++            uint16_t *pixels = (uint16_t *)out;
++            for (x = 0; x < scaled_width; ++x)
++                pixels[x] = palette[in[scale_x[x]]];
++        } else {
++            /* Preserve packed 24-bit and unaligned framebuffer layouts. */
++            for (x = 0; x < scaled_width; ++x) {
++                uint32_t pixel = palette[in[scale_x[x]]];
++                for (byte_index = 0; byte_index < bytes; ++byte_index)
++                    *out++ = pixel >> (byte_index * 8);
++            }
+         }
+     }
+ 
