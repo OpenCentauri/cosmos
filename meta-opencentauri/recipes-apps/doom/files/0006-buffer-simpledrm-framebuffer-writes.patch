@@ -1,0 +1,50 @@
+Subject: [PATCH] Buffer simpledrm frame writes and coalesce packed rows
+
+Avoid per-page mmap write faults on simpledrm. Keep mmap for other
+framebuffer drivers and preserve padded/offset viewport handling.
+
+Upstream-Status: Inappropriate [COSMOS framebuffer integration]
+
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -224,10 +224,15 @@
+ 
+     /* mmap the framebuffer for direct access */
+     fb_screensize = finfo.smem_len;
+-    fb_mmap = mmap(0, fb_screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fd_fb, 0);
++    /* simpledrm tracks mmap writes with page faults. A buffered write avoids
++     * those faults and lets the driver mark the whole frame dirty at once. */
++    if (strncmp(finfo.id, "simpledrmdrmfb", sizeof(finfo.id)) == 0)
++        fb_mmap = MAP_FAILED;
++    else
++        fb_mmap = mmap(0, fb_screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fd_fb, 0);
+     if (fb_mmap == MAP_FAILED) {
+         fb_mmap = NULL;
+-        printf("I_InitGraphics: mmap failed, falling back to write()\n");
++        printf("I_InitGraphics: using buffered framebuffer writes\n");
+     } else {
+         printf("I_InitGraphics: mmap OK, screensize=%zu, line_length=%u\n",
+                fb_screensize, finfo.line_length);
+@@ -491,15 +496,18 @@
+     }
+ 
+     /* Include the zero-filled borders and respect stride and viewport offsets. */
+-    for (y = 0; y < fb.yres; ++y) {
++    /* A tightly packed viewport can be transferred with one write. */
++    int rows_per_write = row_bytes == finfo.line_length ? fb.yres : 1;
++    for (y = 0; y < fb.yres; y += rows_per_write) {
++        size_t copy_bytes = row_bytes * rows_per_write;
+         byte *row = I_VideoBuffer_FB + (size_t)y * finfo.line_length;
+         size_t target = offset + (size_t)y * finfo.line_length;
+         if (fb_mmap) {
+-            memcpy(fb_mmap + target, row, row_bytes);
++            memcpy(fb_mmap + target, row, copy_bytes);
+         } else {
+             size_t done = 0;
+-            while (done < row_bytes) {
+-                ssize_t n = pwrite(fd_fb, row + done, row_bytes - done, target + done);
++            while (done < copy_bytes) {
++                ssize_t n = pwrite(fd_fb, row + done, copy_bytes - done, target + done);
+                 if (n < 0 && errno == EINTR)
+                     continue;
+                 if (n <= 0)

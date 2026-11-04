@@ -14,6 +14,7 @@ SRC_URI = " \
     file://0003-bilinear-fit-scaling.patch \
     file://0004-nearest-neighbour-scaling.patch \
     file://0005-speed-up-nearest-neighbour-scaling.patch \
+    file://0006-buffer-simpledrm-framebuffer-writes.patch \
     file://play-doom.sh \
 "
 SRC_URI[sha256sum] = "c1d1f430e623b5b02693a2ab42988f951fb66ae3bd3add06e557bdf36af0e24f"
