@@ -27,7 +27,7 @@
  int usemouse = 0;
  
  struct color {
-@@ -73,7 +73,16 @@
+@@ -73,7 +73,11 @@
  /* framebuffer file descriptor */
  int fd_fb = 0;
  static uint8_t *fb_mmap = NULL;
@@ -36,16 +36,11 @@
 +static struct fb_fix_screeninfo finfo;
 +static int scaled_width, scaled_height, scaled_x, scaled_y;
 +
-+typedef struct {
-+    int first, second;
-+    unsigned int weight;
-+} scale_sample_t;
-+
-+static scale_sample_t *scale_x, *scale_y;
++static int *scale_x, *scale_y;
  
  int	X_width;
  int X_height;
-@@ -114,52 +123,75 @@
+@@ -114,52 +118,57 @@
  
  static uint16_t rgb565_palette[256];
  
@@ -96,9 +91,9 @@
 -        in++;
 -    }
 +/* Pixel-center mapping with clamped edges, calculated only at startup. */
-+static scale_sample_t *make_scale_map(int source, int destination)
++static int *make_scale_map(int source, int destination)
 +{
-+    scale_sample_t *map;
++    int *map;
 +    int i;
 +
 +    if ((size_t)destination > SIZE_MAX / sizeof(*map))
@@ -108,15 +103,7 @@
 +    if (!map)
 +        I_Error("Unable to allocate framebuffer scale map");
 +    for (i = 0; i < destination; ++i) {
-+        int64_t position = ((2 * (int64_t)i + 1) * source * 128)
-+                         / destination - 128;
-+        if (position < 0)
-+            position = 0;
-+        if (position > (source - 1) * 256)
-+            position = (source - 1) * 256;
-+        map[i].first = position >> 8;
-+        map[i].second = map[i].first + (map[i].first < source - 1);
-+        map[i].weight = position & 255;
++        map[i] = ((2 * (int64_t)i + 1) * source) / (2 * (int64_t)destination);
 +    }
 +    return map;
 +}
@@ -147,18 +134,8 @@
 +    scaled_y = (fb.yres - scaled_height) / 2;
 +    scale_x = make_scale_map(SCREENWIDTH, scaled_width);
 +    scale_y = make_scale_map(SCREENHEIGHT, scaled_height);
-+    printf("I_InitGraphics: Bilinear scaling to %dx%d at (%d,%d)\n",
++    printf("I_InitGraphics: Nearest-neighbour scaling to %dx%d at (%d,%d)\n",
 +           scaled_width, scaled_height, scaled_x, scaled_y);
-+}
-+
-+/* Blend RGB channels, never palette indices. Weights have eight fraction bits. */
-+static unsigned int bilinear(unsigned int a, unsigned int b,
-+                             unsigned int c, unsigned int d,
-+                             unsigned int wx, unsigned int wy)
-+{
-+    unsigned int top = a * (256 - wx) + b * wx;
-+    unsigned int bottom = c * (256 - wx) + d * wx;
-+    return (top * (256 - wy) + bottom * wy + 32768) >> 16;
 +}
 +
 +static uint32_t pack_channel(unsigned int value, struct fb_bitfield field)
@@ -167,7 +144,7 @@
  }
  
  void I_InitGraphics (void)
-@@ -175,7 +207,31 @@
+@@ -175,7 +184,31 @@
      }
  
      /* fetch framebuffer info */
@@ -200,7 +177,7 @@
      /* change params if needed */
      //ioctl(fd_fb, FBIOPUT_VSCREENINFO, &fb);
      printf("I_InitGraphics: framebuffer: x_res: %d, y_res: %d, x_virtual: %d, y_virtual: %d, bpp: %d, grayscale: %d\n",
-@@ -187,36 +243,27 @@
+@@ -187,36 +220,27 @@
      printf("I_InitGraphics: DOOM screen size: w x h: %d x %d\n", SCREENWIDTH, SCREENHEIGHT);
  
  
@@ -245,7 +222,7 @@
  
  	screenvisible = true;
  
-@@ -232,6 +279,8 @@
+@@ -232,6 +256,8 @@
  	}
  	Z_Free (I_VideoBuffer);
  	free(I_VideoBuffer_FB);
@@ -254,7 +231,7 @@
  }
  
  void I_StartFrame (void)
-@@ -424,59 +473,53 @@
+@@ -424,59 +450,67 @@
  
  void I_FinishUpdate (void)
  {
@@ -294,41 +271,35 @@
 +    uint32_t alpha = fb.transp.length
 +                   ? ((1u << fb.transp.length) - 1) << fb.transp.offset : 0;
 +
++    uint32_t palette[256];
++
++    /* Rebuild after palette/gamma changes, outside the per-pixel loop. */
++    for (x = 0; x < 256; ++x)
++        palette[x] = alpha | pack_channel(colors[x].r, fb.red)
++                           | pack_channel(colors[x].g, fb.green)
++                           | pack_channel(colors[x].b, fb.blue);
++
 +    for (y = 0; y < scaled_height; ++y) {
-+        scale_sample_t sy = scale_y[y];
-+        const byte *top = I_VideoBuffer + sy.first * SCREENWIDTH;
-+        const byte *bottom = I_VideoBuffer + sy.second * SCREENWIDTH;
++        const byte *in = I_VideoBuffer + scale_y[y] * SCREENWIDTH;
 +        byte *out = I_VideoBuffer_FB + (size_t)(scaled_y + y) * finfo.line_length
 +                  + (size_t)scaled_x * bytes;
-+        for (x = 0; x < scaled_width; ++x) {
-+            scale_sample_t sx = scale_x[x];
-+            struct color a = colors[top[sx.first]], b = colors[top[sx.second]];
-+            struct color c = colors[bottom[sx.first]], d = colors[bottom[sx.second]];
-+            uint32_t pixel = alpha
-+                | pack_channel(bilinear(a.r, b.r, c.r, d.r, sx.weight, sy.weight), fb.red)
-+                | pack_channel(bilinear(a.g, b.g, c.g, d.g, sx.weight, sy.weight), fb.green)
-+                | pack_channel(bilinear(a.b, b.b, c.b, d.b, sx.weight, sy.weight), fb.blue);
-+            for (byte_index = 0; byte_index < bytes; ++byte_index)
-+                *out++ = pixel >> (byte_index * 8);
-+        }
-+    }
-+
-+    /* Include the zero-filled borders and respect stride and viewport offsets. */
-+    for (y = 0; y < fb.yres; ++y) {
-+        byte *row = I_VideoBuffer_FB + (size_t)y * finfo.line_length;
-+        size_t target = offset + (size_t)y * finfo.line_length;
-+        if (fb_mmap) {
-+            memcpy(fb_mmap + target, row, row_bytes);
++        /* Nearest-neighbour upscaling repeats source rows. */
++        if (y > 0 && scale_y[y] == scale_y[y - 1]) {
++            memcpy(out, out - finfo.line_length, (size_t)scaled_width * bytes);
++        } else if (bytes == 4 && ((uintptr_t)out & 3) == 0) {
++            uint32_t *pixels = (uint32_t *)out;
++            for (x = 0; x < scaled_width; ++x)
++                pixels[x] = palette[in[scale_x[x]]];
++        } else if (bytes == 2 && ((uintptr_t)out & 1) == 0) {
++            uint16_t *pixels = (uint16_t *)out;
++            for (x = 0; x < scaled_width; ++x)
++                pixels[x] = palette[in[scale_x[x]]];
 +        } else {
-+            size_t done = 0;
-+            while (done < row_bytes) {
-+                ssize_t n = pwrite(fd_fb, row + done, row_bytes - done, target + done);
-+                if (n < 0 && errno == EINTR)
-+                    continue;
-+                if (n <= 0)
-+                    I_Error("Unable to write framebuffer: %s",
-+                            n < 0 ? strerror(errno) : "short write");
-+                done += n;
++            /* Preserve packed 24-bit and unaligned framebuffer layouts. */
++            for (x = 0; x < scaled_width; ++x) {
++                uint32_t pixel = palette[in[scale_x[x]]];
++                for (byte_index = 0; byte_index < bytes; ++byte_index)
++                    *out++ = pixel >> (byte_index * 8);
              }
 -#else
 -            //cmap_to_rgb565((void*)line_out, (void*)line_in, SCREENWIDTH);
@@ -353,6 +324,26 @@
 -        lseek(fd_fb, offset, SEEK_SET);
 -        write(fd_fb, I_VideoBuffer_FB, draw_bytes);
 -    }
++    }
++
++    /* Include the zero-filled borders and respect stride and viewport offsets. */
++    for (y = 0; y < fb.yres; ++y) {
++        byte *row = I_VideoBuffer_FB + (size_t)y * finfo.line_length;
++        size_t target = offset + (size_t)y * finfo.line_length;
++        if (fb_mmap) {
++            memcpy(fb_mmap + target, row, row_bytes);
++        } else {
++            size_t done = 0;
++            while (done < row_bytes) {
++                ssize_t n = pwrite(fd_fb, row + done, row_bytes - done, target + done);
++                if (n < 0 && errno == EINTR)
++                    continue;
++                if (n <= 0)
++                    I_Error("Unable to write framebuffer: %s",
++                            n < 0 ? strerror(errno) : "short write");
++                done += n;
++            }
++        }
 +    }
 +    /* Notify DRM fbdev emulation that the buffer changed. */
 +    ioctl(fd_fb, FBIOPAN_DISPLAY, &fb);
