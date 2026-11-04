@@ -1,12 +1,3 @@
-Subject: [PATCH] Fit the framebuffer with efficient nearest-neighbour scaling
-
-Preserve aspect ratio and center the image, respecting framebuffer stride,
-viewport offsets, and packed 16/24/32-bit truecolor layouts. Precompute
-pixel-center sampling maps and palette colors, use native pixel stores
-where aligned, and reuse repeated source rows during upscaling.
-
-Upstream-Status: Inappropriate [COSMOS framebuffer integration]
-
 --- a/fbdoom/i_video_fbdev.c
 +++ b/fbdoom/i_video_fbdev.c
 @@ -31,12 +31,15 @@
