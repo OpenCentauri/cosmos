@@ -275,11 +275,21 @@
 	vmmc-supply = <&reg_3v3>;
 	vqmmc-supply = <&reg_1v8>;
 	cap-mmc-highspeed;
-	mmc-hs200-1_8v;
 	non-removable;
 	cap-mmc-hw-reset;
 	bus-width = <4>;
-	max-frequency = <150000000>;
+	/*
+	 * DDR52 set up like the stock Allwinner BSP: 50 MHz card clock
+	 * from a 100 MHz pll-periph0 module clock in the old timing mode,
+	 * with a fixed sample delay, the stock FIFO watermark and a write
+	 * threshold. Some eMMC chips ("MMC8GB") fail writes otherwise.
+	 * HS200 is not used, as on stock.
+	 */
+	max-frequency = <50000000>;
+	allwinner,ddr-old-timing;
+	allwinner,sample-delay = <36>;
+	allwinner,fifo-watermark = <0x300f00f0>;
+	allwinner,write-threshold;
 	status = "okay";
 };
 
