@@ -55,7 +55,7 @@
                     },
                     {
                         "pos": 6,
-                        "name": "LOAD_FILAMENT",
+                        "name": "MANUAL_LOAD_FILAMENT",
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
@@ -63,7 +63,7 @@
                     },
                     {
                         "pos": 7,
-                        "name": "UNLOAD_FILAMENT",
+                        "name": "MANUAL_UNLOAD_FILAMENT",
                         "color": "group",
                         "showInStandby": true,
                         "showInPrinting": false,
