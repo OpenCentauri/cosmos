@@ -5,7 +5,7 @@ DESCRIPTION = "Cosmos eMMC Image"
 LICENSE = "GPL-3.0-only"
 
 IMAGE_FSTYPES += "wic squashfs"
-EXTRA_IMAGECMD:squashfs = "-comp lz4"
+EXTRA_IMAGECMD:squashfs = "-comp lz4 -Xhc"
 
 IMAGE_FEATURES += "read-only-rootfs overlayfs-etc"
 
