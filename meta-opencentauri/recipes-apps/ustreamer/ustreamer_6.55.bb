@@ -36,3 +36,5 @@ FILES:${PN} = " \
 	${bindir}/ustreamer \
 	${sysconfdir}/init.d/ustreamer \
 "
+
+RDEPENDS:${PN} = "config-manager"
