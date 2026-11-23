@@ -48,8 +48,9 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     iproute2 \
     chrony \
     afc \
-    tmc-autotune \ 
+    tmc-autotune \
     git \
+    moonraker-timelapse \
 "
 
 CORE_IMAGE_EXTRA_INSTALL:append:centauri-carbon-2 = " centauri-carbon-2-detect"
