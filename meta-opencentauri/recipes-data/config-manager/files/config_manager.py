@@ -22,6 +22,7 @@ VALIDATORS = {
         'bypass_calibration': ['False', 'True'],
         'heatsoak': [str(x / 10) for x in range(100)] + [str(x) for x in range(31)],
         'adaptive_mesh': ['False', 'True'],
+        'prompt_adaptive_mesh': ['False', 'True'],
         'adaptive_purge': ['True', 'False'],
         'unload_after_print': ['False', 'True'],
         'clean_nozzle_after_print': ['True', 'False'],
