@@ -1,0 +1,220 @@
+From 15fd3884cb15e3e5799a57e1944255093df6bd52 Mon Sep 17 00:00:00 2001
+From: 0xD34DC0DE <emerickpoulin31415@gmail.com>
+Date: Thu, 26 Nov 2026 11:57:36 -0500
+Subject: [PATCH] mmc: sunxi: add DT options for a stock-like DDR52 setup
+
+Some Elegoo Centauri 2 boards use an eMMC ("MMC8GB", manufacturer 0x32,
+OEM 0x0101, firmware 0x01) that fails DDR52 writes with CRC status
+errors in the mainline setup, while the Allwinner BSP runs it at DDR52
+without errors. Add device tree options, all off by default, to
+reproduce the BSP setup:
+
+- allwinner,ddr-old-timing: run DDR52 in the old timing mode, with the
+  module clock at twice the card clock (card clock capped at 50 MHz)
+  and the internal divider bypassed
+- allwinner,sample-delay: software sample delay (0..63) for DDR52 in
+  the old timing mode, instead of 0
+- allwinner,fifo-watermark: FTRGL value instead of 0x20070008
+- allwinner,write-threshold: on writes, only start sending a block once
+  it is fully in the FIFO (when it fits the TX trigger level)
+
+Upstream-Status: Inappropriate [board specific workaround]
+---
+ drivers/mmc/host/sunxi-mmc.c | 84 +++++++++++++++++++++++++++++++++---
+ 1 file changed, 77 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/mmc/host/sunxi-mmc.c b/drivers/mmc/host/sunxi-mmc.c
+index fe4c0f6..c1a408d 100644
+--- a/drivers/mmc/host/sunxi-mmc.c
++++ b/drivers/mmc/host/sunxi-mmc.c
+@@ -9,6 +9,7 @@
+  * (C) Copyright 2017 Sootech SA
+  */
+ 
++#include <linux/bitfield.h>
+ #include <linux/clk.h>
+ #include <linux/clk/sunxi-ng.h>
+ #include <linux/delay.h>
+@@ -69,6 +70,7 @@
+ /* New registers introduced in A64 */
+ #define SDXC_REG_A12A		0x058 /* SMC Auto Command 12 Register */
+ #define SDXC_REG_SD_NTSR	0x05C /* SMC New Timing Set Register */
++#define SDXC_REG_THLD		0x100 /* SMC Card Threshold Control Register */
+ #define SDXC_REG_DRV_DL		0x140 /* Drive Delay Control Register */
+ #define SDXC_REG_SAMP_DL_REG	0x144 /* SMC sample delay control */
+ #define SDXC_REG_DS_DL_REG	0x148 /* SMC data strobe delay control */
+@@ -228,6 +230,10 @@
+ #define SDXC_CAL_DL_SW_SHIFT	0
+ #define SDXC_CAL_DL_MASK	0x3f
+ 
++/* Card threshold control register (SDXC_REG_THLD) */
++#define SDXC_CARD_WR_THLD_EN	BIT(2)
++#define SDXC_CARD_THLD_MASK	GENMASK(27, 16)
++
+ #define SDXC_CAL_TIMEOUT	3	/* in seconds, 3s is enough*/
+ 
+ struct sunxi_mmc_clk_delay {
+@@ -300,6 +306,12 @@ struct sunxi_mmc_host {
+ 
+ 	/* timings */
+ 	bool		use_new_timings;
++
++	/* optional board specific tweaks from the device tree */
++	bool		ddr_old_timing;
++	bool		write_threshold;
++	u32		sample_delay;
++	u32		fifo_watermark;
+ };
+ 
+ static int sunxi_mmc_reset_host(struct sunxi_mmc_host *host)
+@@ -328,11 +340,12 @@ static int sunxi_mmc_init_host(struct sunxi_mmc_host *host)
+ 		return -EIO;
+ 
+ 	/*
+-	 * Burst 8 transfers, RX trigger level: 7, TX trigger level: 8
++	 * FIFO trigger levels and DMA burst size, by default burst 8
++	 * transfers, RX trigger level: 7, TX trigger level: 8
+ 	 *
+ 	 * TODO: sun9i has a larger FIFO and supports higher trigger values
+ 	 */
+-	mmc_writel(host, REG_FTRGL, 0x20070008);
++	mmc_writel(host, REG_FTRGL, host->fifo_watermark);
+ 	/* Maximum timeout value */
+ 	mmc_writel(host, REG_TMOUT, 0xffffffff);
+ 	/* Unmask SDIO interrupt if needed */
+@@ -699,7 +712,8 @@ static int sunxi_mmc_oclk_onoff(struct sunxi_mmc_host *host, u32 oclk_en)
+ 	return 0;
+ }
+ 
+-static int sunxi_mmc_calibrate(struct sunxi_mmc_host *host, int reg_off)
++static int sunxi_mmc_calibrate(struct sunxi_mmc_host *host, int reg_off,
++			       u32 delay)
+ {
+ 	if (!host->cfg->can_calibrate)
+ 		return 0;
+@@ -713,7 +727,7 @@ static int sunxi_mmc_calibrate(struct sunxi_mmc_host *host, int reg_off)
+ 	 * The only mode that doesn't have such a delay is HS400, that
+ 	 * is in itself a TODO.
+ 	 */
+-	writel(SDXC_CAL_DL_SW_EN, host->reg_base + reg_off);
++	writel(SDXC_CAL_DL_SW_EN | delay, host->reg_base + reg_off);
+ 
+ 	return 0;
+ }
+@@ -762,8 +776,18 @@ static int sunxi_mmc_clk_set_rate(struct sunxi_mmc_host *host,
+ 	struct mmc_host *mmc = host->mmc;
+ 	long rate;
+ 	u32 rval, clock = ios->clock, div = 1;
++	bool old_timing_ddr = host->ddr_old_timing && host->use_new_timings &&
++			      ios->timing == MMC_TIMING_MMC_DDR52;
+ 	int ret;
+ 
++	/*
++	 * In the old timing mode the module clock runs at twice the card
++	 * clock. Cap the card clock at 50 MHz so that the 100 MHz module
++	 * clock comes from pll-periph0 (600 MHz / 6) on the D1/R528.
++	 */
++	if (old_timing_ddr)
++		clock = min(clock, 50000000U);
++
+ 	ret = sunxi_mmc_oclk_onoff(host, 0);
+ 	if (ret)
+ 		return ret;
+@@ -782,8 +806,14 @@ static int sunxi_mmc_clk_set_rate(struct sunxi_mmc_host *host,
+ 	 * We currently only support the standard MMC DDR52 mode.
+ 	 * This block should be updated once support for other DDR
+ 	 * modes is added.
++	 *
++	 * Boards with "allwinner,ddr-old-timing" run DDR52 in the old
++	 * timing mode instead, with the module clock at the requested
++	 * rate and no internal divider, as the Allwinner BSP does.
+ 	 */
+-	if (ios->timing == MMC_TIMING_MMC_DDR52 &&
++	if (old_timing_ddr) {
++		/* module clock as requested, internal divider bypassed */
++	} else if (ios->timing == MMC_TIMING_MMC_DDR52 &&
+ 	    (host->use_new_timings ||
+ 	     ios->bus_width == MMC_BUS_WIDTH_8)) {
+ 		div = 2;
+@@ -834,7 +864,10 @@ static int sunxi_mmc_clk_set_rate(struct sunxi_mmc_host *host,
+ 	if (host->use_new_timings) {
+ 		/* Don't touch the delay bits */
+ 		rval = mmc_readl(host, REG_SD_NTSR);
+-		rval |= SDXC_2X_TIMING_MODE;
++		if (old_timing_ddr)
++			rval &= ~SDXC_2X_TIMING_MODE;
++		else
++			rval |= SDXC_2X_TIMING_MODE;
+ 		mmc_writel(host, REG_SD_NTSR, rval);
+ 	}
+ 
+@@ -843,7 +876,8 @@ static int sunxi_mmc_clk_set_rate(struct sunxi_mmc_host *host,
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = sunxi_mmc_calibrate(host, SDXC_REG_SAMP_DL_REG);
++	ret = sunxi_mmc_calibrate(host, SDXC_REG_SAMP_DL_REG,
++				  old_timing_ddr ? host->sample_delay : 0);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -1005,6 +1039,24 @@ static void sunxi_mmc_hw_reset(struct mmc_host *mmc)
+ 	udelay(300);
+ }
+ 
++/*
++ * Only start sending a write block once the whole block is in the FIFO,
++ * as the Allwinner BSP does. The block has to fit in the FIFO TX trigger
++ * level, otherwise the transfer never starts.
++ */
++static void sunxi_mmc_set_write_threshold(struct sunxi_mmc_host *host,
++					  struct mmc_data *data)
++{
++	u32 thld = mmc_readl(host, REG_THLD);
++
++	thld &= ~(SDXC_CARD_THLD_MASK | SDXC_CARD_WR_THLD_EN);
++	if ((data->flags & MMC_DATA_WRITE) &&
++	    data->blksz <= (host->fifo_watermark & 0xff) * 4)
++		thld |= FIELD_PREP(SDXC_CARD_THLD_MASK, data->blksz) |
++			SDXC_CARD_WR_THLD_EN;
++	mmc_writel(host, REG_THLD, thld);
++}
++
+ static void sunxi_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
+ {
+ 	struct sunxi_mmc_host *host = mmc_priv(mmc);
+@@ -1089,6 +1141,8 @@ static void sunxi_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
+ 	if (data) {
+ 		mmc_writel(host, REG_BLKSZ, data->blksz);
+ 		mmc_writel(host, REG_BCNTR, data->blksz * data->blocks);
++		if (host->write_threshold)
++			sunxi_mmc_set_write_threshold(host, data);
+ 		sunxi_mmc_start_dma(host, data);
+ 	}
+ 
+@@ -1383,6 +1437,22 @@ static int sunxi_mmc_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
++	/* Optional board specific tweaks, all off by default */
++	host->fifo_watermark = 0x20070008;
++	of_property_read_u32(pdev->dev.of_node, "allwinner,fifo-watermark",
++			     &host->fifo_watermark);
++	of_property_read_u32(pdev->dev.of_node, "allwinner,sample-delay",
++			     &host->sample_delay);
++	if (host->sample_delay > SDXC_CAL_DL_MASK) {
++		dev_warn(&pdev->dev, "invalid sample delay %u, using 0\n",
++			 host->sample_delay);
++		host->sample_delay = 0;
++	}
++	host->ddr_old_timing = of_property_read_bool(pdev->dev.of_node,
++						     "allwinner,ddr-old-timing");
++	host->write_threshold = of_property_read_bool(pdev->dev.of_node,
++						      "allwinner,write-threshold");
++
+ 	host->sg_cpu = dma_alloc_coherent(&pdev->dev, PAGE_SIZE,
+ 					  &host->sg_dma, GFP_KERNEL);
+ 	if (!host->sg_cpu)
+-- 
+2.43.0
+
