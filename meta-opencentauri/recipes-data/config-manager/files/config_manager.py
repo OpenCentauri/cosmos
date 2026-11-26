@@ -16,6 +16,10 @@ VALIDATORS = {
         'elegoo_canvas': ['False', 'True'],
         'enclosed': ['False', 'True'],
     },
+    'camera': {
+        'resolution': ['640x360', '864x480', '1280x720'],
+        'fps': [str(i) for i in range(1, 21)],
+    },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['False', 'True'],
         'camera_led_default_on': ['True', 'False'],
