@@ -173,21 +173,18 @@ def patch_main_bundle(webroot):
 
 def patch_state_chunk(webroot):
     """Patch the initial Vuex state so OpenCentauri is the default theme."""
-    chunks = sorted((webroot / "assets").glob("state-*.js"))
-    if not chunks:
-        return  # Not all builds have this chunk
-
+    chunks = sorted((webroot / "assets").glob("*.js"))
     old_theme = "theme:{isDark:!0,logo:{src:`logo_fluidd.svg`},color:`#2196F3`,backgroundLogo:!0}"
     new_theme = f"theme:{{isDark:!0,logo:{{src:`{LOGO_SRC}`}},color:`{PRIMARY_COLOR}`,backgroundLogo:!0}}"
 
     for path in chunks:
         text = path.read_text()
         if old_theme in text:
-            text = text.replace(old_theme, new_theme)
+            text = text.replace(old_theme, new_theme, 1)
             path.write_text(text)
             return  # Patched successfully
 
-    raise RuntimeError(f"{webroot}/assets: expected hardcoded default theme not found in any state chunk")
+    raise RuntimeError(f"{webroot}/assets: expected hardcoded default theme not found in any JS bundle")
 
 
 def verify_assets(webroot):
