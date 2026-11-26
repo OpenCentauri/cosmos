@@ -36,6 +36,11 @@
     background: var(--oc-bg) !important;
 }
 
+[data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-main {
+    position: relative;
+    z-index: 1;
+}
+
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-main,
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-main__wrap,
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .v-application--wrap {
@@ -219,13 +224,17 @@
 }
 
 [data-fluidd-theme="OpenCentauri"] .theme--dark.v-application .background-logo {
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
     width: min(38vw, 560px) !important;
     height: auto !important;
     opacity: 0.3 !important;
     filter: grayscale(1) invert(1) brightness(1.15) contrast(1.05) !important;
 }
-[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper,
-[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper svg {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo :is(.logo-wrapper, .app-icon),
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo :is(.logo-wrapper, .app-icon) svg {
     width: 56px;
     height: 56px;
 }
@@ -235,17 +244,20 @@
     border-right-color: var(--oc-border) !important;
 }
 
-[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo :is(.logo-wrapper, .app-icon) {
     background-image: url("./logo_opencentauri.svg");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 48px 48px;
     filter: grayscale(1) invert(1) brightness(0.82);
+    overflow: hidden;
+    pointer-events: none;
 }
 
-[data-fluidd-theme="OpenCentauri"] .toolbar-logo .logo-wrapper svg {
+[data-fluidd-theme="OpenCentauri"] .toolbar-logo :is(.logo-wrapper, .app-icon) svg {
     display: block;
     opacity: 0;
+    pointer-events: none;
 }
 
 [data-fluidd-theme="OpenCentauri"] .printer-title {
