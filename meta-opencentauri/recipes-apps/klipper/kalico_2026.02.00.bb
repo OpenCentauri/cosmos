@@ -8,6 +8,7 @@ PACKAGE_ARCH = "${MACHINE_ARCH}"
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI += " \
+    file://0008-pause-on-skew-maintenance-error.patch \
     file://klipper-init-d \
     file://printer.cfg \
     file://shared-macros.cfg \
