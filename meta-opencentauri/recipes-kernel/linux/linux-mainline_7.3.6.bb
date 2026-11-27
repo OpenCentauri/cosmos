@@ -10,7 +10,7 @@ require recipes-kernel/linux/linux.inc
 
 LINUX_VERSION = "${PV}"
 
-KBRANCH = "linux-7.2.y"
+KBRANCH = "linux-7.3.y"
 
 KMETA_AUDIT = ""
 
@@ -27,6 +27,6 @@ SRC_URI = " \
 "
 
 # v${PV}
-SRCREV = "bd50482a9c7a6eb91468f1064a346a75e677e692"
+SRCREV = "1a0388846138eda9f6eb4258ff227a223afc2f52"
 
 FILES_${KERNEL_PACKAGE_NAME}-base:append = " ${nonarch_base_libdir}/modules/${KERNEL_VERSION}/modules.builtin.modinfo"
