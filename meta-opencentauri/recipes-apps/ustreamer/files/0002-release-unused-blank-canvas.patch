@@ -1,0 +1,96 @@
+Subject: [PATCH] stream: release and trim the unused blank RGB canvas
+
+Release the placeholder RGB canvas when neither raw nor H.264 output is
+configured, retaining the compressed JPEG for HTTP clients. Recreate the
+canvas on the next draw when frametext no longer has valid pixels.
+
+On glibc, also ask malloc_trim(0) to return free heap pages to the system.
+After an earlier canvas allocation is freed, glibc can raise its adaptive
+mmap threshold. A subsequent placeholder update can then allocate its
+canvas from the heap, where free() alone may leave its pages resident.
+This can outlast a temporary camera startup failure even after capture
+recovers. Trimming addresses that allocator retention without changing
+sink selection or capture settings. Other C libraries keep free() behavior.
+
+Sink selection remains a runtime check and does not depend on whether
+any clients are connected. Raw and H.264 sinks retain their canvas.
+
+Upstream-Status: Pending
+Base-Commit: 88460b72e191035d04355e25106af817cbfe069e
+---
+ src/libs/frametext.c   |  1 +
+ src/ustreamer/stream.c | 21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/src/libs/frametext.c b/src/libs/frametext.c
+index d5adfc73765558dd3f7e0b5052dec9c4678b1041..9daa61f02666a588c3d63378aeede9d1faee6393 100644
+--- a/src/libs/frametext.c
++++ b/src/libs/frametext.c
+@@ -92,6 +92,7 @@ void us_frametext_draw(us_frametext_s *ft, const char *text, uint width, uint he
+ 	if (
+ 		frame->width == width && frame->height == height
+ 		&& ft->text != NULL && !strcmp(ft->text, text)
++		&& frame->data != NULL && frame->used > 0
+ 	) {
+ 		return;
+ 	}
+diff --git a/src/ustreamer/stream.c b/src/ustreamer/stream.c
+index 9ae94e42b35d355df43d449a595810eefb06d501..82b3002a69b7d5ba3a6a98edc07ef6c9685f6472 100644
+--- a/src/ustreamer/stream.c
++++ b/src/ustreamer/stream.c
+@@ -29,6 +29,10 @@
+ #include <errno.h>
+ #include <math.h>
+
++#ifdef __GLIBC__
++#	include <malloc.h>
++#endif
++
+ #include <pthread.h>
+
+ #include <event2/event.h> // jpeg_refresher
+@@ -88,6 +92,7 @@ static bool _stream_has_jpeg_clients_cached(us_stream_s *stream);
+ static bool _stream_has_any_clients_cached(us_stream_s *stream);
+ static int _stream_init_loop(us_stream_s *stream);
+ static void _stream_update_captured_fpsi(us_stream_s *stream, const us_frame_s *frame, bool bump);
++static void _stream_release_blank_raw(us_stream_s *stream);
+ #ifdef WITH_V4P
+ static void _stream_drm_ensure_no_signal(us_stream_s *stream);
+ #endif
+@@ -134,6 +139,7 @@ void us_stream_update_blank(us_stream_s *stream, const us_capture_s *cap) {
+ 	us_blank_draw(run->blank, "< NO LIVE VIDEO >", cap->width, cap->height);
+ 	us_fpsi_frame_to_meta(run->blank->raw, &run->notify_meta); // Initial "unchanged" meta
+ 	_stream_update_captured_fpsi(stream, run->blank->raw, false);
++	_stream_release_blank_raw(stream);
+ }
+ 
+ void us_stream_destroy(us_stream_s *stream) {
+@@ -664,6 +670,7 @@ static int _stream_init_loop(us_stream_s *stream) {
+ 				_stream_expose_jpeg(stream, run->blank->jpeg);
+ 				_stream_expose_raw(stream, run->blank->raw);
+ 				_stream_encode_expose_h264(stream, run->blank->raw, true);
++				_stream_release_blank_raw(stream);
+ 
+ #				ifdef WITH_V4P
+ 				_stream_drm_ensure_no_signal(stream);
+@@ -675,6 +682,20 @@ static int _stream_init_loop(us_stream_s *stream) {
+ 	return -1;
+ }
+ 
++static void _stream_release_blank_raw(us_stream_s *stream) {
++	// HTTP uses the compressed JPEG; raw and H.264 sinks still need the pixels.
++	if (stream->raw_sink == NULL && stream->h264_sink == NULL) {
++		us_frame_s *const raw = stream->run->blank->raw;
++		US_DELETE(raw->data, free);
++		raw->used = 0;
++		raw->allocated = 0;
++#		ifdef __GLIBC__
++		// A freed canvas can remain in the heap after a camera startup retry.
++		malloc_trim(0);
++#		endif
++	}
++}
++
+ static void _stream_update_captured_fpsi(us_stream_s *stream, const us_frame_s *frame, bool bump) {
+ 	us_stream_runtime_s *const run = stream->run;
+ 
