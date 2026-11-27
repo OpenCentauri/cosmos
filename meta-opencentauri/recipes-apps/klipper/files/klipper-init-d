@@ -58,7 +58,7 @@ case "$1" in
                 exit 1
             fi
         fi
-        start-stop-daemon -S -b -m -p $PIDFILE \
+        start-stop-daemon -S -b -m -N -5 -p $PIDFILE \
             -x $KLIPPY_EXEC -- $KLIPPY_ARGS
         ;;
     stop)
