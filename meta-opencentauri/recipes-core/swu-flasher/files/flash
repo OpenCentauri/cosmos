@@ -31,7 +31,7 @@ fi
 
 rm -f "$TEMP_DIR/sw-description"
 
-curr=$(fw_printenv systemAB_next | awk -F= '{ print $2 }' | tr -d '[:space:]')
+curr=$(tr ' ' '\n' < /proc/cmdline | awk -F= '$1 == "systemAB.slot" { print $2 }' | tr -d '[:space:]')
 
 if [[ "$curr" == "A" ]]; then
     boot_partition="now_A_next_B"
