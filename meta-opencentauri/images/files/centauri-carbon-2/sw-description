@@ -57,6 +57,10 @@ software =
                     value = "6";
                 },
                 {
+                    name = "boot_resource_part";
+                    value = "2";
+                },
+                {
                     name = "mmc_root";
                     value = "/dev/mmcblk0p8";
                 },
@@ -86,7 +90,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt systemAB.slot=${systemAB_next}";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt systemAB.slot=${systemAB_next} bootresource.part=${boot_resource_part}";
                 },
                 {
                     name = "bootcmd_";
@@ -102,7 +106,7 @@ software =
                 },
                 {
                     name = "preboot";
-                    value = "load mmc 1:2 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                    value = "load mmc 1:${boot_resource_part} 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
                 },
                 {
                     name = "stdin";
@@ -171,6 +175,10 @@ software =
                     value = "5";
                 },
                 {
+                    name = "boot_resource_part";
+                    value = "1";
+                },
+                {
                     name = "mmc_root";
                     value = "/dev/mmcblk0p7";
                 },
@@ -200,7 +208,7 @@ software =
                 },
                 {
                     name = "setargs_mainline";
-                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt systemAB.slot=${systemAB_next}";
+                    value = "setenv bootargs console=@@KERNEL_CONSOLE@@ root=${mmc_root} rootwait consoleblank=0 gpt systemAB.slot=${systemAB_next} bootresource.part=${boot_resource_part}";
                 },
                 {
                     name = "bootcmd_";
@@ -216,7 +224,7 @@ software =
                 },
                 {
                     name = "preboot";
-                    value = "load mmc 1:1 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
+                    value = "load mmc 1:${boot_resource_part} 0x43000000 bootlogo.bmp; bmp display 0x43000000; usb start";
                 },
                 {
                     name = "stdin";

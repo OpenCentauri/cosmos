@@ -1,0 +1,1 @@
+ACTION=="add", KERNEL=="mmcblk0", IMPORT{cmdline}="bootresource.part", RUN+="/bin/mount /dev/mmcblk0p$env{bootresource.part} /boot-resource"

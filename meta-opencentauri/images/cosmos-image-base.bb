@@ -52,7 +52,10 @@ CORE_IMAGE_EXTRA_INSTALL += "\
     git \
 "
 
-CORE_IMAGE_EXTRA_INSTALL:append:centauri-carbon-2 = " centauri-carbon-2-detect"
+CORE_IMAGE_EXTRA_INSTALL:append:centauri-carbon-2 = " \
+    centauri-carbon-2-detect \
+    boot-resource-mount \
+"
 
 INITRAMFS_IMAGE = "core-image-tiny-initramfs"
 INITRAMFS_FSTYPES = "cpio.gz"
