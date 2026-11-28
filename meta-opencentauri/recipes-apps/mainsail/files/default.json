@@ -68,6 +68,14 @@
                         "showInStandby": true,
                         "showInPrinting": false,
                         "showInPause": true
+                    },
+                    {
+                        "pos": 8,
+                        "name": "TOGGLE_ADAPTIVE_MESH",
+                        "color": "group",
+                        "showInStandby": true,
+                        "showInPrinting": false,
+                        "showInPause": false
                     }
                 ]
             },
