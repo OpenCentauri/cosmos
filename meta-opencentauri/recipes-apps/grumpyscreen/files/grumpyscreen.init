@@ -39,7 +39,7 @@ ensure_grumpyscreen_config_version() {
 
         mkdir -p "$CONFIG_BACKUP_DIR" || return 1
         cp "$CONFIG_OVERRIDE_FILE" "$backup_file" || return 1
-        echo "# Add other extra configuration here.\n" > "$CONFIG_OVERRIDE_FILE"
+        printf '# Add other extra configuration here.\n\n' > "$CONFIG_OVERRIDE_FILE"
     fi
 
     printf '%s\n' "$CONFIG_VERSION" > "$CONFIG_VERSION_FILE" || return 1
@@ -57,7 +57,7 @@ case "$1" in
     stop)
         echo "Stopping grumpyscreen..."
         start-stop-daemon -K -p "$PIDFILE" -R 10
-        rm -f $PIDFILE
+        rm -f "$PIDFILE"
         ;;
     restart|force-reload)
         $0 stop
