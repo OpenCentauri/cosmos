@@ -280,6 +280,16 @@
 	cap-mmc-hw-reset;
 	bus-width = <4>;
 	max-frequency = <150000000>;
+	/*
+	 * DDR52 set up like the stock Allwinner BSP: 50 MHz card clock
+	 * from a 100 MHz pll-periph0 module clock in the old timing mode,
+	 * with a fixed sample delay, the stock FIFO watermark and a write
+	 * threshold. Some eMMC chips ("MMC8GB") fail writes otherwise.
+	 */
+	allwinner,ddr-old-timing;
+	allwinner,sample-delay = <23>;
+	allwinner,fifo-watermark = <0x300f00f0>;
+	allwinner,write-threshold;
 	status = "okay";
 };
 

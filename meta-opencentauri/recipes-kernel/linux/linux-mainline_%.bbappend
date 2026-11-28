@@ -19,6 +19,7 @@ SRC_URI:append = " \
 	file://0003-riscv-dts-allwinner-d1-Add-pwm-node.patch \
 	file://0001-Make-CONFIG_FB-select-CONFIG_FB_BACKLIGHT.patch \
 	file://0001-Add-support-for-st77922-touchscreen-driver.patch \
+	file://0001-mmc-sunxi-add-dt-options-for-stock-like-ddr52-setup.patch \
 "
 
 KERNEL_MODULE_PROBECONF += "rtw88_core"
