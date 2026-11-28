@@ -19,6 +19,7 @@ VALIDATORS = {
     'camera': {
         'resolution': ['640x360', '864x480', '1280x720'],
         'fps': [str(i) for i in range(1, 21)],
+        'timelapse': ['False', 'True'],
     },
     'klipper': {
         'sync_camera_led_to_chamber_led': ['False', 'True'],
