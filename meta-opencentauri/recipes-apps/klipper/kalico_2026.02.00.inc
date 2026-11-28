@@ -19,9 +19,9 @@ SRC_URI = "git://github.com/KalicoCrew/kalico.git;protocol=https;branch=main \
     file://canvas_rfid.py;subdir=${BP}/klippy/extras \
     file://canvas_filament_sensor.py;subdir=${BP}/klippy/extras \
 "
-SRCREV = "d949a776936f082d0fef9365ea4fac6b6b5f03a8"
+SRCREV = "122c70c8c04bed1c97f316b76650bdfdc192b7ab"
 
-PR = "r22"
+PR = "r23"
 
 DEPENDS = " \
     python3-native \
