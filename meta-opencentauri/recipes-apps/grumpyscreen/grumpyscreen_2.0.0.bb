@@ -83,7 +83,7 @@ do_install() {
 
     install -d ${D}${sysconfdir}/klipper
     install -d ${D}${sysconfdir}/klipper/config
-    echo "# Add other extra configuration here.\n" > ${D}${sysconfdir}/klipper/config/grumpyscreen.cfg
+    printf '# Add other extra configuration here.\n\n' > ${D}${sysconfdir}/klipper/config/grumpyscreen.cfg
 
     install -d ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly
     install -m 0644 ${UNPACKDIR}/grumpyscreen.cfg ${D}${sysconfdir}/klipper/config/grumpyscreen-readonly/
